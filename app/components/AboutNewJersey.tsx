@@ -2,95 +2,106 @@ import Link from "next/link";
 
 export default function AboutNewJersey() {
   return (
-    <section className="bg-white py-20">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
-          {/* Left */}
-          <div>
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-[#ff6b00]">
+    <section className="bg-white py-24">
+      <div className="mx-auto max-w-7xl px-8 lg:px-16 xl:px-20">
+        <div className="grid gap-16 lg:grid-cols-[1.1fr_0.9fr]">
+          
+          {/* Content */}
+          <div className="max-w-2xl">
+            <span className="inline-flex rounded-full bg-[#ff6b00]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ff6b00]">
               About NewJersey.ng
             </span>
 
-            <h2 className="mt-4 text-4xl font-black leading-tight text-black md:text-5xl">
-              More Than Printing.
+            <h2 className="mt-6 text-3xl font-black leading-tight tracking-tight text-[#111111] md:text-5xl">
+              Printing built for
               <br />
-              We Help Brands Stay Visible.
+              modern brands.
             </h2>
 
-            <p className="mt-6 text-base leading-8 text-black/65">
-              NewJersey.ng was built to help businesses, creators, schools,
-              churches, organizations, and growing brands transform ideas into
-              physical products people can see, touch, and remember.
+            <p className="mt-8 max-w-xl text-[15px] leading-8 text-black/60">
+              NewJersey.ng helps businesses, creators, schools, churches,
+              organizations and growing brands turn ideas into physical
+              products that leave lasting impressions.
             </p>
 
-            <p className="mt-5 text-base leading-8 text-black/65">
-              From custom apparel and business stationery to event materials,
-              merchandise, and promotional products, we combine quality
-              production, thoughtful design, and reliable delivery to help
-              brands show up professionally.
+            <p className="mt-5 max-w-xl text-[15px] leading-8 text-black/60">
+              From apparel and business stationery to event materials,
+              merchandise and promotional products, we focus on quality,
+              consistency and reliable delivery.
             </p>
 
-            <p className="mt-5 text-base leading-8 text-black/65">
-              Whether you're launching a business, planning an event, growing a
-              community, or building a brand, our goal is simple:
-            </p>
-
-            <div className="mt-6 border-l-4 border-[#ff6b00] pl-5">
-              <p className="text-xl font-bold text-black">
-                Make your brand impossible to ignore.
+            <div className="mt-10 border-l-2 border-[#ff6b00] pl-5">
+              <p className="text-lg font-semibold text-[#111111]">
+                We believe every brand deserves to look professional,
+                memorable and trusted.
               </p>
             </div>
 
             <Link
               href="/quote"
-              className="mt-8 inline-flex rounded-full bg-[#ff6b00] px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
+              className="
+                mt-10
+                inline-flex
+                items-center
+                rounded-full
+                bg-black
+                px-6
+                py-3
+                text-sm
+                font-bold
+                text-white
+                transition
+                hover:bg-[#ff6b00]
+              "
             >
               Start Your Project
             </Link>
           </div>
 
-          {/* Right */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[28px] bg-[#f7f3ee] p-8">
-              <h3 className="text-4xl font-black text-[#ff6b00]">
-                100+
-              </h3>
+          {/* Right Side */}
+          <div className="flex items-center">
+            <div className="w-full rounded-[32px] border border-black/5 bg-[#fafafa] p-8 lg:p-10">
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-2xl font-black text-[#111111]">
+                    What we do
+                  </h3>
 
-              <p className="mt-3 text-sm font-semibold text-black/70">
-                Products available for customization and branding.
-              </p>
-            </div>
+                  <p className="mt-2 text-sm leading-7 text-black/60">
+                    Custom printing, branding, merchandise production and
+                    design support for businesses and individuals.
+                  </p>
+                </div>
 
-            <div className="rounded-[28px] bg-black p-8">
-              <h3 className="text-4xl font-black text-[#ff6b00]">
-                Fast
-              </h3>
+                <div className="h-px bg-black/10" />
 
-              <p className="mt-3 text-sm font-semibold text-white/70">
-                Production timelines and nationwide delivery.
-              </p>
-            </div>
+                <div>
+                  <h3 className="text-2xl font-black text-[#111111]">
+                    What matters
+                  </h3>
 
-            <div className="rounded-[28px] bg-white p-8 ring-1 ring-black/10">
-              <h3 className="text-4xl font-black text-black">
-                Design
-              </h3>
+                  <p className="mt-2 text-sm leading-7 text-black/60">
+                    Quality output, clean finishing, fast communication
+                    and dependable delivery.
+                  </p>
+                </div>
 
-              <p className="mt-3 text-sm font-semibold text-black/70">
-                Professional design support when you need it.
-              </p>
-            </div>
+                <div className="h-px bg-black/10" />
 
-            <div className="rounded-[28px] bg-[#ff6b00] p-8">
-              <h3 className="text-4xl font-black text-white">
-                Quality
-              </h3>
+                <div>
+                  <h3 className="text-2xl font-black text-[#111111]">
+                    Why clients stay
+                  </h3>
 
-              <p className="mt-3 text-sm font-semibold text-white/80">
-                Clean finishing and premium print production.
-              </p>
+                  <p className="mt-2 text-sm leading-7 text-black/60">
+                    Because we make ordering simple and help brands
+                    look their best every time.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
+
         </div>
       </div>
     </section>

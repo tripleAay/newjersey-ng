@@ -1,7 +1,7 @@
 
 import TopBar from "@/app/components/TopBar";
 import Header from "@/app/components/Header";
-import EmptyCartPanel from "@/app/components/EmptyCartPanel";
+import EmptyCartPanel from "@/app/components/EmptyCartPanel"; 
 import CartPicks from "@/app/components/CartPicks";
 import OrderSummary from "@/app/components/OrderSummary";
 import Footer from "@/app/components/Footer";

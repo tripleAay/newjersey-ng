@@ -2,8 +2,7 @@ import StickyNavigation from "./components/StickyNavigation";
 import Hero from "./components/Hero";
 import SeamlessPrintsDelivery from "./components/Seamless";
 import BusinessStationery from "./components/Stationery";
-import TshirtsClothing from "./components/Clothing";
-import EventsSection from "./components/Events";
+
 import TrustedBrandsSection from "./components/TrustedBrand";
 import TestimonialsSection from "./components/Testimony";
 import NewsletterSection from "./components/Newslettr";
@@ -18,8 +17,7 @@ export default function Home() {
       <Hero />
       <SeamlessPrintsDelivery />
       <BusinessStationery />
-      <TshirtsClothing />
-      <EventsSection />
+    
       <TrustedBrandsSection />
       <TestimonialsSection />
       <NewsletterSection />

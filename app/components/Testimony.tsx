@@ -1,6 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
 const testimonials = [
   {
@@ -25,92 +23,102 @@ const testimonials = [
 
 export default function TestimonialsSection() {
   return (
-    <section className="bg-[#fafafa] py-20">
-      <div className="mx-auto max-w-7xl px-6">
-        {/* Header */}
-        <div className="mb-14 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <span className="rounded-full bg-[#ff6b00]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#ff6b00]">
-              Testimonials
+    <section className="bg-[#2E1E0F] px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+      <div className="mx-auto max-w-6xl">
+        {/* HEADER */}
+        <div className="mx-auto max-w-2xl text-center">
+          <div className="mb-3 flex items-center justify-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B00]" />
+
+            <span className="text-[9px] font-black uppercase tracking-[0.24em] text-black/45">
+              Client Words
             </span>
 
-            <h2 className="mt-4 text-3xl font-black tracking-tight text-[#111111] md:text-4xl">
-              Trusted by businesses,
-              <br />
-              creators and organisations.
-            </h2>
-
-            <p className="mt-3 max-w-xl text-sm leading-7 text-black/60">
-              Real feedback from clients who trusted us with their printing,
-              branding and merchandise projects.
-            </p>
+            <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B00]" />
           </div>
 
-          <Link
-            href="/testimonials"
-            className="group inline-flex items-center gap-2 text-sm font-bold text-black"
-          >
-            View All Reviews
-            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-          </Link>
+          <h2 className="text-3xl font-black leading-[0.95] tracking-[-0.04em] text-black sm:text-4xl lg:text-5xl">
+            They printed with us.
+            <span className="block text-[#FF6B00]">
+              They came back.
+            </span>
+          </h2>
         </div>
 
-        {/* Cards */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {testimonials.map((item) => (
-            <div
+        {/* TESTIMONIALS */}
+        <div className="mt-14 grid gap-4 md:grid-cols-3">
+          {testimonials.map((item, index) => (
+            <article
               key={item.name}
-              className="
-                relative
-                overflow-hidden
-                rounded-[28px]
-                border
-                border-black/5
+              className={`
+                group relative flex min-h-[270px] flex-col justify-between
+                overflow-hidden rounded-[24px]
+                border border-black/5
                 bg-white
-                p-8
-                shadow-[0_10px_40px_rgba(0,0,0,0.04)]
-              "
+                p-6
+                shadow-[0_12px_40px_rgba(0,0,0,0.04)]
+                transition duration-300
+                hover:-translate-y-1
+                hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)]
+                ${index === 1 ? "md:-translate-y-3 md:hover:-translate-y-4" : ""}
+              `}
             >
-              {/* Quote */}
-              <span
-                className="
-                  absolute
-                  right-5
-                  top-0
-                  text-[120px]
-                  font-black
-                  leading-none
-                  text-[#ff6b00]/5
-                "
-              >
-                "
-              </span>
+              {/* Orange accent */}
+              <div className="absolute left-0 top-0 h-1 w-14 bg-[#FF6B00]" />
 
-              <div className="flex items-center gap-4">
+              {/* Quote mark */}
+              <div className="absolute right-5 top-2 text-7xl font-black leading-none text-[#FF6B00]/[0.07]">
+                “
+              </div>
+
+              {/* Quote */}
+              <div className="relative z-10">
+                <div className="mb-4 flex gap-1 text-[#FF6B00]">
+                  <span>★</span>
+                  <span>★</span>
+                  <span>★</span>
+                  <span>★</span>
+                  <span>★</span>
+                </div>
+
+                <p className="text-[14px] font-medium leading-6 tracking-[-0.01em] text-black/75">
+                  “{item.text}”
+                </p>
+              </div>
+
+              {/* Client */}
+              <div className="relative z-10 mt-7 flex items-center gap-3 border-t border-black/5 pt-5">
                 <Image
                   src={item.image}
                   alt={item.name}
-                  width={52}
-                  height={52}
-                  className="rounded-full object-cover"
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 rounded-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
                 />
 
-                <div>
-                  <h3 className="text-sm font-black text-[#111111]">
+                <div className="min-w-0">
+                  <h3 className="truncate text-[12px] font-black text-black">
                     {item.name}
                   </h3>
 
-                  <p className="text-xs text-black/55">
+                  <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-black/45">
                     {item.role}
                   </p>
                 </div>
               </div>
-
-              <p className="mt-6 text-[15px] leading-8 text-black/70">
-                "{item.text}"
-              </p>
-            </div>
+            </article>
           ))}
+        </div>
+
+        {/* BOTTOM TRUST SIGNAL */}
+        <div className="mt-7 flex items-center justify-center gap-3">
+          <div className="h-px w-10 bg-black/10" />
+
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/35">
+            Built on good work
+          </span>
+
+          <div className="h-px w-10 bg-black/10" />
         </div>
       </div>
     </section>

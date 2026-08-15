@@ -12,7 +12,7 @@ export default function Header() {
   const searchUrl = `/products?search=${encodeURIComponent(searchTerm)}`;
 
   return (
-    <header className="w-full bg-white border-b border-black/10">
+    <header className="w-full bg-[#EBEBD3] border-b border-black/10">
       <div className="h-[72px] flex items-center justify-between px-10">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-[26px] font-black tracking-tight text-black">

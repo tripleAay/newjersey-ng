@@ -19,16 +19,18 @@ export default function StickyNavigation() {
   }, []);
 
   return (
-    <div className="sticky top-0 z-50 w-full">
+    <div className="w-full lg:static sticky top-0 z-50">
       <div
-        className={`overflow-hidden transition-all duration-500 ease-in-out ${
+        className={`overflow-hidden transition-all duration-500 ease-in-out lg:max-h-none lg:opacity-100 ${
           hideTopBar ? "max-h-0 opacity-0" : "max-h-9 opacity-100"
         }`}
       >
         <TopBar />
       </div>
 
-      <Header />
+      <div className="transition-transform duration-500 ease-in-out">
+        <Header />
+      </div>
     </div>
   );
 }

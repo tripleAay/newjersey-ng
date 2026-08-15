@@ -31,7 +31,7 @@ const products = [
 
 export default function BusinessStationery() {
   return (
-    <section className="w-full bg-[#f7f3ee] px-6 py-16">
+    <section className="w-full bg-[#D4C685] px-6 py-16">
       <div className="mx-auto max-w-7xl">
         <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>

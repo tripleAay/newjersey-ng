@@ -27,7 +27,7 @@ const slides = [
     floatingText: "Sharp. Clean. Professional.",
   },
   {
-    image: "/images/newjersey.ng_jersey.png",
+    image: "/images/hoodie.png",
     eyebrow: "Custom Apparel",
     title: "Wear Your",
     highlight: "Brand With Pride",
@@ -38,7 +38,7 @@ const slides = [
     floatingText: "Made for your brand.",
   },
   {
-    image: "/images/newjersey.ng_mug.png",
+    image: "/images/merchandise.png",
     eyebrow: "Promotional Products",
     title: "Make Your Brand",
     highlight: "Memorable",

@@ -7,7 +7,7 @@ import TrustedBrandsSection from "./components/TrustedBrand";
 import TestimonialsSection from "./components/Testimony";
 import NewsletterSection from "./components/Newslettr";
 import Footer from "./components/Footer";
-import Copyright from "./components/Copyright";
+
 
 export default function Home() {
   return (
@@ -17,12 +17,12 @@ export default function Home() {
       <Hero />
       <SeamlessPrintsDelivery />
       <BusinessStationery />
-    
+
       <TrustedBrandsSection />
       <TestimonialsSection />
       <NewsletterSection />
       <Footer />
-      <Copyright />
+      {/* <Copyright /> */}
     </main>
   );
 }

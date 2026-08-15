@@ -30,16 +30,16 @@ export default function TestimonialsSection() {
           <div className="mb-3 flex items-center justify-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B00]" />
 
-            <span className="text-[9px] font-black uppercase tracking-[0.24em] text-black/45">
+            <span className="text-[9px] font-black uppercase tracking-[0.24em] text-white/45">
               Client Words
             </span>
 
             <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B00]" />
           </div>
 
-          <h2 className="text-3xl font-black leading-[0.95] tracking-[-0.04em] text-black sm:text-4xl lg:text-5xl">
+          <h2 className="text-3xl font-black leading-[0.95] tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
             They printed with us.
-            <span className="block text-[#FF6B00]">
+            <span className="block text-[#FF6B00] mt-2">
               They came back.
             </span>
           </h2>

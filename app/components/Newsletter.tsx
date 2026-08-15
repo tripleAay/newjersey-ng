@@ -1,6 +1,6 @@
 export default function NewsletterSection() {
   return (
-    <section className="bg-white px-5 py-12 sm:px-8 lg:py-16">
+    <section className="bg-white px-10 py-12 sm:px-8 lg:py-16">
       <div className="mx-auto max-w-5xl">
         <div className="relative overflow-hidden rounded-[28px] bg-[#FF6B00] px-6 py-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:px-10 sm:py-12 lg:px-16">
           {/* Decorative shapes */}

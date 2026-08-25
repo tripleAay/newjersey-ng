@@ -38,7 +38,7 @@ export default function Collections() {
   }, [displayedSubtitle, phase, fullText]);
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-[#6D1A36] font-inter text-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden mt-10">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[#12100E] font-inter text-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden pt-10">
       {/* Main Content */}
       <main className="flex-1 p-6 lg:p-10 space-y-10">
         {/* Header */}

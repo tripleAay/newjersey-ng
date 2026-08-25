@@ -6,7 +6,8 @@ import {
   Search,
   UserRound,
   CircleHelp,
-  ShoppingCart,
+  Shopping,
+   ShoppingCart,
   ChevronDown,
   Package,
   Heart,
@@ -295,7 +296,7 @@ export default function MainHeader() {
               CART
           ===================================================== */}
           <Link
-            href="/cart"
+            href="/shop/cart"
             className="flex h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-2 transition hover:bg-[#f5f5f5]"
           >
             <div className="relative">
@@ -349,7 +350,7 @@ export default function MainHeader() {
 
             {/* CART */}
             <Link
-              href="/cart"
+              href="/shop/cart"
               className="relative flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-neutral-100"
               aria-label="Cart"
             >

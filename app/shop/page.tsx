@@ -136,7 +136,7 @@ export default function ShopPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#6D1A36] text-white">
+    <div className="min-h-screen bg-[#12100E] text-white">
       {/* Rendered via portal directly into <body>, so no ancestor's
           transform/filter/backdrop-blur can hijack the fixed positioning */}
       {mounted && createPortal(fixedBars, document.body)}
@@ -151,7 +151,9 @@ export default function ShopPage() {
       />
 
       <main className="">
-        <HeroSlider />
+        <div className="mb-10">
+          <HeroSlider />
+        </div>
 
         <Collections />
 

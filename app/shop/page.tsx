@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
-// import DashboardHeader from "../../components/dashboard components/mainheader";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import TopNav from "@/app/components/dashboard components/topnav";
 import HeroSlider from "@/app/components/dashboard components/mainheroe";
 import Collections from "@/app/components/dashboard components/collections";
 import ProductTileGrid from "@/app/components/dashboard components/ProductTileGridMirror";
 import HotStuffSection from "@/app/components/dashboard components/hotstuffSections";
 import Footer from "@/app/components/Footer";
-import ExploreByCategorySection from "@/app/components/dashboard components/exploreByCategorySection";
 import HowItWorksSection from "@/app/components/dashboard components/howItWorksSection";
 import ProjectModeCTA from "@/app/components/dashboard components/projectModeCTA";
 
@@ -38,131 +40,137 @@ const dashboardCategories = [
   },
 ];
 
+// Tracks scroll direction to decide whether the top nav should be visible.
+function useTopNavVisibility(hideAfter = 80) {
+  const [visible, setVisible] = useState(true);
+  const lastY = useRef(0);
+
+  useEffect(() => {
+    lastY.current = window.scrollY;
+
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const diff = currentY - lastY.current;
+
+      if (currentY < hideAfter) {
+        setVisible(true);
+      } else if (diff > 4) {
+        setVisible(false);
+      } else if (diff < -4) {
+        setVisible(true);
+      }
+
+      lastY.current = currentY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hideAfter]);
+
+  return visible;
+}
+
 export default function ShopPage() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | number>(
     "web-services"
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const topNavVisible = useTopNavVisibility();
 
-  useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(t);
-  }, []);
+  // Measure real heights so DashboardHeader always sits flush under TopNav,
+  // and page content never hides behind either fixed bar.
+  const topNavRef = useRef<HTMLDivElement | null>(null);
+  const dashboardHeaderRef = useRef<HTMLDivElement | null>(null);
+  const [topNavHeight, setTopNavHeight] = useState(0);
+  const [dashboardHeaderHeight, setDashboardHeaderHeight] = useState(0);
+
+  // Portals need the DOM to exist first (SSR-safe mount check)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  useLayoutEffect(() => {
+    const topNavEl = topNavRef.current;
+    const headerEl = dashboardHeaderRef.current;
+    if (!topNavEl || !headerEl) return;
+
+    const topNavObserver = new ResizeObserver((entries) => {
+      setTopNavHeight(entries[0].contentRect.height);
+    });
+    const headerObserver = new ResizeObserver((entries) => {
+      setDashboardHeaderHeight(entries[0].contentRect.height);
+    });
+
+    topNavObserver.observe(topNavEl);
+    headerObserver.observe(headerEl);
+
+    return () => {
+      topNavObserver.disconnect();
+      headerObserver.disconnect();
+    };
+  }, [mounted]);
+
+  const fixedBars = (
+    <>
+      {/* TopNav: fixed at the very top, slides up and out on scroll down */}
+      <motion.div
+        ref={topNavRef}
+        initial={false}
+        animate={{ y: topNavVisible ? 0 : "-100%" }}
+        transition={{ duration: 0.3, ease: [0.25, 1, 0.35, 1] }}
+        className="fixed top-0 left-0 right-0 z-[60]"
+      >
+        <TopNav />
+      </motion.div>
+
+      {/* DashboardHeader: always fixed and visible, slides up to y:0 once
+          TopNav is out of the way, so it stays flush against the very top */}
+      <motion.div
+        ref={dashboardHeaderRef}
+        initial={false}
+        animate={{ y: topNavVisible ? topNavHeight : 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 1, 0.35, 1] }}
+        className="fixed left-0 right-0 top-0 z-50 bg-[#6D1A36]/95 backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.25)]"
+      >
+        <DashboardHeader />
+      </motion.div>
+    </>
+  );
 
   return (
-    <div className="min-h-screen bg-[#050506] text-white">
-      {/* <DashboardHeader /> */}
+    <div className="min-h-screen bg-[#6D1A36] text-white">
+      {/* Rendered via portal directly into <body>, so no ancestor's
+          transform/filter/backdrop-blur can hijack the fixed positioning */}
+      {mounted && createPortal(fixedBars, document.body)}
 
-      <main className="pt-16">
-        {isLoading ? (
-          <section className="px-4 sm:px-6 lg:px-10 mt-4 animate-pulse">
-            <div className="max-w-6xl mx-auto">
-              <div className="h-40 sm:h-56 lg:h-64 rounded-3xl bg-gradient-to-r from-neutral-800/70 to-neutral-900/70 border border-neutral-800/60" />
-              <div className="mt-4 flex gap-3">
-                <div className="h-8 w-32 rounded-full bg-neutral-800/80" />
-                <div className="h-8 w-20 rounded-full bg-neutral-800/60" />
-              </div>
-            </div>
-          </section>
-        ) : (
-          <HeroSlider />
-        )}
+      {/* Spacer so page content starts below the fixed bars instead of
+          being covered by them */}
+      <div
+        style={{
+          height: (topNavVisible ? topNavHeight : 0) + dashboardHeaderHeight,
+        }}
+        aria-hidden
+      />
 
-        {isLoading ? (
-          <section className="mt-10 px-4 sm:px-6 lg:px-10 animate-pulse">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-6 w-40 rounded-full bg-neutral-800/80" />
-              <div className="h-6 w-20 rounded-full bg-neutral-800/60" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl bg-neutral-900/70 border border-neutral-800/70 p-4"
-                >
-                  <div className="h-32 rounded-xl bg-neutral-800/80 mb-3" />
-                  <div className="h-4 w-3/4 bg-neutral-800/80 rounded-full mb-2" />
-                  <div className="h-3 w-1/2 bg-neutral-800/70 rounded-full mb-1.5" />
-                  <div className="h-3 w-1/3 bg-neutral-800/60 rounded-full" />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <Collections />
-        )}
+      <main className="">
+        <HeroSlider />
 
-        {isLoading ? (
-          <section className="mt-10 px-4 sm:px-6 lg:px-10 animate-pulse">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-6 w-40 rounded-full bg-neutral-800/80" />
-              <div className="h-6 w-20 rounded-full bg-neutral-800/60" />
-            </div>
+        <Collections />
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl bg-neutral-900/70 border border-neutral-800/70 p-4"
-                >
-                  <div className="h-32 rounded-xl bg-neutral-800/80 mb-3" />
-                  <div className="h-4 w-3/4 bg-neutral-800/80 rounded-full mb-2" />
-                  <div className="h-3 w-1/2 bg-neutral-800/70 rounded-full mb-1.5" />
-                  <div className="h-3 w-1/3 bg-neutral-800/60 rounded-full" />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <section className="mt-10 px-4 sm:px-6 lg:px-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold tracking-tight">
-                Featured Products
-              </h2>
-              <button className="text-sm text-white/60 hover:text-white transition">
-                View all
-              </button>
-            </div>
+        <section className="mt-10 px-4 sm:px-6 lg:px-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Featured Products
+            </h2>
+            <button className="text-sm text-white/60 hover:text-white transition">
+              View all
+            </button>
+          </div>
 
-            <ProductTileGrid />
-          </section>
-        )}
+          <ProductTileGrid />
+        </section>
 
-        {isLoading ? (
-          <section className="mt-10 px-4 sm:px-6 lg:px-10 animate-pulse">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-6 w-32 rounded-full bg-neutral-800/80" />
-              <div className="h-6 w-16 rounded-full bg-neutral-800/60" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl bg-neutral-900/70 border border-neutral-800/70 p-4"
-                >
-                  <div className="h-24 rounded-xl bg-neutral-800/80 mb-3" />
-                  <div className="h-4 w-2/3 bg-neutral-800/80 rounded-full mb-2" />
-                  <div className="h-3 w-1/2 bg-neutral-800/70 rounded-full mb-1" />
-                  <div className="h-3 w-1/3 bg-neutral-800/60 rounded-full" />
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <HotStuffSection />
-        )}
+        <HotStuffSection />
 
-        <ExploreByCategorySection
-          isLoading={isLoading}
-          categories={dashboardCategories}
-          activeCategoryId={activeCategoryId}
-          onSelectCategory={(cat) => {
-            setActiveCategoryId(cat.id);
-            console.log("Selected category:", cat.id);
-          }}
-        />
-
-        <HowItWorksSection isLoading={isLoading} />
+        <HowItWorksSection isLoading={false} />
         <ProjectModeCTA />
       </main>
 

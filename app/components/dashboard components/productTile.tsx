@@ -3,139 +3,416 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Star, Heart } from "lucide-react";
-import { useCart, Product } from "../../contexts/cartContext";
+import {
+  Star,
+  Heart,
+  ShoppingCart,
+  Eye,
+  Check,
+} from "lucide-react";
+
+import { useCart } from "../../contexts/cartContext";
 import ProductDetailModal from "@/app/components/dashboard components/productDetailModal";
 import { useFynaroToast } from "@/app/components/dashboard components/common/fynaroToast";
 import { useWishlist } from "@/app/contexts/wishlistContext";
 import { products } from "@/app/data/product";
 import { AppProduct } from "@/app/types/product";
 
-export type DetailedProduct = Product & {
-  hoverImage?: string;
-  images: string[];
-  description: string;
-  specs: { label: string; value: string }[];
-  rating: number;
-  reviewsCount: number;
-  isFulfilled: boolean;
-};
+type ProductStatus =
+  | "Available Now"
+  | "Made to Order"
+  | "Custom"
+  | "Pre-Order";
 
 const renderStars = (rating: number) => (
-  <span className="inline-flex items-center gap-1">
+  <span className="inline-flex items-center gap-[1px]">
     {Array.from({ length: 5 }).map((_, i) => (
       <Star
         key={i}
-        className={`h-3.5 w-3.5 ${
+        className={`h-3 w-3 ${
           i < Math.floor(rating)
-            ? "fill-[#F5B400] text-[#F5B400]"
-            : "text-gray-300"
+            ? "fill-[#f58220] text-[#f58220]"
+            : "text-neutral-300"
         }`}
       />
     ))}
   </span>
 );
 
-const ProductTileGrid: React.FC = () => {
-  const { addToCart } = useCart();
-  const { notifyAddToCart } = useFynaroToast();
-  const { addToWishlist, removeFromWishlist, isWishlisted } = useWishlist();
+function ProductStatusBadge({
+  status,
+}: {
+  status: ProductStatus;
+}) {
+  const styles: Record<ProductStatus, string> = {
+    "Available Now":
+      "border-emerald-200 bg-emerald-50 text-emerald-700",
 
-  const [selected, setSelected] = useState<AppProduct | null>(null);
-  const [activeAdd, setActiveAdd] = useState<number | string | null>(null);
+    "Made to Order":
+      "border-orange-200 bg-orange-50 text-[#d96708]",
 
-  const handleAddToCart = (product: AppProduct) => {
-    addToCart(product);
-    notifyAddToCart(product.name);
+    Custom:
+      "border-violet-200 bg-violet-50 text-violet-700",
 
-    setActiveAdd(product.id);
-    setTimeout(() => setActiveAdd(null), 1200);
-  };
-
-  const handleToggleWishlist = (product: AppProduct) => {
-    if (isWishlisted(product.id)) removeFromWishlist(product.id);
-    else addToWishlist(product);
+    "Pre-Order":
+      "border-blue-200 bg-blue-50 text-blue-700",
   };
 
   return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-[3px] text-[8px] font-bold uppercase tracking-[0.08em] backdrop-blur-sm ${styles[status]}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+const ProductTileGrid: React.FC = () => {
+  const { addToCart } = useCart();
+  const { notifyAddToCart } = useFynaroToast();
+
+  const {
+    addToWishlist,
+    removeFromWishlist,
+    isWishlisted,
+  } = useWishlist();
+
+  const [selected, setSelected] =
+    useState<AppProduct | null>(null);
+
+  const [activeAdd, setActiveAdd] =
+    useState<number | string | null>(null);
+
+  const handleAddToCart = (product: AppProduct) => {
+    addToCart(product);
+
+    notifyAddToCart(product.name);
+
+    setActiveAdd(product.id);
+
+    setTimeout(() => {
+      setActiveAdd(null);
+    }, 1200);
+  };
+
+  const handleToggleWishlist = (
+    product: AppProduct
+  ) => {
+    if (isWishlisted(product.id)) {
+      removeFromWishlist(product.id);
+    } else {
+      addToWishlist(product);
+    }
+  };
+
+  /*
+    PUBLIC SHOP FILTER
+
+    Products can exist in your dashboard
+    without automatically appearing publicly.
+  */
+
+  const publicProducts = products.filter(
+    (product) =>
+      product.isPublished !== false &&
+      product.isFulfilled !== false
+  );
+
+  return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:gap-5">
-        {products.map((product) => {
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+
+        {publicProducts.map((product) => {
           const wished = isWishlisted(product.id);
-          const isAdding = activeAdd === product.id;
+
+          const isAdding =
+            activeAdd === product.id;
+
+          /*
+            Fallback values so your current
+            product data does not immediately break.
+          */
+
+          const status =
+            (product.status as ProductStatus) ??
+            (product.isFulfilled
+              ? "Available Now"
+              : "Made to Order");
 
           return (
             <motion.article
               key={product.id}
-              whileHover={{ y: -6 }}
-              transition={{ duration: 0.25 }}
-              className="group flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-all hover:border-[#d6cc6d]/40 hover:shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
+              whileHover={{ y: -3 }}
+              transition={{
+                duration: 0.2,
+                ease: "easeOut",
+              }}
+              className="
+                group
+                flex
+                min-w-0
+                flex-col
+                overflow-hidden
+                rounded-xl
+                border
+                border-neutral-200
+                bg-white
+                transition-all
+                duration-300
+                hover:border-[#f58220]/30
+                hover:shadow-[0_12px_30px_rgba(0,0,0,0.10)]
+              "
             >
-              <div className="relative h-36 w-full bg-white sm:h-40">
+              {/* =====================================
+                  PRODUCT IMAGE
+              ===================================== */}
+
+              <div className="relative aspect-square w-full overflow-hidden bg-[#f7f7f7]">
+
+                {/* Main image */}
+
                 <Image
                   src={product.image}
                   alt={product.name}
                   fill
-                  className="object-contain transition-opacity duration-500 group-hover:opacity-0"
-                />
-                <Image
-                  src={product.hoverImage ?? product.image}
-                  alt=""
-                  fill
-                  className="object-contain opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  sizes="
+                    (max-width: 640px) 50vw,
+                    (max-width: 1024px) 33vw,
+                    (max-width: 1280px) 25vw,
+                    20vw
+                  "
+                  className="
+                    object-contain
+                    p-3
+                    transition-all
+                    duration-500
+                    group-hover:scale-[1.03]
+                    group-hover:opacity-0
+                  "
                 />
 
+                {/* Hover image */}
+
+                <Image
+                  src={
+                    product.hoverImage ??
+                    product.image
+                  }
+                  alt=""
+                  fill
+                  sizes="
+                    (max-width: 640px) 50vw,
+                    (max-width: 1024px) 33vw,
+                    (max-width: 1280px) 25vw,
+                    20vw
+                  "
+                  className="
+                    object-contain
+                    p-3
+                    opacity-0
+                    transition-all
+                    duration-500
+                    group-hover:scale-[1.03]
+                    group-hover:opacity-100
+                  "
+                />
+
+                {/* STATUS BADGE */}
+
+                <div className="absolute left-2 top-2">
+                  <ProductStatusBadge
+                    status={status}
+                  />
+                </div>
+
+                {/* WISHLIST */}
+
                 <button
-                  onClick={() => handleToggleWishlist(product)}
-                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60"
+                  type="button"
+                  onClick={() =>
+                    handleToggleWishlist(product)
+                  }
+                  aria-label={
+                    wished
+                      ? "Remove from wishlist"
+                      : "Add to wishlist"
+                  }
+                  className="
+                    absolute
+                    right-2
+                    top-2
+                    flex
+                    h-8
+                    w-8
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-white/90
+                    text-neutral-700
+                    shadow-sm
+                    backdrop-blur
+                    transition
+                    hover:bg-white
+                    hover:scale-105
+                  "
                 >
                   <Heart
-                    size={14}
+                    size={15}
                     className={
-                      wished ? "fill-[#ff7ab8] text-[#ff7ab8]" : "text-white"
+                      wished
+                        ? "fill-[#f58220] text-[#f58220]"
+                        : "text-neutral-700"
                     }
                   />
                 </button>
-
-                {product.isHotStuff && (
-                  <div className="absolute left-2 top-2 rounded-full bg-[#111014]/80 px-2 py-1 text-[10px] font-medium text-[#f5e4b5]">
-                    Hot Stuff
-                  </div>
-                )}
               </div>
 
-              <div className="flex flex-col px-3 py-2">
-                <h3 className="line-clamp-2 text-[12px] font-medium text-neutral-900">
+              {/* =====================================
+                  PRODUCT CONTENT
+              ===================================== */}
+
+              <div className="flex flex-1 flex-col p-3">
+
+                {/* CATEGORY */}
+
+                {product.category && (
+                  <p className="
+                    truncate
+                    text-[9px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.12em]
+                    text-[#f58220]
+                  ">
+                    {product.category}
+                  </p>
+                )}
+
+                {/* NAME */}
+
+                <h3 className="
+                  mt-1
+                  line-clamp-2
+                  min-h-[34px]
+                  text-[12px]
+                  font-semibold
+                  leading-[1.4]
+                  text-neutral-900
+                  transition
+                  group-hover:text-[#f58220]
+                ">
                   {product.name}
                 </h3>
 
-                <p className="mt-1 text-[13px] font-semibold text-[#111014] transition-all duration-300 group-hover:text-[#d6cc6d] group-hover:drop-shadow-[0_0_6px_rgba(214,204,109,0.4)]">
-                  {product.price}
-                </p>
+                {/* PRICE */}
 
-                <div className="mt-1 flex items-center gap-1 text-[10px]">
-                  {renderStars(product.rating)}
+                <div className="mt-2">
+                  <p className="
+                    text-[14px]
+                    font-bold
+                    tracking-[-0.2px]
+                    text-neutral-900
+                  ">
+                    {product.price}
+                  </p>
                 </div>
 
-                <div className="mt-2 flex gap-2">
+                {/* RATING */}
+
+                <div className="mt-1.5 flex items-center gap-1.5">
+
+                  {renderStars(product.rating)}
+
+                  {product.reviewsCount !== undefined && (
+                    <span className="
+                      text-[9px]
+                      text-neutral-400
+                    ">
+                      ({product.reviewsCount})
+                    </span>
+                  )}
+
+                </div>
+
+                {/* PUSH BUTTONS DOWN */}
+
+                <div className="flex-1" />
+
+                {/* =====================================
+                    ACTIONS
+                ===================================== */}
+
+                <div className="mt-3 flex gap-2">
+
+                  {/* ADD TO CART */}
+
                   <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleAddToCart(product)}
-                    className={`flex-1 rounded-full py-1.5 text-[11px] font-medium transition-all ${
-                      isAdding
-                        ? "bg-[#d6cc6d] text-black"
-                        : "bg-[#111014] text-white hover:bg-black"
-                    }`}
+                    whileTap={{
+                      scale: 0.97,
+                    }}
+                    type="button"
+                    onClick={() =>
+                      handleAddToCart(product)
+                    }
+                    className={`
+                      flex
+                      h-8
+                      flex-1
+                      items-center
+                      justify-center
+                      gap-1.5
+                      rounded-lg
+                      text-[10px]
+                      font-semibold
+                      transition-all
+                      ${
+                        isAdding
+                          ? "bg-[#f58220] text-white"
+                          : "bg-[#242424] text-white hover:bg-[#f58220]"
+                      }
+                    `}
                   >
-                    {isAdding ? "Added" : "Add"}
+                    {isAdding ? (
+                      <>
+                        <Check size={13} />
+                        Added
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart size={13} />
+                        Add to cart
+                      </>
+                    )}
                   </motion.button>
 
+                  {/* DETAILS */}
+
                   <button
-                    onClick={() => setSelected(product)}
-                    className="flex-1 rounded-full border border-[#d6cc6d]/60 py-1.5 text-[11px] text-[#bfb45f] hover:bg-[#111014] hover:text-[#d6cc6d]"
+                    type="button"
+                    onClick={() =>
+                      setSelected(product)
+                    }
+                    aria-label={`View ${product.name}`}
+                    className="
+                      flex
+                      h-8
+                      w-8
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-lg
+                      border
+                      border-neutral-200
+                      text-neutral-600
+                      transition
+                      hover:border-[#f58220]
+                      hover:bg-[#fff5ed]
+                      hover:text-[#f58220]
+                    "
                   >
-                    Details
+                    <Eye size={14} />
                   </button>
+
                 </div>
               </div>
             </motion.article>
@@ -143,20 +420,36 @@ const ProductTileGrid: React.FC = () => {
         })}
       </div>
 
+      {/* =====================================
+          PRODUCT DETAIL MODAL
+      ===================================== */}
+
       <ProductDetailModal
         product={
           selected
             ? {
                 ...selected,
-                images: selected.images.slice(0, 3),
-                reviewsCount: selected.reviewsCount ?? 0,
-                isFulfilled: selected.isFulfilled ?? true,
+
+                images:
+                  selected.images?.slice(0, 4) ?? [
+                    selected.image,
+                  ],
+
+                reviewsCount:
+                  selected.reviewsCount ?? 0,
+
+                isFulfilled:
+                  selected.isFulfilled ?? true,
               }
             : null
         }
         open={!!selected}
         onClose={() => setSelected(null)}
-        onAddToCart={(product) => handleAddToCart(product as AppProduct)}
+        onAddToCart={(product) =>
+          handleAddToCart(
+            product as AppProduct
+          )
+        }
       />
     </>
   );

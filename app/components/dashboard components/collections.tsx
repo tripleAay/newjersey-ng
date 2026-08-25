@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Dashhead from "../../components/dashboard components/dashNav";
 import ProductTileGrid from "../../components/dashboard components/productTile";
 import { motion } from "framer-motion";
 
@@ -39,12 +38,7 @@ export default function Collections() {
   }, [displayedSubtitle, phase, fullText]);
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-[#000000] font-inter text-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden mt-10">
-      {/* Sidebar - Dashboard Navigation */}
-      <aside className="hidden lg:block w-1/4 flex-shrink-0 border-r border-gray-100 bg-[#000000] p-6">
-        <Dashhead />
-      </aside>
-
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[#6D1A36] font-inter text-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden mt-10">
       {/* Main Content */}
       <main className="flex-1 p-6 lg:p-10 space-y-10">
         {/* Header */}
@@ -59,7 +53,7 @@ export default function Collections() {
               }}
               className="text-3xl font-bold text-white"
             >
-              Fynaro Collections
+              NewJersey.ng Collections
             </motion.h2>
 
             {/* Golden animated underline */}

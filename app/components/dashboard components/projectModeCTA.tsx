@@ -68,7 +68,7 @@ export default function ProjectModeCTA() {
   return (
     <section
       ref={sectionRef}
-      className="py-24 px-5 bg-black text-white border-t border-neutral-900"
+      className="py-24 px-5 bg-[#E0DED8] text-neutral-900 border-t border-neutral-300"
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -77,7 +77,7 @@ export default function ProjectModeCTA() {
         transition={{ duration: 0.5 }}
         className="max-w-4xl mx-auto text-center space-y-5"
       >
-        <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-50 flex items-center justify-center gap-1">
+        <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-900 flex items-center justify-center gap-1">
           <span>{displayed}</span>
           <motion.span
             className="inline-block w-[2px] h-6 sm:h-7 bg-neutral-500"
@@ -86,24 +86,24 @@ export default function ProjectModeCTA() {
           />
         </h2>
 
-        <p className="text-sm sm:text-base text-neutral-500 max-w-md mx-auto leading-relaxed">
+        <p className="text-sm sm:text-base text-neutral-600 max-w-md mx-auto leading-relaxed">
           When it&apos;s time, submit your project and we handle everything quietly, cleanly and professionally.
         </p>
 
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
           <Link
             href="/shop/requests/new"
-            className="inline-flex items-center justify-center rounded-full bg-white text-black px-10 py-3 text-sm font-medium tracking-tight hover:bg-neutral-200 transition-colors"
+            className="inline-flex items-center justify-center rounded-full bg-neutral-900 text-white px-10 py-3 text-sm font-medium tracking-tight hover:bg-neutral-800 transition-colors"
           >
             Create project request
           </Link>
         </motion.div>
 
-        <p className="text-[11px] text-neutral-600 mt-4">
+        <p className="text-[11px] text-neutral-500 mt-4">
           No pressure. No rush. When you&apos;re ready.
         </p>
 
-        <p className="text-[10px] text-neutral-700 mt-1">
+        <p className="text-[10px] text-neutral-400 mt-1">
           Pricing and full details will be shared once your proposal is received.
         </p>
       </motion.div>

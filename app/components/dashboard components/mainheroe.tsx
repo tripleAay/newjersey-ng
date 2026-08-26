@@ -218,7 +218,7 @@ export default function NewJerseyHero() {
           --font-heading: 'Space Grotesk', ui-sans-serif, sans-serif;
           --font-body: 'Inter', ui-sans-serif, sans-serif;
           --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-          --page-bg: #E7E5DF;
+          --page-bg: #FF6B00;
           --paper: #FBFAF7;
           --paper-2: #F1EFE9;
           --ink: #1B1B1F;

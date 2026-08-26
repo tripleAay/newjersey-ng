@@ -1,13 +1,12 @@
 "use client";
 
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useState } from "react";
 import {
   Search,
   UserRound,
   CircleHelp,
-  Shopping,
-   ShoppingCart,
+  ShoppingCart,
   ChevronDown,
   Package,
   Heart,
@@ -25,21 +24,95 @@ export default function MainHeader() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
+  const accountRef = useRef<HTMLDivElement | null>(null);
+  const helpRef = useRef<HTMLDivElement | null>(null);
+
+  /* =============================================================
+     CLOSE DROPDOWNS ON OUTSIDE CLICK
+  ============================================================= */
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (
+        accountRef.current &&
+        !accountRef.current.contains(target)
+      ) {
+        setAccountOpen(false);
+      }
+
+      if (
+        helpRef.current &&
+        !helpRef.current.contains(target)
+      ) {
+        setHelpOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
+    };
+  }, []);
+
+  /* =============================================================
+     CLOSE DROPDOWNS WITH ESCAPE
+  ============================================================= */
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAccountOpen(false);
+        setHelpOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener(
+        "keydown",
+        handleEscape
+      );
+    };
+  }, []);
+
+  /* =============================================================
+     TOGGLES
+  ============================================================= */
+
+  const toggleAccount = () => {
+    setAccountOpen((prev) => !prev);
+    setHelpOpen(false);
+  };
+
+  const toggleHelp = () => {
+    setHelpOpen((prev) => !prev);
+    setAccountOpen(false);
+  };
+
   return (
-   <header className="w-full border-b border-neutral-200/70 bg-[#E7E5DF] text-[#262626] shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+    <header className="w-full border-b border-neutral-200/70 bg-[#E7E5DF] text-[#262626] shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
 
       {/* =========================================================
           DESKTOP HEADER
       ========================================================= */}
+
       <div className="hidden lg:block">
         <div className="mx-auto flex h-[60px] max-w-[1440px] items-center gap-4 px-5 xl:px-7">
 
           {/* =====================================================
               BRAND
           ===================================================== */}
+
           <Link
-            href="/"
-            className="group flex shrink-0 items-center"
+            href="/shop"
+            className="flex shrink-0 items-center"
             aria-label="newjersey.ng home"
           >
             <span className="text-[24px] font-black leading-none tracking-[-1.5px] text-[#242424]">
@@ -54,9 +127,10 @@ export default function MainHeader() {
           {/* =====================================================
               SEARCH
           ===================================================== */}
+
           <div className="min-w-0 flex-1">
             <form
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={(event) => event.preventDefault()}
               className="flex h-[40px] w-full items-center overflow-hidden rounded-full bg-[#f3f3f3] transition-all focus-within:bg-[#eeeeee] focus-within:ring-2 focus-within:ring-[#f58220]/15"
             >
               <Search
@@ -83,22 +157,21 @@ export default function MainHeader() {
           {/* =====================================================
               ACCOUNT
           ===================================================== */}
+
           <div
+            ref={accountRef}
             className="relative shrink-0"
-            onMouseEnter={() => {
-              setAccountOpen(true);
-              setHelpOpen(false);
-            }}
-            onMouseLeave={() => setAccountOpen(false)}
           >
             <button
               type="button"
+              onClick={toggleAccount}
+              aria-expanded={accountOpen}
+              aria-haspopup="true"
               className={`flex h-[40px] items-center gap-1.5 rounded-lg px-2 transition ${
                 accountOpen
                   ? "bg-[#f5f5f5]"
                   : "hover:bg-[#f5f5f5]"
               }`}
-              aria-expanded={accountOpen}
             >
               <UserRound
                 size={20}
@@ -114,14 +187,17 @@ export default function MainHeader() {
                 size={14}
                 strokeWidth={2.3}
                 className={`transition-transform duration-200 ${
-                  accountOpen ? "rotate-180" : ""
+                  accountOpen
+                    ? "rotate-180"
+                    : ""
                 }`}
               />
             </button>
 
             {/* ACCOUNT DROPDOWN */}
+
             <div
-              className={`absolute right-0 top-[46px] w-[225px] origin-top-right transition-all duration-200 ${
+              className={`absolute right-0 top-[46px] z-[60] w-[225px] origin-top-right transition-all duration-200 ${
                 accountOpen
                   ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
                   : "pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0"
@@ -129,9 +205,11 @@ export default function MainHeader() {
             >
               <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.12)]">
 
-                {/* SIGN IN FEATURE */}
+                {/* SIGN IN */}
+
                 <Link
                   href="/login"
+                  onClick={() => setAccountOpen(false)}
                   className="group flex items-center gap-2.5 rounded-lg bg-[#fff8f3] px-2.5 py-2.5 transition hover:bg-[#fff1e5]"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff1e5]">
@@ -160,22 +238,26 @@ export default function MainHeader() {
                 <div className="my-1.5 border-t border-neutral-100" />
 
                 <DropdownItem
-                  href="/account"
+                  href="/shop/account"
                   icon={<User size={16} />}
                   label="Account"
+                  onNavigate={() => setAccountOpen(false)}
                 />
 
                 <DropdownItem
-                  href="/orders"
+                  href="/shop/order"
                   icon={<Package size={16} />}
                   label="Orders"
+                  onNavigate={() => setAccountOpen(false)}
                 />
 
                 <DropdownItem
-                  href="/wishlist"
+                  href="/shop/wish-list"
                   icon={<Heart size={16} />}
                   label="Wishlist"
+                  onNavigate={() => setAccountOpen(false)}
                 />
+
               </div>
             </div>
           </div>
@@ -183,22 +265,21 @@ export default function MainHeader() {
           {/* =====================================================
               HELP
           ===================================================== */}
+
           <div
+            ref={helpRef}
             className="relative shrink-0"
-            onMouseEnter={() => {
-              setHelpOpen(true);
-              setAccountOpen(false);
-            }}
-            onMouseLeave={() => setHelpOpen(false)}
           >
             <button
               type="button"
+              onClick={toggleHelp}
+              aria-expanded={helpOpen}
+              aria-haspopup="true"
               className={`flex h-[40px] items-center gap-1.5 rounded-lg px-2 transition ${
                 helpOpen
                   ? "bg-[#f5f5f5]"
                   : "hover:bg-[#f5f5f5]"
               }`}
-              aria-expanded={helpOpen}
             >
               <CircleHelp
                 size={20}
@@ -214,14 +295,17 @@ export default function MainHeader() {
                 size={14}
                 strokeWidth={2.3}
                 className={`transition-transform duration-200 ${
-                  helpOpen ? "rotate-180" : ""
+                  helpOpen
+                    ? "rotate-180"
+                    : ""
                 }`}
               />
             </button>
 
             {/* HELP DROPDOWN */}
+
             <div
-              className={`absolute right-0 top-[46px] w-[245px] origin-top-right transition-all duration-200 ${
+              className={`absolute right-0 top-[46px] z-[60] w-[245px] origin-top-right transition-all duration-200 ${
                 helpOpen
                   ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
                   : "pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0"
@@ -230,40 +314,46 @@ export default function MainHeader() {
               <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.12)]">
 
                 <DropdownItem
-                  href="/help/place-order"
+                  href="/shop/help/place-order"
                   icon={<ShoppingBag size={16} />}
                   label="Place an order"
                   description="Learn how to shop"
+                  onNavigate={() => setHelpOpen(false)}
                 />
 
                 <DropdownItem
-                  href="/help/track-order"
+                  href="/shop/help/track-order"
                   icon={<Truck size={16} />}
                   label="Track an order"
                   description="Check your delivery status"
+                  onNavigate={() => setHelpOpen(false)}
                 />
 
                 <DropdownItem
-                  href="/help/cancel-order"
+                  href="/shop/help/cancel-order"
                   icon={<XCircle size={16} />}
                   label="Cancel an order"
                   description="Manage an existing order"
+                  onNavigate={() => setHelpOpen(false)}
                 />
 
                 <DropdownItem
-                  href="/help/returns-refunds"
+                  href="/shop/help/returns-refunds"
                   icon={<RotateCcw size={16} />}
                   label="Returns & refunds"
                   description="Get help with returns"
+                  onNavigate={() => setHelpOpen(false)}
                 />
 
                 <div className="my-1.5 border-t border-neutral-100" />
 
                 {/* WHATSAPP */}
+
                 <a
                   href="https://wa.me/2340000000000"
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => setHelpOpen(false)}
                   className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition hover:bg-[#f1faf4]"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e8f7ee]">
@@ -288,6 +378,7 @@ export default function MainHeader() {
                     className="text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-[#25D366]"
                   />
                 </a>
+
               </div>
             </div>
           </div>
@@ -295,6 +386,7 @@ export default function MainHeader() {
           {/* =====================================================
               CART
           ===================================================== */}
+
           <Link
             href="/shop/cart"
             className="flex h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-2 transition hover:bg-[#f5f5f5]"
@@ -314,16 +406,20 @@ export default function MainHeader() {
               Cart
             </span>
           </Link>
+
         </div>
       </div>
 
       {/* =========================================================
           MOBILE HEADER
       ========================================================= */}
+
       <div className="lg:hidden">
+
         <div className="flex h-[52px] items-center justify-between px-4">
 
           {/* BRAND */}
+
           <Link
             href="/"
             className="flex shrink-0 items-center"
@@ -340,6 +436,7 @@ export default function MainHeader() {
           <div className="flex items-center gap-0.5">
 
             {/* ACCOUNT */}
+
             <Link
               href="/account"
               className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-neutral-100"
@@ -349,6 +446,7 @@ export default function MainHeader() {
             </Link>
 
             {/* CART */}
+
             <Link
               href="/shop/cart"
               className="relative flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-neutral-100"
@@ -360,13 +458,15 @@ export default function MainHeader() {
                 0
               </span>
             </Link>
+
           </div>
         </div>
 
         {/* MOBILE SEARCH */}
+
         <div className="border-t border-neutral-100 px-4 py-2">
           <form
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={(event) => event.preventDefault()}
             className="flex h-[38px] items-center overflow-hidden rounded-full bg-[#f3f3f3]"
           >
             <Search
@@ -388,6 +488,7 @@ export default function MainHeader() {
             </button>
           </form>
         </div>
+
       </div>
     </header>
   );
@@ -402,15 +503,18 @@ function DropdownItem({
   icon,
   label,
   description,
+  onNavigate,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   description?: string;
+  onNavigate?: () => void;
 }) {
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition hover:bg-[#fff5ed]"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition group-hover:bg-[#fff1e5] group-hover:text-[#f58220]">

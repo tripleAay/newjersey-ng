@@ -80,12 +80,12 @@ export default function AccountPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#FF6B00]/30 text-neutral-900">
+    <main className="min-h-screen bg-[#FF6B00] text-neutral-900">
       {/* =====================================================
           HEADER
       ====================================================== */}
 
-      <div className="relative z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
+      <div className="relative z-50 w-full bg-[#E7E5DF] shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
         <Header />
       </div>
 
@@ -101,7 +101,7 @@ export default function AccountPage() {
             <li>
               <Link
                 href="/"
-                className="text-neutral-500 transition hover:text-[#f58220]"
+                className="text-white/70 transition hover:text-white"
               >
                 Home
               </Link>
@@ -109,10 +109,10 @@ export default function AccountPage() {
 
             <ChevronRight
               size={13}
-              className="text-neutral-400"
+              className="text-white/40"
             />
 
-            <li className="font-medium text-neutral-900">
+            <li className="font-medium text-white">
               My Account
             </li>
           </ol>
@@ -124,15 +124,15 @@ export default function AccountPage() {
 
         <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#f58220]">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
               My Account
             </p>
 
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 sm:text-3xl">
+            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               Welcome back
             </h1>
 
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 text-sm text-white/75">
               Manage your NewJersey.ng account, orders and preferences.
             </p>
           </div>
@@ -144,7 +144,7 @@ export default function AccountPage() {
           ====================================================== */}
 
           <aside className="w-full shrink-0 lg:w-[260px]">
-            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_2px_20px_rgba(0,0,0,0.04)]">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E0E] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
               <nav>
                 {sidebarLinks.map((link) => {
                   const Icon = link.icon;
@@ -153,17 +153,17 @@ export default function AccountPage() {
                     <Link
                       key={link.label}
                       href={link.href}
-                      className={`group flex items-center gap-3 border-b border-neutral-100 px-4 py-3 text-sm transition last:border-b-0 ${
+                      className={`group flex items-center gap-3 border-b border-white/10 px-4 py-3 text-sm transition last:border-b-0 ${
                         link.active
-                          ? "bg-[#fff5ed] font-semibold text-[#f58220]"
-                          : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                          ? "bg-[#f58220]/10 font-semibold text-[#f58220]"
+                          : "text-neutral-400 hover:bg-white/5 hover:text-white"
                       }`}
                     >
                       <span
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
                           link.active
                             ? "bg-[#f58220] text-white"
-                            : "bg-neutral-100 text-neutral-500 group-hover:bg-[#fff1e5] group-hover:text-[#f58220]"
+                            : "bg-white/5 text-neutral-500 group-hover:bg-[#f58220]/10 group-hover:text-[#f58220]"
                         }`}
                       >
                         <Icon size={16} strokeWidth={1.9} />
@@ -178,7 +178,7 @@ export default function AccountPage() {
                         className={`transition ${
                           link.active
                             ? "text-[#f58220]"
-                            : "text-neutral-300 group-hover:text-neutral-500"
+                            : "text-neutral-600 group-hover:text-neutral-400"
                         }`}
                       />
                     </Link>
@@ -188,8 +188,8 @@ export default function AccountPage() {
 
               {/* Account Management */}
 
-              <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+              <div className="border-t border-white/10 bg-white/5 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-500">
                   Account Management
                 </p>
               </div>
@@ -216,19 +216,19 @@ export default function AccountPage() {
                 transition={{
                   duration: 0.35,
                 }}
-                className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_2px_20px_rgba(0,0,0,0.04)]"
+                className="overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E0E] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
               >
                 {/* Account Header */}
 
-                <div className="border-b border-neutral-100 px-5 py-5 sm:px-6">
+                <div className="border-b border-white/10 px-5 py-5 sm:px-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#fff1e5] text-[#f58220]">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f58220]/10 text-[#f58220]">
                         <UserRound size={22} />
                       </div>
 
                       <div>
-                        <h2 className="text-lg font-semibold text-neutral-900">
+                        <h2 className="text-lg font-semibold text-white">
                           Account Overview
                         </h2>
 
@@ -240,7 +240,7 @@ export default function AccountPage() {
 
                     <Link
                       href="/account/edit"
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-neutral-200 px-3 text-xs font-semibold text-neutral-700 transition hover:border-[#f58220] hover:bg-[#fff5ed] hover:text-[#f58220]"
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-xs font-semibold text-neutral-300 transition hover:border-[#f58220] hover:bg-[#f58220]/10 hover:text-[#f58220]"
                     >
                       <Pencil size={14} />
                       Edit profile
@@ -264,17 +264,17 @@ export default function AccountPage() {
                     title="Account Details"
                   >
                     <div>
-                      <p className="text-[15px] font-semibold text-neutral-900">
+                      <p className="text-[15px] font-semibold text-white">
                         Adeshina Adedokun
                       </p>
 
-                      <p className="mt-1 text-sm text-neutral-500">
+                      <p className="mt-1 text-sm text-neutral-400">
                         shinordaddie@gmail.com
                       </p>
 
                       <Link
                         href="/account/edit"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#e87512]"
+                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
                       >
                         Edit account details
                         <ChevronRight size={14} />
@@ -294,7 +294,7 @@ export default function AccountPage() {
                     action={
                       <Link
                         href="/account/address"
-                        className="text-[#f58220] transition hover:text-[#e87512]"
+                        className="text-[#f58220] transition hover:text-[#ff9142]"
                         aria-label="Edit address"
                       >
                         <Pencil size={15} />
@@ -302,11 +302,11 @@ export default function AccountPage() {
                     }
                   >
                     <div>
-                      <p className="mb-2 text-xs font-medium text-neutral-700">
+                      <p className="mb-2 text-xs font-medium text-neutral-300">
                         Default shipping address
                       </p>
 
-                      <p className="text-sm leading-relaxed text-neutral-500">
+                      <p className="text-sm leading-relaxed text-neutral-400">
                         Adeshina Adedokun
                         <br />
                         ABAELA-ILETUNTUN
@@ -330,14 +330,14 @@ export default function AccountPage() {
                   >
                     <Link
                       href="/account/store-credit"
-                      className="group flex items-center justify-between rounded-xl bg-[#fff8f2] p-3 transition hover:bg-[#fff1e5]"
+                      className="group flex items-center justify-between rounded-xl bg-white/5 p-3 transition hover:bg-white/10"
                     >
                       <div>
                         <p className="text-xs text-neutral-500">
                           Available balance
                         </p>
 
-                        <p className="mt-1 text-lg font-bold text-neutral-900">
+                        <p className="mt-1 text-lg font-bold text-white">
                           ₦0.00
                         </p>
                       </div>
@@ -360,14 +360,14 @@ export default function AccountPage() {
                     title="Newsletter Preferences"
                   >
                     <div>
-                      <p className="text-sm leading-relaxed text-neutral-500">
+                      <p className="text-sm leading-relaxed text-neutral-400">
                         Manage your email preferences and choose the updates
                         and offers you would like to receive.
                       </p>
 
                       <Link
                         href="/account/newsletter"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#e87512]"
+                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
                       >
                         Manage preferences
                         <ChevronRight size={14} />
@@ -386,14 +386,14 @@ export default function AccountPage() {
                     title="Account Security"
                   >
                     <div>
-                      <p className="text-sm leading-relaxed text-neutral-500">
+                      <p className="text-sm leading-relaxed text-neutral-400">
                         Keep your NewJersey.ng account secure by managing your
                         password and account security settings.
                       </p>
 
                       <Link
                         href="/account/security"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#e87512]"
+                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
                       >
                         Security settings
                         <ChevronRight size={14} />
@@ -412,14 +412,14 @@ export default function AccountPage() {
                     title="Communication"
                   >
                     <div>
-                      <p className="text-sm leading-relaxed text-neutral-500">
+                      <p className="text-sm leading-relaxed text-neutral-400">
                         Your account email is active and ready to receive
                         important updates about your NewJersey.ng activity.
                       </p>
 
                       <Link
                         href="/account/inbox"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#e87512]"
+                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
                       >
                         View inbox
                         <ChevronRight size={14} />
@@ -454,12 +454,12 @@ function AccountCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:border-[#f58220]/30 hover:shadow-[0_8px_25px_rgba(0,0,0,0.05)]">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-[#f58220]/40 hover:bg-white/[0.05]">
       {/* Card Header */}
 
-      <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#fff1e5] text-[#f58220]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#f58220]/10 text-[#f58220]">
             {icon}
           </div>
 
@@ -486,13 +486,13 @@ function AccountCard({
 
 function AccountSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_2px_20px_rgba(0,0,0,0.04)] sm:p-6">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E0E] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.35)] sm:p-6">
       <div className="mb-6 flex items-center gap-3 animate-pulse">
-        <div className="h-12 w-12 rounded-full bg-neutral-100" />
+        <div className="h-12 w-12 rounded-full bg-white/10" />
 
         <div className="space-y-2">
-          <div className="h-5 w-40 rounded-full bg-neutral-100" />
-          <div className="h-3 w-56 rounded-full bg-neutral-100" />
+          <div className="h-5 w-40 rounded-full bg-white/10" />
+          <div className="h-3 w-56 rounded-full bg-white/10" />
         </div>
       </div>
 
@@ -502,20 +502,20 @@ function AccountSkeleton() {
         }).map((_, index) => (
           <div
             key={index}
-            className="overflow-hidden rounded-xl border border-neutral-100"
+            className="overflow-hidden rounded-xl border border-white/10"
           >
-            <div className="flex items-center gap-2 border-b border-neutral-100 p-4">
-              <div className="h-7 w-7 rounded-md bg-neutral-100" />
+            <div className="flex items-center gap-2 border-b border-white/10 p-4">
+              <div className="h-7 w-7 rounded-md bg-white/10" />
 
-              <div className="h-3 w-32 rounded-full bg-neutral-100" />
+              <div className="h-3 w-32 rounded-full bg-white/10" />
             </div>
 
             <div className="space-y-3 p-4">
-              <div className="h-4 w-3/4 rounded-full bg-neutral-100" />
+              <div className="h-4 w-3/4 rounded-full bg-white/10" />
 
-              <div className="h-3 w-full rounded-full bg-neutral-100" />
+              <div className="h-3 w-full rounded-full bg-white/10" />
 
-              <div className="h-3 w-2/3 rounded-full bg-neutral-100" />
+              <div className="h-3 w-2/3 rounded-full bg-white/10" />
             </div>
           </div>
         ))}

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import MainHeader from "@/components/dashboard components/mainheader";
+import MainHeader from "@/app/components/dashboard components/mainheader";
+import Footer from "@/app/components/Footer";
 import { ArrowLeft, CheckCircle2, Eye } from "lucide-react";
 
 type RawOrder = {
@@ -38,15 +39,19 @@ const formatNGN = (amount: number) =>
   })}`;
 
 const statusStyles: Record<OrderItem["status"], string> = {
-  Paid: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-  Processing: "border-amber-400/20 bg-amber-400/10 text-amber-300",
-  Delivered: "border-sky-400/20 bg-sky-400/10 text-sky-300",
+  Paid: "border-emerald-800/60 bg-emerald-950/50 text-emerald-400",
+  Processing: "border-amber-800/60 bg-amber-950/50 text-amber-400",
+  Delivered: "border-sky-800/60 bg-sky-950/50 text-sky-400",
 };
 
 function formatOrderDate(dateString: string | null) {
   if (!dateString) return "—";
+
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return "—";
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
 
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -56,18 +61,37 @@ function formatOrderDate(dateString: string | null) {
 }
 
 function makeOrderNumber(order: RawOrder, index: number) {
-  if (order.transaction_id) return `FYN-${order.transaction_id}`;
-  if (order.tx_ref) return order.tx_ref.slice(0, 18).toUpperCase();
-  return `FYN-ORDER-${index + 1}`;
+  if (order.transaction_id) {
+    return `NJ-${order.transaction_id}`;
+  }
+
+  if (order.tx_ref) {
+    return order.tx_ref.slice(0, 18).toUpperCase();
+  }
+
+  return `NJ-ORDER-${index + 1}`;
 }
 
 function mapStatus(order: RawOrder): OrderItem["status"] {
-  const normalizedOrderStatus = String(order.order_status || "").toLowerCase();
-  const normalizedPaymentStatus = String(order.payment_status || "").toLowerCase();
+  const normalizedOrderStatus = String(
+    order.order_status || ""
+  ).toLowerCase();
 
-  if (normalizedOrderStatus === "completed") return "Delivered";
-  if (normalizedOrderStatus === "processing") return "Processing";
-  if (normalizedPaymentStatus === "paid") return "Paid";
+  const normalizedPaymentStatus = String(
+    order.payment_status || ""
+  ).toLowerCase();
+
+  if (normalizedOrderStatus === "completed") {
+    return "Delivered";
+  }
+
+  if (normalizedOrderStatus === "processing") {
+    return "Processing";
+  }
+
+  if (normalizedPaymentStatus === "paid") {
+    return "Paid";
+  }
 
   return "Processing";
 }
@@ -93,20 +117,30 @@ export default function OrdersPage() {
         const data = await res.json();
 
         if (!res.ok) {
-          throw new Error(data?.error || "Failed to load orders.");
+          throw new Error(
+            data?.error || "Failed to load orders."
+          );
         }
 
         if (isMounted) {
-          setRawOrders(Array.isArray(data?.orders) ? data.orders : []);
+          setRawOrders(
+            Array.isArray(data?.orders)
+              ? data.orders
+              : []
+          );
         }
       } catch (error) {
         if (isMounted) {
           setErrorMessage(
-            error instanceof Error ? error.message : "Unable to load orders."
+            error instanceof Error
+              ? error.message
+              : "Unable to load orders."
           );
         }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -123,7 +157,9 @@ export default function OrdersPage() {
       orderNumber: makeOrderNumber(order, index),
       product: order.item_title || "Untitled order",
       amount: Number(order.amount || 0),
-      quantity: Number(order.metadata?.quantity || 1),
+      quantity: Number(
+        order.metadata?.quantity || 1
+      ),
       status: mapStatus(order),
       date: formatOrderDate(order.created_at),
       ref: order.tx_ref || "—",
@@ -131,180 +167,298 @@ export default function OrdersPage() {
   }, [rawOrders]);
 
   return (
-    <main className="min-h-screen bg-[#050506] text-white">
-      <MainHeader />
+    <main className="min-h-screen bg-[#FF6B00] text-neutral-900">
 
-      <section className="relative overflow-hidden px-4 pb-10 pt-24 sm:px-6 sm:pt-28 lg:px-8">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-1/2 top-16 h-48 w-48 -translate-x-1/2 rounded-full bg-[#d6cc6d]/10 blur-3xl" />
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+      <div className="sticky top-0 z-50 bg-[#E7E5DF]/95 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md">
+        <MainHeader />
+      </div>
+
+      {/* =====================================================
+          MAIN CONTENT
+      ===================================================== */}
+      <section className="relative overflow-hidden px-4 pb-12 pt-8 sm:px-6 sm:pt-10 lg:px-8">
+
+        {/* Background decoration */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -right-24 top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+
+          <div className="absolute -left-24 bottom-20 h-64 w-64 rounded-full bg-black/5 blur-3xl" />
         </div>
 
         <div className="relative mx-auto max-w-7xl">
-          <div className="mb-6 flex items-center justify-between gap-4">
+
+          {/* =================================================
+              PAGE HEADER
+          ================================================= */}
+          <div className="mb-6 flex items-start justify-between gap-4 sm:mb-8">
+
             <div>
+
               <Link
                 href="/shop"
-                className="inline-flex items-center gap-2 text-sm text-white/45 transition hover:text-white/80"
+                className="inline-flex items-center gap-2 text-sm font-medium text-white/80 transition hover:text-white"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to shop
               </Link>
 
-              <p className="mt-4 text-[11px] uppercase tracking-[0.22em] text-white/35">
-                Orders
+              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">
+                NewJersey.ng
               </p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+
+              <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
                 Your order history
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">
-                See every order you’ve made in one place. Open any order to view
-                the complete details.
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/75">
+                See every order you&apos;ve made in one place.
+                Open any order to view the complete details.
               </p>
+
             </div>
 
-            <div className="hidden rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 sm:block">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
+            {/* TOTAL ORDERS */}
+            <div className="hidden rounded-2xl border border-white/10 bg-[#0E0E0E] px-5 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.35)] sm:block">
+
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
                 Total orders
               </p>
-              <p className="mt-1 text-lg font-semibold text-white">
+
+              <p className="mt-1 text-xl font-bold text-white">
                 {orders.length}
               </p>
+
             </div>
+
           </div>
 
+          {/* =================================================
+              ERROR
+          ================================================= */}
           {errorMessage ? (
-            <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+            <div className="mb-6 rounded-2xl border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-300">
               {errorMessage}
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03]">
-            <div className="hidden grid-cols-[1.2fr_1fr_.7fr_.8fr_.9fr_.9fr] gap-4 border-b border-white/8 px-6 py-4 text-[11px] uppercase tracking-[0.16em] text-white/35 md:grid">
+          {/* =================================================
+              ORDERS TABLE
+          ================================================= */}
+          <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#0E0E0E] shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+
+            {/* DESKTOP TABLE HEADER */}
+            <div className="hidden grid-cols-[1.2fr_1fr_.7fr_.8fr_.9fr_.9fr] gap-4 border-b border-white/10 bg-white/5 px-6 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-500 md:grid">
+
               <p>Product</p>
               <p>Order ID</p>
               <p>Qty</p>
               <p>Amount</p>
               <p>Status</p>
               <p className="text-right">Action</p>
+
             </div>
 
-            <div className="divide-y divide-white/8">
+            <div className="divide-y divide-white/10">
+
+              {/* LOADING */}
               {isLoading ? (
-                <div className="px-6 py-10 text-sm text-white/45">
+                <div className="px-6 py-12 text-sm text-neutral-400">
                   Loading orders...
                 </div>
               ) : (
+
                 orders.map((order) => (
                   <div
                     key={order.id}
-                    className="px-4 py-4 transition hover:bg-white/[0.025] sm:px-6"
+                    className="px-4 py-5 transition-colors hover:bg-white/[0.03] sm:px-6"
                   >
-                    <div className="space-y-3 md:hidden">
+
+                    {/* =================================================
+                        MOBILE
+                    ================================================= */}
+                    <div className="space-y-4 md:hidden">
+
                       <div className="flex items-start justify-between gap-3">
+
                         <div className="min-w-0">
+
                           <p className="truncate text-sm font-semibold text-white">
                             {order.product}
                           </p>
-                          <p className="mt-1 text-xs text-white/45">
+
+                          <p className="mt-1 text-xs text-neutral-500">
                             {order.orderNumber}
                           </p>
+
                         </div>
 
                         <span
-                          className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium ${statusStyles[order.status]}`}
+                          className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${statusStyles[order.status]}`}
                         >
                           {order.status}
                         </span>
+
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3 text-xs text-white/55">
+                      <div className="grid grid-cols-3 gap-3 text-xs">
+
                         <div>
-                          <p className="text-white/30">Qty</p>
-                          <p className="mt-1 text-white/85">{order.quantity}</p>
+                          <p className="text-neutral-500">
+                            Qty
+                          </p>
+
+                          <p className="mt-1 font-medium text-neutral-200">
+                            {order.quantity}
+                          </p>
                         </div>
+
                         <div>
-                          <p className="text-white/30">Amount</p>
-                          <p className="mt-1 text-white/85">
+                          <p className="text-neutral-500">
+                            Amount
+                          </p>
+
+                          <p className="mt-1 font-medium text-neutral-200">
                             {formatNGN(order.amount)}
                           </p>
                         </div>
+
                         <div>
-                          <p className="text-white/30">Date</p>
-                          <p className="mt-1 text-white/85">{order.date}</p>
+                          <p className="text-neutral-500">
+                            Date
+                          </p>
+
+                          <p className="mt-1 font-medium text-neutral-200">
+                            {order.date}
+                          </p>
                         </div>
+
                       </div>
 
                       <Link
-                       href={`/shop/order/${order.id}`}
-                        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm font-medium text-white transition hover:bg-white/[0.06]"
+                        href={`/shop/order/${order.id}`}
+                        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:border-[#f58220] hover:bg-[#f58220]/10"
                       >
                         <Eye className="h-4 w-4" />
                         View details
                       </Link>
+
                     </div>
 
+                    {/* =================================================
+                        DESKTOP
+                    ================================================= */}
                     <div className="hidden md:grid md:grid-cols-[1.2fr_1fr_.7fr_.8fr_.9fr_.9fr] md:items-center md:gap-4">
+
+                      {/* PRODUCT */}
                       <div className="min-w-0">
+
                         <p className="truncate text-sm font-semibold text-white">
                           {order.product}
                         </p>
-                        <p className="mt-1 text-xs text-white/45">{order.date}</p>
+
+                        <p className="mt-1 text-xs text-neutral-500">
+                          {order.date}
+                        </p>
+
                       </div>
 
+                      {/* ORDER ID */}
                       <div className="min-w-0">
-                        <p className="truncate text-sm text-[#e7db9b]">
+
+                        <p className="truncate text-sm font-semibold text-[#f58220]">
                           {order.orderNumber}
                         </p>
-                        <p className="mt-1 truncate text-xs text-white/35">
+
+                        <p className="mt-1 truncate text-xs text-neutral-500">
                           {order.ref}
                         </p>
+
                       </div>
 
-                      <p className="text-sm text-white/75">{order.quantity}</p>
+                      {/* QUANTITY */}
+                      <p className="text-sm text-neutral-300">
+                        {order.quantity}
+                      </p>
 
-                      <p className="text-sm font-medium text-white">
+                      {/* AMOUNT */}
+                      <p className="text-sm font-semibold text-white">
                         {formatNGN(order.amount)}
                       </p>
 
+                      {/* STATUS */}
                       <div>
+
                         <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${statusStyles[order.status]}`}
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${statusStyles[order.status]}`}
                         >
                           {order.status}
                         </span>
+
                       </div>
 
+                      {/* ACTION */}
                       <div className="flex justify-end">
+
                         <Link
-                          href={`/shop/order/${order.orderNumber}`}
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm font-medium text-white transition hover:bg-white/[0.06]"
+                          href={`/shop/order/${order.id}`}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:border-[#f58220] hover:bg-[#f58220]/10"
                         >
                           <Eye className="h-4 w-4" />
                           View details
                         </Link>
+
                       </div>
+
                     </div>
+
                   </div>
                 ))
+
               )}
+
             </div>
+
           </div>
 
+          {/* =================================================
+              EMPTY STATE
+          ================================================= */}
           {!isLoading && orders.length === 0 ? (
-            <div className="mt-6 rounded-[28px] border border-white/10 bg-white/[0.03] px-6 py-10 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+            <div className="mt-6 rounded-[28px] border border-white/10 bg-[#0E0E0E] px-6 py-12 text-center shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-800/60 bg-emerald-950/50 text-emerald-400">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
+
               <h2 className="mt-4 text-lg font-semibold text-white">
                 No orders yet
               </h2>
-              <p className="mt-2 text-sm text-white/55">
+
+              <p className="mt-2 text-sm text-neutral-400">
                 Once you place an order, it will appear here.
               </p>
+
+              <Link
+                href="/shop"
+                className="mt-6 inline-flex items-center justify-center rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-neutral-200"
+              >
+                Start shopping
+              </Link>
+
             </div>
           ) : null}
+
         </div>
       </section>
+
+      {/* =====================================================
+          FOOTER
+      ===================================================== */}
+      <Footer />
+
     </main>
   );
 }

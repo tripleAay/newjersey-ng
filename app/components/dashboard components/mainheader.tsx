@@ -20,7 +20,11 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+import { useCart } from "@/app/contexts/cartContext";
+
 export default function MainHeader() {
+  const { itemCount, hydrated } = useCart();
+
   const [accountOpen, setAccountOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -96,24 +100,27 @@ export default function MainHeader() {
     setAccountOpen(false);
   };
 
+  const cartCount =
+    hydrated && itemCount > 0
+      ? itemCount > 99
+        ? "99+"
+        : itemCount
+      : null;
+
   return (
     <header className="w-full border-b border-neutral-200/70 bg-[#E7E5DF] text-[#262626] shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-
       {/* =========================================================
           DESKTOP HEADER
       ========================================================= */}
 
       <div className="hidden lg:block">
         <div className="mx-auto flex h-[60px] max-w-[1440px] items-center gap-4 px-5 xl:px-7">
-
-          {/* =====================================================
-              BRAND
-          ===================================================== */}
+          {/* BRAND */}
 
           <Link
             href="/shop"
             className="flex shrink-0 items-center"
-            aria-label="newjersey.ng home"
+            aria-label="NewJersey.ng shop home"
           >
             <span className="text-[24px] font-black leading-none tracking-[-1.5px] text-[#242424]">
               newjersey
@@ -124,9 +131,7 @@ export default function MainHeader() {
             </span>
           </Link>
 
-          {/* =====================================================
-              SEARCH
-          ===================================================== */}
+          {/* SEARCH */}
 
           <div className="min-w-0 flex-1">
             <form
@@ -141,7 +146,7 @@ export default function MainHeader() {
 
               <input
                 type="text"
-                placeholder="Search products, brands and categories"
+                placeholder="Search products, branding and print services"
                 className="min-w-0 flex-1 bg-transparent px-2.5 text-[13px] text-[#333] outline-none placeholder:text-[#777]"
               />
 
@@ -154,9 +159,7 @@ export default function MainHeader() {
             </form>
           </div>
 
-          {/* =====================================================
-              ACCOUNT
-          ===================================================== */}
+          {/* ACCOUNT */}
 
           <div
             ref={accountRef}
@@ -187,9 +190,7 @@ export default function MainHeader() {
                 size={14}
                 strokeWidth={2.3}
                 className={`transition-transform duration-200 ${
-                  accountOpen
-                    ? "rotate-180"
-                    : ""
+                  accountOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
@@ -204,7 +205,6 @@ export default function MainHeader() {
               }`}
             >
               <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.12)]">
-
                 {/* SIGN IN */}
 
                 <Link
@@ -257,14 +257,11 @@ export default function MainHeader() {
                   label="Wishlist"
                   onNavigate={() => setAccountOpen(false)}
                 />
-
               </div>
             </div>
           </div>
 
-          {/* =====================================================
-              HELP
-          ===================================================== */}
+          {/* HELP */}
 
           <div
             ref={helpRef}
@@ -295,9 +292,7 @@ export default function MainHeader() {
                 size={14}
                 strokeWidth={2.3}
                 className={`transition-transform duration-200 ${
-                  helpOpen
-                    ? "rotate-180"
-                    : ""
+                  helpOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
@@ -312,12 +307,11 @@ export default function MainHeader() {
               }`}
             >
               <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.12)]">
-
                 <DropdownItem
                   href="/shop/help/place-order"
                   icon={<ShoppingBag size={16} />}
                   label="Place an order"
-                  description="Learn how to shop"
+                  description="Learn how to order"
                   onNavigate={() => setHelpOpen(false)}
                 />
 
@@ -325,7 +319,7 @@ export default function MainHeader() {
                   href="/shop/help/track-order"
                   icon={<Truck size={16} />}
                   label="Track an order"
-                  description="Check your delivery status"
+                  description="Check production and delivery"
                   onNavigate={() => setHelpOpen(false)}
                 />
 
@@ -341,13 +335,11 @@ export default function MainHeader() {
                   href="/shop/help/returns-refunds"
                   icon={<RotateCcw size={16} />}
                   label="Returns & refunds"
-                  description="Get help with returns"
+                  description="Get help with an order"
                   onNavigate={() => setHelpOpen(false)}
                 />
 
                 <div className="my-1.5 border-t border-neutral-100" />
-
-                {/* WHATSAPP */}
 
                 <a
                   href="https://wa.me/2340000000000"
@@ -378,14 +370,11 @@ export default function MainHeader() {
                     className="text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-[#25D366]"
                   />
                 </a>
-
               </div>
             </div>
           </div>
 
-          {/* =====================================================
-              CART
-          ===================================================== */}
+          {/* CART */}
 
           <Link
             href="/shop/cart"
@@ -397,16 +386,17 @@ export default function MainHeader() {
                 strokeWidth={2}
               />
 
-              <span className="absolute -right-2 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#f58220] px-1 text-[8px] font-bold text-white">
-                0
-              </span>
+              {cartCount !== null && (
+                <span className="absolute -right-2 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#f58220] px-1 text-[8px] font-bold text-white">
+                  {cartCount}
+                </span>
+              )}
             </div>
 
             <span className="text-[13px] font-semibold">
               Cart
             </span>
           </Link>
-
         </div>
       </div>
 
@@ -415,14 +405,13 @@ export default function MainHeader() {
       ========================================================= */}
 
       <div className="lg:hidden">
-
         <div className="flex h-[52px] items-center justify-between px-4">
-
           {/* BRAND */}
 
           <Link
-            href="/"
+            href="/shop"
             className="flex shrink-0 items-center"
+            aria-label="NewJersey.ng shop home"
           >
             <span className="text-[21px] font-black tracking-[-1.3px]">
               newjersey
@@ -434,11 +423,10 @@ export default function MainHeader() {
           </Link>
 
           <div className="flex items-center gap-0.5">
-
             {/* ACCOUNT */}
 
             <Link
-              href="/account"
+              href="/shop/account"
               className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-neutral-100"
               aria-label="Account"
             >
@@ -450,15 +438,22 @@ export default function MainHeader() {
             <Link
               href="/shop/cart"
               className="relative flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-neutral-100"
-              aria-label="Cart"
+              aria-label={
+                itemCount > 0
+                  ? `Cart with ${itemCount} ${
+                      itemCount === 1 ? "item" : "items"
+                    }`
+                  : "Cart"
+              }
             >
               <ShoppingCart size={20} />
 
-              <span className="absolute right-0 top-0 flex h-[13px] min-w-[13px] items-center justify-center rounded-full bg-[#f58220] px-0.5 text-[7px] font-bold text-white">
-                0
-              </span>
+              {cartCount !== null && (
+                <span className="absolute right-0 top-0 flex h-[13px] min-w-[13px] items-center justify-center rounded-full bg-[#f58220] px-0.5 text-[7px] font-bold text-white">
+                  {cartCount}
+                </span>
+              )}
             </Link>
-
           </div>
         </div>
 
@@ -476,7 +471,7 @@ export default function MainHeader() {
 
             <input
               type="text"
-              placeholder="Search products, brands and categories"
+              placeholder="Search products, branding and print services"
               className="min-w-0 flex-1 bg-transparent px-2.5 text-[12px] outline-none placeholder:text-neutral-500"
             />
 
@@ -488,7 +483,6 @@ export default function MainHeader() {
             </button>
           </form>
         </div>
-
       </div>
     </header>
   );

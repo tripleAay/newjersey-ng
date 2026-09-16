@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -55,17 +56,46 @@ export default function ProductDetailModal({
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [showReviewPanel, setShowReviewPanel] = useState(false);
 
+  // Portals need document.body to exist first (SSR-safe mount check)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     setActiveIndex(0);
     setShowReviewPanel(false);
   }, [product?.id, open]);
+
+  // Lock body scroll while the modal is open, so the page behind it
+  // can't scroll and the modal reads as a true top-layer dialog
+  useEffect(() => {
+    if (!open) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
 
   const mainImage = useMemo(
     () => product?.images?.[activeIndex] ?? product?.image ?? "",
     [product, activeIndex]
   );
 
-  if (!product) return null;
+  if (!product || !mounted) return null;
 
   const handleSubmitReview = (payload: {
     name: string;
@@ -81,11 +111,11 @@ export default function ProductDetailModal({
     setShowReviewPanel(false);
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -245,4 +275,6 @@ export default function ProductDetailModal({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 }

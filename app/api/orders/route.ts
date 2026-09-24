@@ -3,44 +3,52 @@ import {
   NextResponse,
 } from "next/server";
 
+import {
+  getSupabaseAdmin,
+} from "@/app/lib/supabase/admin";
+
 import type {
   CartItem,
   CreateOrderPayload,
-  NewJerseyOrder,
+  OrderStatus,
 } from "@/app/types/commerce";
+
+export const runtime = "nodejs";
 
 function generateOrderNumber() {
   const now = new Date();
 
   const year = now
-    .getFullYear()
+    .getUTCFullYear()
     .toString()
     .slice(-2);
 
   const month = String(
-    now.getMonth() + 1
+    now.getUTCMonth() + 1
   ).padStart(2, "0");
 
   const day = String(
-    now.getDate()
+    now.getUTCDate()
   ).padStart(2, "0");
 
   const random = crypto
     .randomUUID()
     .replaceAll("-", "")
-    .slice(0, 6)
+    .slice(0, 8)
     .toUpperCase();
 
   return `NJ-${year}${month}${day}-${random}`;
 }
 
-function validEmail(email: string) {
+function isValidEmail(
+  value: string
+) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-    email
+    value
   );
 }
 
-function validMoney(
+function isMoney(
   value: unknown
 ): value is number {
   return (
@@ -53,19 +61,16 @@ function validMoney(
 function validateCartItem(
   item: CartItem
 ) {
-  if (!item.cartItemId) {
+  if (!item) {
     return false;
   }
 
-  if (!item.productId) {
-    return false;
-  }
-
-  if (!item.slug) {
-    return false;
-  }
-
-  if (!item.name) {
+  if (
+    !item.cartItemId?.trim() ||
+    !item.productId?.trim() ||
+    !item.slug?.trim() ||
+    !item.name?.trim()
+  ) {
     return false;
   }
 
@@ -76,23 +81,18 @@ function validateCartItem(
     return false;
   }
 
-  if (!validMoney(item.basePrice)) {
+  if (
+    !isMoney(item.basePrice) ||
+    !isMoney(item.optionsTotal) ||
+    !isMoney(item.unitPrice) ||
+    !isMoney(item.totalPrice)
+  ) {
     return false;
   }
 
-  if (!validMoney(item.optionsTotal)) {
-    return false;
-  }
-
-  if (!validMoney(item.unitPrice)) {
-    return false;
-  }
-
-  if (!validMoney(item.totalPrice)) {
-    return false;
-  }
-
-  if (!Array.isArray(item.selections)) {
+  if (
+    !Array.isArray(item.selections)
+  ) {
     return false;
   }
 
@@ -109,38 +109,34 @@ function validatePayload(
     return "Invalid order request.";
   }
 
-  if (!payload.customer) {
-    return "Customer details are required.";
-  }
-
   if (
-    !payload.customer.fullName?.trim()
+    !payload.customer?.fullName?.trim()
   ) {
     return "Customer name is required.";
   }
 
-  if (!payload.customer.phone?.trim()) {
+  if (
+    !payload.customer.phone?.trim()
+  ) {
     return "Phone number is required.";
   }
 
-  if (!payload.customer.email?.trim()) {
+  if (
+    !payload.customer.email?.trim()
+  ) {
     return "Email address is required.";
   }
 
   if (
-    !validEmail(
+    !isValidEmail(
       payload.customer.email.trim()
     )
   ) {
     return "Enter a valid email address.";
   }
 
-  if (!payload.brief) {
-    return "Production brief is required.";
-  }
-
   if (
-    !payload.brief.projectName?.trim()
+    !payload.brief?.projectName?.trim()
   ) {
     return "Project name is required.";
   }
@@ -161,14 +157,10 @@ function validatePayload(
     return "One or more order items are invalid.";
   }
 
-  if (!payload.delivery) {
-    return "Delivery details are required.";
-  }
-
   if (
-    payload.delivery.method !==
+    payload.delivery?.method !==
       "delivery" &&
-    payload.delivery.method !==
+    payload.delivery?.method !==
       "pickup"
   ) {
     return "Select a delivery method.";
@@ -200,24 +192,33 @@ function validatePayload(
   return null;
 }
 
-function calculateItemTotal(
-  item: CartItem
-) {
-  /*
-   * Temporary pricing validation.
-   *
-   * Once products are database-backed,
-   * pricing must be reconstructed from
-   * product + option IDs instead of
-   * trusting price values in the cart.
-   */
+function determineInitialStatus(
+  items: CartItem[]
+): OrderStatus {
+  const requiresCustomerArtwork =
+    items.some(
+      (item) =>
+        item.artwork?.type ===
+        "customer-supplied"
+    );
 
-  return item.totalPrice;
+  if (requiresCustomerArtwork) {
+    return "awaiting-artwork";
+  }
+
+  return "under-review";
 }
 
 export async function POST(
   request: NextRequest
 ) {
+  const supabase =
+    getSupabaseAdmin();
+
+  let createdOrderId:
+    | string
+    | null = null;
+
   try {
     const payload =
       (await request.json()) as CreateOrderPayload;
@@ -229,7 +230,8 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: validationError,
+          message:
+            validationError,
         },
         {
           status: 400,
@@ -237,138 +239,310 @@ export async function POST(
       );
     }
 
+    /*
+     * TEMPORARY:
+     *
+     * Product pricing is still coming
+     * from the configured cart.
+     *
+     * Once the product catalogue itself
+     * lives in Supabase, reconstruct
+     * prices here from product IDs and
+     * option IDs.
+     */
+
     const serverSubtotal =
       payload.items.reduce(
         (total, item) =>
           total +
-          calculateItemTotal(item),
+          item.totalPrice,
         0
       );
 
-    const now =
-      new Date().toISOString();
+    const orderNumber =
+      generateOrderNumber();
 
-    const requiresArtwork =
-      payload.items.some(
-        (item) =>
-          item.artwork?.type ===
-          "customer-supplied"
+    const status =
+      determineInitialStatus(
+        payload.items
       );
 
-    const order: NewJerseyOrder = {
-      id: crypto.randomUUID(),
+    const {
+      data: order,
+      error: orderError,
+    } = await supabase
+      .from("orders")
+      .insert({
+        order_number:
+          orderNumber,
 
-      orderNumber:
-        generateOrderNumber(),
-
-      customer: {
-        fullName:
+        customer_full_name:
           payload.customer.fullName.trim(),
 
-        phone:
+        customer_phone:
           payload.customer.phone.trim(),
 
-        email:
+        customer_email:
           payload.customer.email
             .trim()
             .toLowerCase(),
 
-        organization:
+        customer_organization:
           payload.customer.organization?.trim() ||
-          undefined,
-      },
+          null,
 
-      delivery: {
-        method:
+        delivery_method:
           payload.delivery.method,
 
-        state:
+        delivery_state:
           payload.delivery.method ===
           "delivery"
-            ? payload.delivery.state?.trim()
-            : undefined,
+            ? payload.delivery.state?.trim() ||
+              null
+            : null,
 
-        city:
+        delivery_city:
           payload.delivery.method ===
           "delivery"
-            ? payload.delivery.city?.trim()
-            : undefined,
+            ? payload.delivery.city?.trim() ||
+              null
+            : null,
 
-        address:
+        delivery_address:
           payload.delivery.method ===
           "delivery"
-            ? payload.delivery.address?.trim()
-            : undefined,
+            ? payload.delivery.address?.trim() ||
+              null
+            : null,
 
-        landmark:
+        delivery_landmark:
           payload.delivery.method ===
           "delivery"
             ? payload.delivery.landmark?.trim() ||
-              undefined
-            : undefined,
-      },
+              null
+            : null,
 
-      brief: {
-        projectName:
+        project_name:
           payload.brief.projectName.trim(),
 
-        deadline:
+        preferred_deadline:
           payload.brief.deadline ||
-          undefined,
+          null,
 
-        instructions:
+        production_instructions:
           payload.brief.instructions?.trim() ||
-          undefined,
-      },
+          null,
 
-      items: payload.items,
+        item_count:
+          payload.items.length,
 
-      itemCount:
-        payload.items.length,
+        subtotal:
+          serverSubtotal,
 
-      subtotal:
-        serverSubtotal,
+        design_fee: 0,
 
-      designFee: 0,
-      deliveryFee: 0,
+        delivery_fee: 0,
 
-      finalTotal: null,
+        final_total: null,
 
-      status: requiresArtwork
-        ? "awaiting-artwork"
-        : "under-review",
+        status,
+      })
+      .select(
+        `
+          id,
+          order_number,
+          status,
+          subtotal,
+          created_at
+        `
+      )
+      .single();
 
-      createdAt: now,
-      updatedAt: now,
-    };
+    if (
+      orderError ||
+      !order
+    ) {
+      console.error(
+        "[NewJersey] order insert error",
+        orderError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Unable to save the order.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    createdOrderId =
+      order.id;
+
+    const orderItems =
+      payload.items.map(
+        (item) => ({
+          order_id:
+            order.id,
+
+          cart_item_id:
+            item.cartItemId,
+
+          product_id:
+            item.productId,
+
+          product_slug:
+            item.slug,
+
+          product_name:
+            item.name,
+
+          product_image:
+            item.image || null,
+
+          quantity:
+            item.quantity,
+
+          base_price:
+            item.basePrice,
+
+          options_total:
+            item.optionsTotal,
+
+          unit_price:
+            item.unitPrice,
+
+          total_price:
+            item.totalPrice,
+
+          selections:
+            item.selections,
+
+          artwork_type:
+            item.artwork?.type ||
+            null,
+
+          design_fee:
+            item.artwork?.designFee ||
+            0,
+        })
+      );
+
+    const {
+      data: insertedItems,
+      error: itemsError,
+    } = await supabase
+      .from("order_items")
+      .insert(orderItems)
+      .select(
+        `
+          id,
+          artwork_type
+        `
+      );
+
+    if (
+      itemsError ||
+      !insertedItems
+    ) {
+      console.error(
+        "[NewJersey] order item insert error",
+        itemsError
+      );
+
+      await supabase
+        .from("orders")
+        .delete()
+        .eq(
+          "id",
+          order.id
+        );
+
+      createdOrderId = null;
+
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Unable to save the order items.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
 
     /*
-     * NEXT BACKEND STAGE:
-     *
-     * Persist:
-     * 1. orders
-     * 2. order_items
-     * 3. artwork records
-     *
-     * Until that database insert exists,
-     * this endpoint creates and validates
-     * the canonical order but does not
-     * persist it between requests.
+     * Create pending artwork records
+     * only for jobs where the customer
+     * said they already have artwork.
      */
 
-    console.log(
-      "[NewJersey] production request",
-      {
-        id: order.id,
-        orderNumber:
-          order.orderNumber,
-        status: order.status,
-        itemCount:
-          order.itemCount,
-        subtotal:
-          order.subtotal,
+    const artworkRecords =
+      insertedItems
+        .filter(
+          (item) =>
+            item.artwork_type ===
+            "customer-supplied"
+        )
+        .map(
+          (item) => ({
+            order_id:
+              order.id,
+
+            order_item_id:
+              item.id,
+
+            status:
+              "pending",
+          })
+        );
+
+    if (
+      artworkRecords.length >
+      0
+    ) {
+      const {
+        error: artworkError,
+      } = await supabase
+        .from(
+          "order_artworks"
+        )
+        .insert(
+          artworkRecords
+        );
+
+      if (artworkError) {
+        console.error(
+          "[NewJersey] artwork record insert error",
+          artworkError
+        );
+
+        await supabase
+          .from("orders")
+          .delete()
+          .eq(
+            "id",
+            order.id
+          );
+
+        createdOrderId = null;
+
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Unable to prepare artwork records.",
+          },
+          {
+            status: 500,
+          }
+        );
       }
-    );
+    }
 
     return NextResponse.json(
       {
@@ -378,19 +552,22 @@ export async function POST(
           "Production request created.",
 
         order: {
-          id: order.id,
+          id:
+            order.id,
 
           orderNumber:
-            order.orderNumber,
+            order.order_number,
 
           status:
             order.status,
 
           subtotal:
-            order.subtotal,
+            Number(
+              order.subtotal
+            ),
 
           createdAt:
-            order.createdAt,
+            order.created_at,
         },
       },
       {
@@ -403,10 +580,25 @@ export async function POST(
       error
     );
 
+    /*
+     * Cleanup if an unexpected failure
+     * happened after the order row was
+     * created.
+     */
+
+    if (createdOrderId) {
+      await supabase
+        .from("orders")
+        .delete()
+        .eq(
+          "id",
+          createdOrderId
+        );
+    }
+
     return NextResponse.json(
       {
         success: false,
-
         message:
           "Unable to create the production request.",
       },

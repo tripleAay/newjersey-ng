@@ -1,23 +1,59 @@
+import {
+  redirect,
+} from "next/navigation";
+
 import TopBar from "@/app/components/TopBar";
 import Header from "@/app/components/Header";
-import LoginPage from "../components/Login";
-
-
+import Footer from "@/app/components/Footer";
 import Copyright from "@/app/components/Copyright";
 
-import Footer from "@/app/components/Footer";
+import AdminLoginForm from "@/app/components/admin/AdminLoginForm";
 
-export default function Home() {
+import {
+  getCurrentAdmin,
+} from "@/app/lib/newjersey/auth/admin";
+
+type PageProps = {
+  searchParams: Promise<{
+    next?: string;
+  }>;
+};
+
+export default async function LoginPage({
+  searchParams,
+}: PageProps) {
+  const admin =
+    await getCurrentAdmin();
+
+  if (admin) {
+    redirect(
+      "/shop/admin"
+    );
+  }
+
+  const params =
+    await searchParams;
+
+  const next =
+    params.next?.startsWith(
+      "/shop/admin"
+    )
+      ? params.next
+      : "/shop/admin";
+
   return (
     <main className="min-h-screen bg-white">
       <TopBar />
 
       <Header />
-        <LoginPage />
-      <Footer/>
-      <Copyright/>
 
-      
+      <AdminLoginForm
+        next={next}
+      />
+
+      <Footer />
+
+      <Copyright />
     </main>
   );
 }

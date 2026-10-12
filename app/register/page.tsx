@@ -1,23 +1,38 @@
-import TopBar from "@/app/components/TopBar";
+import { redirect } from "next/navigation";
+
 import Header from "@/app/components/Header";
-import SignupPage from "../components/Signup";
-
-
-import Copyright from "@/app/components/Copyright";
-
 import Footer from "@/app/components/Footer";
+import AccountForm from "@/app/components/auth/AccountForm";
 
-export default function Home() {
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { safeDestination } from "@/app/lib/newjersey/auth/destination";
+
+type Props = {
+  searchParams: Promise<{
+    next?: string | string[];
+  }>;
+};
+
+export default async function RegisterPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const next = safeDestination(params.next);
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect(
+      `/auth/continue${next ? `?next=${encodeURIComponent(next)}` : ""}`
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-white">
-      <TopBar />
-
+    <>
       <Header />
-        <SignupPage />  
-      <Footer/>
-      <Copyright/>
-
-      
-    </main>
+      <main>
+        <AccountForm mode="register" next={next} />
+      </main>
+      <Footer />
+    </>
   );
 }

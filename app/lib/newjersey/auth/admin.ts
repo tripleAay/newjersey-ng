@@ -1,14 +1,9 @@
-import {
-  redirect,
-} from "next/navigation";
+import "server-only";
 
-import {
-  createClient,
-} from "@/app/lib/newjersey/supabase/server";
+import { redirect } from "next/navigation";
 
-import {
-  getSupabaseAdmin,
-} from "@/app/lib/newjersey/supabase/admin";
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
 
 export type AdminRole =
   | "owner"
@@ -22,32 +17,27 @@ export type AdminProfile = {
   active: boolean;
 };
 
+export type CurrentAdmin = {
+  user: {
+    id: string;
+    email?: string;
+  };
+  profile: AdminProfile;
+};
+
 export async function getCurrentAdmin() {
   const supabase =
     await createClient();
 
   const {
-    data: {
-      user,
-    },
+    data: { user },
     error,
   } =
     await supabase.auth.getUser();
 
-  if (
-    error ||
-    !user
-  ) {
+  if (error || !user) {
     return null;
   }
-
-  /*
-   * Authorization is checked using
-   * the trusted server client.
-   *
-   * We do not trust client metadata
-   * such as user_metadata.role.
-   */
 
   const admin =
     getSupabaseAdmin();
@@ -55,31 +45,37 @@ export async function getCurrentAdmin() {
   const {
     data: profile,
     error: profileError,
-  } =
-    await admin
-      .from("admin_users")
-      .select(
-        `
-          id,
-          full_name,
-          role,
-          active
-        `
-      )
-      .eq(
-        "id",
-        user.id
-      )
-      .eq(
-        "active",
-        true
-      )
-      .maybeSingle();
+  } = await admin
+    .from("admin_users")
+    .select(
+      `
+        id,
+        full_name,
+        role,
+        active
+      `
+    )
+    .eq(
+      "id",
+      user.id
+    )
+    .eq(
+      "active",
+      true
+    )
+    .maybeSingle();
 
   if (
     profileError ||
     !profile
   ) {
+    if (profileError) {
+      console.error(
+        "[NewJersey Admin Auth]",
+        profileError
+      );
+    }
+
     return null;
   }
 
@@ -91,14 +87,27 @@ export async function getCurrentAdmin() {
 }
 
 export async function requireAdmin() {
-  const admin =
+  const currentAdmin =
     await getCurrentAdmin();
 
-  if (!admin) {
+  if (!currentAdmin) {
     redirect(
-      "/login?next=/shop/admin"
+      "/login?next=/admin"
     );
   }
 
-  return admin;
+  return currentAdmin;
+}
+
+export async function requireStoreAdmin(): Promise<CurrentAdmin> {
+  const currentAdmin = await requireAdmin();
+
+  if (
+    currentAdmin.profile.role !== "owner" &&
+    currentAdmin.profile.role !== "admin"
+  ) {
+    redirect("/admin");
+  }
+
+  return currentAdmin;
 }

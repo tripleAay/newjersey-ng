@@ -1,46 +1,29 @@
-import {
-  createClient,
-  SupabaseClient,
-} from "@supabase/supabase-js";
+import "server-only";
 
-let adminClient:
-  | SupabaseClient
-  | null = null;
+import { createClient } from "@supabase/supabase-js";
 
 export function getSupabaseAdmin() {
-  if (adminClient) {
-    return adminClient;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+
+  const key =
+    process.env.SUPABASE_SECRET_KEY?.trim() ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!url) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL in .env.local.");
   }
 
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl) {
+  if (!key) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL."
+      "Missing SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in .env.local."
     );
   }
 
-  if (!serviceRoleKey) {
-    throw new Error(
-      "Missing SUPABASE_SERVICE_ROLE_KEY."
-    );
-  }
-
-  adminClient = createClient(
-    supabaseUrl,
-    serviceRoleKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-      },
-    }
-  );
-
-  return adminClient;
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
 }

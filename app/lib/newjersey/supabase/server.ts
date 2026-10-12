@@ -1,70 +1,39 @@
-import {
-  createServerClient,
-} from "@supabase/ssr";
+import "server-only";
 
-import {
-  cookies,
-} from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export async function createClient() {
-  const cookieStore =
-    await cookies();
+  const cookieStore = await cookies();
 
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  if (!supabaseUrl) {
+  if (!url || !key) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL."
+      "Missing Supabase URL or public API key."
     );
   }
 
-  if (!anonKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY."
-    );
-  }
-
-  return createServerClient(
-    supabaseUrl,
-    anonKey,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-
-        setAll(
-          cookiesToSet
-        ) {
-          try {
-            cookiesToSet.forEach(
-              ({
-                name,
-                value,
-                options,
-              }) => {
-                cookieStore.set(
-                  name,
-                  value,
-                  options
-                );
-              }
-            );
-          } catch {
-            /*
-             * Server Components cannot
-             * always write cookies.
-             *
-             * Session refresh is handled
-             * by proxy/middleware.
-             */
-          }
-        },
+  return createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
       },
-    }
-  );
+
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        } catch {
+          // Server Components cannot write cookies.
+          // Session refresh requires a configured proxy.
+        }
+      },
+    },
+  });
 }

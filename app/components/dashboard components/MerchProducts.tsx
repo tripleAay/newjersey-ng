@@ -1,438 +1,447 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+
 import {
-  Shirt,
-  BadgeCheck,
-  CircleDot,
-  Coffee,
-  ShoppingBag,
-  Palette,
-  Printer,
-  Trophy,
-  Users,
+  ArrowRight,
+  ArrowUpRight,
   Building2,
   CalendarDays,
   GraduationCap,
-  Sparkles,
-  Clock3,
-  ArrowUpRight,
   PackageCheck,
-  Layers3,
+  Palette,
+  Shirt,
+  Trophy,
+  Users,
 } from "lucide-react";
 
-const availableNow = [
+type MerchRoute = {
+  title: string;
+  description: string;
+  href: string;
+  image: string;
+  eyebrow: string;
+  action: string;
+};
+
+type CustomUse = {
+  title: string;
+  description: string;
+  href: string;
+  icon: React.ElementType;
+};
+
+const merchRoutes: MerchRoute[] = [
   {
-    name: "Blank T-Shirts",
-    icon: Shirt,
+    title: "T-Shirts & Polos",
+    description:
+      "Everyday apparel for businesses, teams, campaigns and personal projects.",
     href: "/apparel/t-shirts",
+    image: "/images/products/tshirts.jpg",
+    eyebrow: "Wear your brand",
+    action: "Explore apparel",
   },
   {
-    name: "Selected Polos",
-    icon: BadgeCheck,
-    href: "/apparel/polos",
-  },
-  {
-    name: "Selected Caps",
-    icon: CircleDot,
+    title: "Caps & Accessories",
+    description:
+      "Branded pieces that extend your identity beyond the usual printed materials.",
     href: "/apparel/caps",
+    image: "/images/products/print/caps.webp",
+    eyebrow: "Small format · high visibility",
+    action: "Explore accessories",
   },
   {
-    name: "Selected Mugs",
-    icon: Coffee,
-    href: "/apparel/mugs",
-  },
-  {
-    name: "Selected Tote Bags",
-    icon: ShoppingBag,
-    href: "/apparel/tote-bags",
-  },
-];
-
-const madeToOrder = [
-  {
-    name: "Printed T-Shirts",
-    icon: Printer,
-    href: "/apparel/printed-t-shirts",
-  },
-  {
-    name: "Branded Polos",
-    icon: Shirt,
-    href: "/apparel/branded-polos",
-  },
-  {
-    name: "Branded Caps",
-    icon: CircleDot,
-    href: "/apparel/branded-caps",
-  },
-  {
-    name: "Branded Mugs",
-    icon: Coffee,
-    href: "/apparel/branded-mugs",
-  },
-  {
-    name: "Branded Tote Bags",
-    icon: ShoppingBag,
-    href: "/apparel/branded-tote-bags",
+    title: "Jerseys",
+    description:
+      "Custom jerseys for teams, communities, schools, events and organisations.",
+    href: "/apparel/jerseys",
+    image: "/images/products/jerseys.jpg",
+    eyebrow: "Built for groups",
+    action: "Build your jersey",
   },
 ];
 
-const customMerch = [
+const customUses: CustomUse[] = [
   {
-    name: "Branded Jerseys",
-    icon: Trophy,
-    href: "/apparel/branded-jerseys",
-  },
-  {
-    name: "Team Jerseys",
-    icon: Users,
-    href: "/apparel/team-jerseys",
-  },
-  {
-    name: "Corporate Apparel",
-    icon: Building2,
+    title: "Corporate",
+    description: "Staff apparel and branded company merchandise.",
     href: "/apparel/corporate",
+    icon: Building2,
   },
   {
-    name: "Event Merchandise",
-    icon: CalendarDays,
-    href: "/apparel/events",
+    title: "Teams",
+    description: "Jerseys and coordinated apparel for your squad.",
+    href: "/apparel/team-jerseys",
+    icon: Users,
   },
   {
-    name: "Staff Uniforms",
-    icon: BadgeCheck,
-    href: "/apparel/uniforms",
-  },
-  {
-    name: "School Apparel",
-    icon: GraduationCap,
+    title: "Schools",
+    description: "Student, staff, club and school-event apparel.",
     href: "/apparel/school",
-  },
-];
-
-const preOrderItems = [
-  {
-    name: "NewJersey Merchandise Drops",
-    href: "/apparel/drops",
+    icon: GraduationCap,
   },
   {
-    name: "Limited-Edition Jerseys",
-    href: "/apparel/limited-edition",
-  },
-  {
-    name: "Seasonal Collections",
-    href: "/apparel/seasonal",
-  },
-  {
-    name: "NewJersey Branded Apparel",
-    href: "/apparel/newjersey",
+    title: "Events",
+    description: "Merchandise made around your event and audience.",
+    href: "/apparel/events",
+    icon: CalendarDays,
   },
 ];
 
 export default function ApparelMerchSection() {
   return (
-    <section className="w-full bg-[#f6f6f6] py-10 md:py-14">
+    <section className="relative overflow-hidden bg-[#F1EEE7] py-16 sm:py-20 lg:py-24">
       <div className="mx-auto w-[92%] max-w-[1440px]">
-        {/* HEADER */}
-        <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        {/* =====================================================
+            INTRO
+        ===================================================== */}
+
+        <div className="grid gap-7 lg:grid-cols-[1fr_0.85fr] lg:items-end">
           <div>
-            <div className="mb-3 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#FF6B00]" />
+            <div className="flex items-center gap-3">
+              <span className="h-[2px] w-7 bg-[#FF6B00]" />
 
-              <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#FF6B00]">
-                NewJersey.ng
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FF6B00]">
+                Apparel & merchandise
               </span>
             </div>
 
-            <h2 className="text-3xl font-bold tracking-tight text-[#262626] md:text-4xl">
-              APPAREL & MERCH
+            <h2 className="mt-4 max-w-[700px] text-[38px] font-black leading-[0.98] tracking-[-0.045em] text-[#191919] sm:text-[48px] lg:text-[58px]">
+              Put the brand
+              <br />
+              on something people wear.
             </h2>
+          </div>
 
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#737373] md:text-base">
-              Shop ready-to-buy essentials, order branded merchandise, or
-              create custom apparel for your team, business, school, or event.
+          <div className="lg:pb-1">
+            <p className="max-w-[540px] text-[13px] leading-6 text-[#716E68] sm:text-sm">
+              T-shirts, polos, caps, jerseys and merchandise produced
+              for businesses, teams, schools, events and people building
+              something worth recognising.
             </p>
-          </div>
-
-          <Link
-            href="/apparel"
-            className="group flex w-fit items-center gap-3 text-sm font-bold text-[#262626] transition hover:text-[#FF6B00]"
-          >
-            Explore Apparel
-
-            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dcdcdc] transition-all duration-300 group-hover:border-[#FF6B00] group-hover:bg-[#FF6B00] group-hover:text-white">
-              <ArrowUpRight size={18} />
-            </span>
-          </Link>
-        </div>
-
-        {/* TOP AREA */}
-        <div className="grid gap-5 lg:grid-cols-[1.15fr_1.85fr]">
-          {/* AVAILABLE NOW */}
-          <div className="relative overflow-hidden rounded-3xl bg-[#262626] p-6 text-white md:p-8">
-            <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#FF6B00]/20 blur-3xl" />
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF6B00]">
-                  <PackageCheck size={23} />
-                </div>
-
-                <span className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80">
-                  <span className="h-2 w-2 rounded-full bg-green-400" />
-                  Available Now
-                </span>
-              </div>
-
-              <h3 className="mt-7 text-3xl font-bold leading-tight">
-                Ready when
-                <br />
-                you are.
-              </h3>
-
-              <p className="mt-4 max-w-md text-sm leading-7 text-white/60">
-                A selected range of ready-to-order apparel and merchandise for
-                when you need something without starting a custom project.
-              </p>
-
-              <div className="mt-7 space-y-2">
-                {availableNow.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="group flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 transition hover:border-[#FF6B00]/50 hover:bg-white/[0.09]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon
-                          size={17}
-                          className="text-[#FF6B00]"
-                        />
-
-                        <span className="text-sm font-medium">
-                          {item.name}
-                        </span>
-                      </div>
-
-                      <ArrowUpRight
-                        size={16}
-                        className="text-white/35 transition group-hover:text-[#FF6B00]"
-                      />
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <Link
-                href="/apparel/shop"
-                className="mt-7 flex items-center justify-between rounded-xl bg-white px-5 py-4 text-sm font-bold text-[#262626] transition hover:bg-[#FF6B00] hover:text-white"
-              >
-                Shop Available Products
-
-                <ArrowUpRight size={18} />
-              </Link>
-            </div>
-          </div>
-
-          {/* MADE TO ORDER */}
-          <div className="rounded-3xl border border-[#e7e7e7] bg-white p-6 md:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fff0e6] text-[#FF6B00]">
-                    <Layers3 size={16} />
-                  </span>
-
-                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
-                    Made to Order
-                  </span>
-                </div>
-
-                <h3 className="mt-4 text-2xl font-bold text-[#262626]">
-                  Made specifically for you.
-                </h3>
-
-                <p className="mt-2 max-w-xl text-sm leading-6 text-[#777]">
-                  Choose your apparel or merchandise, add your branding, and
-                  we'll produce it based on your requirements.
-                </p>
-              </div>
-
-              <span className="w-fit rounded-full bg-[#f3f3f3] px-3 py-1.5 text-xs font-semibold text-[#777]">
-                {madeToOrder.length} Options
-              </span>
-            </div>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              {madeToOrder.map((item, index) => {
-                const Icon = item.icon;
-
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="group relative flex min-h-[120px] items-center gap-4 overflow-hidden rounded-2xl border border-[#ededed] bg-[#fafafa] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#FF6B00]/40 hover:bg-white hover:shadow-lg"
-                  >
-                    <span className="absolute right-4 top-3 text-xs font-bold text-[#d8d8d8]">
-                      0{index + 1}
-                    </span>
-
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#262626] shadow-sm transition group-hover:bg-[#FF6B00] group-hover:text-white">
-                      <Icon size={20} />
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-bold text-[#262626] group-hover:text-[#FF6B00]">
-                        {item.name}
-                      </h4>
-
-                      <span className="mt-2 inline-block text-xs text-[#888]">
-                        Create your order →
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
 
             <Link
-              href="/apparel/made-to-order"
-              className="mt-6 flex w-fit items-center gap-2 text-sm font-bold text-[#FF6B00]"
+              href="/apparel"
+              className="group mt-6 inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#191919] transition hover:text-[#FF6B00]"
             >
-              View Made-to-Order Options
+              Explore all apparel
 
-              <ArrowUpRight size={17} />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-black/15 transition-all group-hover:border-[#FF6B00] group-hover:bg-[#FF6B00] group-hover:text-white">
+                <ArrowRight
+                  size={14}
+                  className="transition-transform group-hover:translate-x-0.5"
+                />
+              </span>
             </Link>
           </div>
         </div>
 
-        {/* CUSTOM MERCH */}
-        <div className="mt-5 overflow-hidden rounded-3xl border border-[#e8e8e8] bg-white">
-          <div className="grid lg:grid-cols-[0.85fr_2.15fr]">
-            {/* Custom intro */}
-            <div className="relative bg-[#fff0e6] p-6 md:p-8">
-              <div className="absolute -bottom-20 -left-20 h-52 w-52 rounded-full border-[30px] border-[#FF6B00]/10" />
+        {/* =====================================================
+            THREE PRIMARY ROUTES
+        ===================================================== */}
 
-              <div className="relative z-10">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF6B00] text-white">
-                  <Palette size={22} />
-                </div>
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          {merchRoutes.map((item, index) => (
+            <Link
+              key={item.title}
+              href={item.href}
+              className="group relative min-h-[470px] overflow-hidden rounded-[24px] bg-[#222]"
+            >
+              <Image
+                src={item.image}
+                alt={item.title}
+                fill
+                sizes="(max-width: 1024px) 92vw, 31vw"
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.045]"
+              />
 
-                <span className="mt-7 block text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
-                  Custom
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/5" />
+
+              <div className="absolute left-5 top-5">
+                <span className="text-[9px] font-black tracking-[0.16em] text-white/60">
+                  {String(index + 1).padStart(2, "0")}
                 </span>
+              </div>
 
-                <h3 className="mt-3 text-3xl font-bold leading-tight text-[#262626]">
-                  Built around
-                  <br />
-                  your people.
-                </h3>
+              <div className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#191919] transition-all duration-300 group-hover:bg-[#FF6B00] group-hover:text-white">
+                <ArrowUpRight
+                  size={16}
+                  className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                />
+              </div>
 
-                <p className="mt-4 text-sm leading-7 text-[#777]">
-                  From sports teams and staff uniforms to corporate apparel and
-                  event merchandise.
+              <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-7">
+                <p className="text-[9px] font-black uppercase tracking-[0.15em] text-[#FF7A1A]">
+                  {item.eyebrow}
                 </p>
 
-                <Link
-                  href="/apparel/custom"
-                  className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#262626] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#FF6B00]"
-                >
-                  Start a Custom Project
+                <h3 className="mt-3 text-[27px] font-black tracking-[-0.04em] text-white">
+                  {item.title}
+                </h3>
 
-                  <ArrowUpRight size={17} />
-                </Link>
+                <p className="mt-3 max-w-[340px] text-[11px] leading-5 text-white/55">
+                  {item.description}
+                </p>
+
+                <div className="mt-5 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.12em] text-white">
+                  {item.action}
+
+                  <ArrowRight
+                    size={13}
+                    className="transition-transform group-hover:translate-x-1"
+                  />
+                </div>
               </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* =====================================================
+            READY VS BRANDED
+        ===================================================== */}
+
+        <div className="mt-5 grid overflow-hidden rounded-[24px] bg-white lg:grid-cols-2">
+          {/* READY TO ORDER */}
+
+          <div className="relative p-7 sm:p-9 lg:p-10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#191919] text-white">
+              <PackageCheck size={18} />
             </div>
 
-            {/* Custom services */}
-            <div className="grid grid-cols-2 gap-px bg-[#e8e8e8] sm:grid-cols-3">
-              {customMerch.map((item) => {
-                const Icon = item.icon;
+            <p className="mt-7 text-[9px] font-black uppercase tracking-[0.16em] text-[#FF6B00]">
+              Need it straightforward?
+            </p>
 
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="group min-h-[180px] bg-white p-5 transition hover:bg-[#262626]"
+            <h3 className="mt-3 max-w-[420px] text-[27px] font-black leading-[1.05] tracking-[-0.035em] text-[#191919] sm:text-[32px]">
+              Start with the product.
+            </h3>
+
+            <p className="mt-4 max-w-[480px] text-[11px] leading-5 text-[#77736D]">
+              Choose the apparel first, then select quantity, size and
+              available production options. Good for smaller and simpler
+              orders.
+            </p>
+
+            <div className="mt-7 flex flex-wrap gap-2">
+              {[
+                "T-Shirts",
+                "Polos",
+                "Caps",
+                "Tote Bags",
+                "Mugs",
+              ].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-black/10 bg-[#F7F6F3] px-3 py-2 text-[9px] font-bold text-[#5F5B55]"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            <Link
+              href="/apparel/shop"
+              className="group mt-8 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#191919] transition hover:text-[#FF6B00]"
+            >
+              Shop apparel
+
+              <ArrowUpRight
+                size={14}
+                className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+              />
+            </Link>
+          </div>
+
+          {/* MADE TO ORDER */}
+
+          <div className="relative overflow-hidden bg-[#FF6B00] p-7 text-white sm:p-9 lg:p-10">
+            <div
+              aria-hidden="true"
+              className="absolute -right-24 -top-24 h-[280px] w-[280px] rounded-full border-[45px] border-white/[0.08]"
+            />
+
+            <div className="relative">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#FF6B00]">
+                <Palette size={18} />
+              </div>
+
+              <p className="mt-7 text-[9px] font-black uppercase tracking-[0.16em] text-white/65">
+                Need your identity on it?
+              </p>
+
+              <h3 className="mt-3 max-w-[440px] text-[27px] font-black leading-[1.05] tracking-[-0.035em] sm:text-[32px]">
+                Start with the brand.
+              </h3>
+
+              <p className="mt-4 max-w-[490px] text-[11px] leading-5 text-white/70">
+                Send your logo, artwork or idea. We&apos;ll work out the
+                product, placement and production requirements around the
+                job.
+              </p>
+
+              <div className="mt-7 flex flex-wrap gap-2">
+                {[
+                  "Logo Print",
+                  "Team Orders",
+                  "Staff Wear",
+                  "Event Merch",
+                  "Bulk Production",
+                ].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[9px] font-bold text-white"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff0e6] text-[#FF6B00] transition group-hover:bg-[#FF6B00] group-hover:text-white">
-                      <Icon size={19} />
-                    </div>
+                    {item}
+                  </span>
+                ))}
+              </div>
 
-                    <div className="mt-8">
-                      <h4 className="text-sm font-bold text-[#262626] transition group-hover:text-white">
-                        {item.name}
-                      </h4>
+              <Link
+                href="/apparel/custom"
+                className="group mt-8 inline-flex items-center gap-3 rounded-full bg-[#191919] px-5 py-3 text-[9px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white hover:text-[#191919]"
+              >
+                Start branded order
 
-                      <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-[#999] transition group-hover:text-[#FF9A55]">
-                        Custom Solution
-
-                        <ArrowUpRight size={14} />
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+                <ArrowRight
+                  size={13}
+                  className="transition-transform group-hover:translate-x-0.5"
+                />
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* PRE-ORDER */}
-        <div className="mt-5 rounded-3xl bg-[#262626] p-5 text-white md:p-7">
-          <div className="flex flex-col gap-7 lg:flex-row lg:items-center">
-            <div className="lg:w-[30%]">
-              <div className="flex items-center gap-2">
-                <Clock3 size={17} className="text-[#FF6B00]" />
+        {/* =====================================================
+            CUSTOM / ORGANISATION USE CASES
+        ===================================================== */}
 
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
-                  Pre-Order
-                </span>
-              </div>
-
-              <h3 className="mt-3 text-2xl font-bold">
-                Get it before it drops.
-              </h3>
-
-              <p className="mt-3 text-sm leading-6 text-white/55">
-                Upcoming collections, limited releases, and exclusive
-                NewJersey merchandise.
+        <div className="mt-12">
+          <div className="mb-5 flex items-end justify-between gap-5">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#FF6B00]">
+                Made around your people
               </p>
 
-              <Link
-                href="/apparel/pre-order"
-                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#FF6B00]"
-              >
-                See Upcoming Drops
-
-                <ArrowUpRight size={17} />
-              </Link>
+              <h3 className="mt-2 text-[21px] font-black tracking-[-0.03em] text-[#191919]">
+                Who are you producing for?
+              </h3>
             </div>
 
-            <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {preOrderItems.map((item, index) => (
+            <Shirt
+              size={22}
+              strokeWidth={1.5}
+              className="hidden text-black/20 sm:block"
+            />
+          </div>
+
+          <div className="grid overflow-hidden rounded-[22px] border border-black/[0.08] bg-white sm:grid-cols-2 lg:grid-cols-4">
+            {customUses.map((item, index) => {
+              const Icon = item.icon;
+
+              return (
                 <Link
-                  key={item.name}
+                  key={item.title}
                   href={item.href}
-                  className="group relative min-h-[150px] rounded-2xl border border-white/10 bg-white/[0.05] p-5 transition hover:border-[#FF6B00]/50 hover:bg-[#FF6B00]"
+                  className={`
+                    group
+                    relative
+                    min-h-[220px]
+                    p-6
+                    transition-colors
+                    hover:bg-[#191919]
+
+                    ${
+                      index > 0
+                        ? "border-t border-black/[0.08] sm:border-l"
+                        : ""
+                    }
+
+                    ${
+                      index === 2
+                        ? "sm:border-l-0 lg:border-l"
+                        : ""
+                    }
+
+                    ${
+                      index >= 2
+                        ? "sm:border-t lg:border-t-0"
+                        : ""
+                    }
+                  `}
                 >
-                  <span className="text-xs font-bold text-[#FF6B00] transition group-hover:text-white/60">
-                    DROP 0{index + 1}
-                  </span>
+                  <div className="flex items-start justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F4F1EA] text-[#191919] transition-colors group-hover:bg-[#FF6B00] group-hover:text-white">
+                      <Icon size={17} />
+                    </div>
 
-                  <h4 className="mt-8 text-sm font-bold leading-6 text-white">
-                    {item.name}
-                  </h4>
+                    <ArrowUpRight
+                      size={14}
+                      className="text-black/25 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#FF6B00]"
+                    />
+                  </div>
 
-                  <Sparkles
-                    size={17}
-                    className="absolute bottom-5 right-5 text-white/30 transition group-hover:text-white"
-                  />
+                  <div className="mt-9">
+                    <h4 className="text-[15px] font-black text-[#191919] transition-colors group-hover:text-white">
+                      {item.title}
+                    </h4>
+
+                    <p className="mt-3 max-w-[220px] text-[10px] leading-5 text-[#85817A] transition-colors group-hover:text-white/50">
+                      {item.description}
+                    </p>
+                  </div>
                 </Link>
-              ))}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* =====================================================
+            JERSEY / BULK PROJECT CTA
+        ===================================================== */}
+
+        <div className="mt-6 grid overflow-hidden rounded-[24px] bg-[#191919] text-white lg:grid-cols-[1fr_auto]">
+          <div className="flex gap-5 p-7 sm:items-center sm:p-9">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FF6B00]">
+              <Trophy size={19} />
+            </div>
+
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#FF6B00]">
+                Team, school or organisation?
+              </p>
+
+              <h3 className="mt-2 text-[20px] font-black tracking-[-0.025em] sm:text-[22px]">
+                Ordering for more than one person?
+              </h3>
+
+              <p className="mt-2 max-w-[670px] text-[10px] leading-5 text-white/45">
+                Tell us the quantity, product, sizes and branding
+                requirements. We&apos;ll structure the production instead
+                of making you configure every piece individually.
+              </p>
             </div>
           </div>
+
+          <Link
+            href="/apparel/custom"
+            className="group flex min-h-[90px] items-center justify-between gap-8 bg-white px-7 text-[#191919] transition-colors hover:bg-[#FF6B00] hover:text-white lg:min-w-[250px]"
+          >
+            <div>
+              <span className="block text-[10px] font-black uppercase tracking-[0.12em]">
+                Start bulk order
+              </span>
+
+              <span className="mt-1 block text-[9px] opacity-50">
+                Get production pricing
+              </span>
+            </div>
+
+            <ArrowUpRight
+              size={17}
+              className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"
+            />
+          </Link>
         </div>
       </div>
     </section>

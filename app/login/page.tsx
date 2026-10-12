@@ -1,59 +1,43 @@
-import {
-  redirect,
-} from "next/navigation";
+import { redirect } from "next/navigation";
 
-import TopBar from "@/app/components/TopBar";
 import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
-import Copyright from "@/app/components/Copyright";
+import AccountForm from "@/app/components/auth/AccountForm";
 
-import AdminLoginForm from "@/app/components/admin/AdminLoginForm";
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { safeDestination } from "@/app/lib/newjersey/auth/destination";
 
-import {
-  getCurrentAdmin,
-} from "@/app/lib/newjersey/auth/admin";
-
-type PageProps = {
+type Props = {
   searchParams: Promise<{
-    next?: string;
+    next?: string | string[];
+    error?: string | string[];
   }>;
 };
 
-export default async function LoginPage({
-  searchParams,
-}: PageProps) {
-  const admin =
-    await getCurrentAdmin();
+export default async function LoginPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const next = safeDestination(params.next);
 
-  if (admin) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
     redirect(
-      "/shop/admin"
+      `/auth/continue${next ? `?next=${encodeURIComponent(next)}` : ""}`
     );
   }
 
-  const params =
-    await searchParams;
-
-  const next =
-    params.next?.startsWith(
-      "/shop/admin"
-    )
-      ? params.next
-      : "/shop/admin";
-
   return (
-    <main className="min-h-screen bg-white">
-      <TopBar />
-
+    <>
       <Header />
-
-      <AdminLoginForm
-        next={next}
-      />
-
+      <main>
+        <AccountForm
+          mode="login"
+          next={next}
+          confirmationError={params.error === "confirmation"}
+        />
+      </main>
       <Footer />
-
-      <Copyright />
-    </main>
+    </>
   );
 }

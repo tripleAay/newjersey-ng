@@ -1,525 +1,267 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { redirect } from "next/navigation";
+import {
+  ArrowUpRight,
+  Heart,
+  MapPin,
+  Package,
+  Store,
+  UserRound,
+} from "lucide-react";
 
 import Header from "@/app/components/dashboard components/mainheader";
 import Footer from "@/app/components/Footer";
 
-import {
-  UserRound,
-  Package,
-  Mail,
-  Star,
-  Ticket,
-  Heart,
-  Store,
-  History,
-  Pencil,
-  Wallet,
-  MapPin,
-  ChevronRight,
-  ShieldCheck,
-  Bell,
-} from "lucide-react";
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { signOut } from "./actions";
 
-const sidebarLinks = [
+type Props = {
+  searchParams: Promise<{
+    error?: string | string[];
+  }>;
+};
+
+const navigation = [
   {
-    label: "My newjersey.ng Account",
+    label: "Overview",
+    href: "/shop/account",
     icon: UserRound,
-    href: "/account",
     active: true,
   },
   {
-    label: "Orders",
+    label: "My orders",
+    href: "/shop/order",
     icon: Package,
-    href: "/account/orders",
-  },
-  {
-    label: "Inbox",
-    icon: Mail,
-    href: "/account/inbox",
-  },
-  {
-    label: "Pending Reviews",
-    icon: Star,
-    href: "/account/reviews",
-  },
-  {
-    label: "Voucher",
-    icon: Ticket,
-    href: "/account/vouchers",
+    active: false,
   },
   {
     label: "Wishlist",
+    href: "/shop/wish-list",
     icon: Heart,
-    href: "/account/wishlist",
+    active: false,
   },
   {
-    label: "Followed Sellers",
+    label: "Explore the store",
+    href: "/shop",
     icon: Store,
-    href: "/account/followed-sellers",
+    active: false,
   },
   {
-    label: "Recently Viewed",
-    icon: History,
-    href: "/account/recently-viewed",
-  },
+  label: "Delivery address",
+  href: "/shop/account/address",
+  icon: MapPin,
+  active: false,
+},
 ];
 
-export default function AccountPage() {
-  const [loading, setLoading] = useState(true);
+export default async function AccountPage({ searchParams }: Props) {
+  const supabase = await createClient();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 500);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-    return () => clearTimeout(timer);
-  }, []);
+  if (error || !user) {
+    redirect("/login?next=%2Fshop%2Faccount");
+  }
+
+  const params = await searchParams;
+
+  const rawName = user.user_metadata?.full_name;
+
+  const fullName =
+    typeof rawName === "string" && rawName.trim()
+      ? rawName.trim()
+      : "Customer";
+
+  const firstName = fullName.split(/\s+/)[0];
+
+  const initials = fullName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => Array.from(part)[0])
+    .join("")
+    .toUpperCase();
 
   return (
-    <main className="min-h-screen bg-[#FF6B00] text-neutral-900">
-      {/* =====================================================
-          HEADER
-      ====================================================== */}
-
-      <div className="relative z-50 w-full bg-[#E7E5DF] shadow-[0_2px_12px_rgba(0,0,0,0.15)]">
+    <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
+      <header className="sticky top-0 z-50">
         <Header />
-      </div>
+      </header>
 
-      {/* =====================================================
-          ACCOUNT PAGE
-      ====================================================== */}
+      <main className="mx-auto max-w-[1440px] px-5 py-10 sm:px-8 sm:py-14 lg:px-12">
+        <div className="mb-9">
+          <p className="text-xs font-medium text-[#625D55]">
+            Your NewJersey account
+          </p>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-        {/* Breadcrumb */}
+          <h1 className="mt-3 break-words text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
+            Welcome back, {firstName}.
+          </h1>
 
-        <nav className="mb-5">
-          <ol className="flex items-center gap-2 text-[11px] sm:text-xs">
-            <li>
-              <Link
-                href="/"
-                className="text-white/70 transition hover:text-white"
-              >
-                Home
-              </Link>
-            </li>
-
-            <ChevronRight
-              size={13}
-              className="text-white/40"
-            />
-
-            <li className="font-medium text-white">
-              My Account
-            </li>
-          </ol>
-        </nav>
-
-        {/* =====================================================
-            PAGE HEADER
-        ====================================================== */}
-
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
-              My Account
-            </p>
-
-            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              Welcome back
-            </h1>
-
-            <p className="mt-1 text-sm text-white/75">
-              Manage your NewJersey.ng account, orders and preferences.
-            </p>
-          </div>
+          <p className="mt-3 text-sm leading-6 text-[#625D55]">
+            Your account details and shortcuts to your purchases and saved
+            pieces.
+          </p>
         </div>
 
-        <div className="flex flex-col gap-5 lg:flex-row">
-          {/* =====================================================
-              SIDEBAR
-          ====================================================== */}
+        <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+          <aside>
+            <nav
+              aria-label="Account navigation"
+              className="flex flex-wrap gap-2 lg:flex-col"
+            >
+              {navigation.map((item) => {
+                const Icon = item.icon;
 
-          <aside className="w-full shrink-0 lg:w-[260px]">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E0E] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
-              <nav>
-                {sidebarLinks.map((link) => {
-                  const Icon = link.icon;
-
-                  return (
-                    <Link
-                      key={link.label}
-                      href={link.href}
-                      className={`group flex items-center gap-3 border-b border-white/10 px-4 py-3 text-sm transition last:border-b-0 ${
-                        link.active
-                          ? "bg-[#f58220]/10 font-semibold text-[#f58220]"
-                          : "text-neutral-400 hover:bg-white/5 hover:text-white"
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={item.active ? "page" : undefined}
+                    className={`flex min-h-11 items-center gap-3 rounded-lg px-4 py-3 text-sm ${item.active
+                        ? "bg-[#F4F1E9] font-semibold text-[#181818]"
+                        : "text-[#625D55] hover:bg-[#F4F1E9]"
                       }`}
-                    >
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
-                          link.active
-                            ? "bg-[#f58220] text-white"
-                            : "bg-white/5 text-neutral-500 group-hover:bg-[#f58220]/10 group-hover:text-[#f58220]"
-                        }`}
-                      >
-                        <Icon size={16} strokeWidth={1.9} />
-                      </span>
+                  >
+                    <Icon
+                      size={18}
+                      aria-hidden="true"
+                      className={
+                        item.active ? "text-[#F58220]" : "text-[#625D55]"
+                      }
+                    />
 
-                      <span className="flex-1">
-                        {link.label}
-                      </span>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
-                      <ChevronRight
-                        size={15}
-                        className={`transition ${
-                          link.active
-                            ? "text-[#f58220]"
-                            : "text-neutral-600 group-hover:text-neutral-400"
-                        }`}
-                      />
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              {/* Account Management */}
-
-              <div className="border-t border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-500">
-                  Account Management
-                </p>
-              </div>
-            </div>
+            <form
+              action={signOut}
+              className="mt-5 border-t border-black/10 pt-4"
+            >
+              <button
+                type="submit"
+                className="min-h-11 px-4 text-sm font-medium hover:underline"
+              >
+                Sign out
+              </button>
+            </form>
           </aside>
 
-          {/* =====================================================
-              MAIN CONTENT
-          ====================================================== */}
-
-          <section className="min-w-0 flex-1">
-            {loading ? (
-              <AccountSkeleton />
-            ) : (
-              <motion.div
-                initial={{
-                  opacity: 0,
-                  y: 10,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                transition={{
-                  duration: 0.35,
-                }}
-                className="overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E0E] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
+          <div className="min-w-0">
+            {params.error === "signout" && (
+              <p
+                role="alert"
+                className="mb-6 rounded-lg bg-red-50 p-4 text-sm text-red-800"
               >
-                {/* Account Header */}
-
-                <div className="border-b border-white/10 px-5 py-5 sm:px-6">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f58220]/10 text-[#f58220]">
-                        <UserRound size={22} />
-                      </div>
-
-                      <div>
-                        <h2 className="text-lg font-semibold text-white">
-                          Account Overview
-                        </h2>
-
-                        <p className="mt-0.5 text-xs text-neutral-500">
-                          Your personal NewJersey.ng account information.
-                        </p>
-                      </div>
-                    </div>
-
-                    <Link
-                      href="/account/edit"
-                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-xs font-semibold text-neutral-300 transition hover:border-[#f58220] hover:bg-[#f58220]/10 hover:text-[#f58220]"
-                    >
-                      <Pencil size={14} />
-                      Edit profile
-                    </Link>
-                  </div>
-                </div>
-
-                {/* =====================================================
-                    ACCOUNT CARDS
-                ====================================================== */}
-
-                <div className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 sm:p-6">
-                  {/* Account Details */}
-
-                  <AccountCard
-                    icon={
-                      <UserRound
-                        size={17}
-                      />
-                    }
-                    title="Account Details"
-                  >
-                    <div>
-                      <p className="text-[15px] font-semibold text-white">
-                        Adeshina Adedokun
-                      </p>
-
-                      <p className="mt-1 text-sm text-neutral-400">
-                        shinordaddie@gmail.com
-                      </p>
-
-                      <Link
-                        href="/account/edit"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
-                      >
-                        Edit account details
-                        <ChevronRight size={14} />
-                      </Link>
-                    </div>
-                  </AccountCard>
-
-                  {/* Address Book */}
-
-                  <AccountCard
-                    icon={
-                      <MapPin
-                        size={17}
-                      />
-                    }
-                    title="Address Book"
-                    action={
-                      <Link
-                        href="/account/address"
-                        className="text-[#f58220] transition hover:text-[#ff9142]"
-                        aria-label="Edit address"
-                      >
-                        <Pencil size={15} />
-                      </Link>
-                    }
-                  >
-                    <div>
-                      <p className="mb-2 text-xs font-medium text-neutral-300">
-                        Default shipping address
-                      </p>
-
-                      <p className="text-sm leading-relaxed text-neutral-400">
-                        Adeshina Adedokun
-                        <br />
-                        ABAELA-ILETUNTUN
-                        <br />
-                        IBADAN-ELEYELE, Oyo
-                        <br />
-                        +234 9167740076
-                      </p>
-                    </div>
-                  </AccountCard>
-
-                  {/* Store Credit */}
-
-                  <AccountCard
-                    icon={
-                      <Wallet
-                        size={17}
-                      />
-                    }
-                    title="newjersey.ng Store Credit"
-                  >
-                    <Link
-                      href="/account/store-credit"
-                      className="group flex items-center justify-between rounded-xl bg-white/5 p-3 transition hover:bg-white/10"
-                    >
-                      <div>
-                        <p className="text-xs text-neutral-500">
-                          Available balance
-                        </p>
-
-                        <p className="mt-1 text-lg font-bold text-white">
-                          ₦0.00
-                        </p>
-                      </div>
-
-                      <ChevronRight
-                        size={18}
-                        className="text-[#f58220] transition group-hover:translate-x-0.5"
-                      />
-                    </Link>
-                  </AccountCard>
-
-                  {/* Newsletter */}
-
-                  <AccountCard
-                    icon={
-                      <Bell
-                        size={17}
-                      />
-                    }
-                    title="Newsletter Preferences"
-                  >
-                    <div>
-                      <p className="text-sm leading-relaxed text-neutral-400">
-                        Manage your email preferences and choose the updates
-                        and offers you would like to receive.
-                      </p>
-
-                      <Link
-                        href="/account/newsletter"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
-                      >
-                        Manage preferences
-                        <ChevronRight size={14} />
-                      </Link>
-                    </div>
-                  </AccountCard>
-
-                  {/* Account Security */}
-
-                  <AccountCard
-                    icon={
-                      <ShieldCheck
-                        size={17}
-                      />
-                    }
-                    title="Account Security"
-                  >
-                    <div>
-                      <p className="text-sm leading-relaxed text-neutral-400">
-                        Keep your NewJersey.ng account secure by managing your
-                        password and account security settings.
-                      </p>
-
-                      <Link
-                        href="/account/security"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
-                      >
-                        Security settings
-                        <ChevronRight size={14} />
-                      </Link>
-                    </div>
-                  </AccountCard>
-
-                  {/* Quick Account Info */}
-
-                  <AccountCard
-                    icon={
-                      <Mail
-                        size={17}
-                      />
-                    }
-                    title="Communication"
-                  >
-                    <div>
-                      <p className="text-sm leading-relaxed text-neutral-400">
-                        Your account email is active and ready to receive
-                        important updates about your NewJersey.ng activity.
-                      </p>
-
-                      <Link
-                        href="/account/inbox"
-                        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-[#f58220] transition hover:text-[#ff9142]"
-                      >
-                        View inbox
-                        <ChevronRight size={14} />
-                      </Link>
-                    </div>
-                  </AccountCard>
-                </div>
-              </motion.div>
+                Unable to sign out. Please try again.
+              </p>
             )}
-          </section>
+
+            <section
+              aria-labelledby="account-overview-heading"
+              className="rounded-2xl border border-black/10 bg-white p-6 sm:p-8"
+            >
+              <div className="flex items-center gap-4 border-b border-black/10 pb-6">
+                <span
+                  aria-hidden="true"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#181818] text-sm font-semibold text-white"
+                >
+                  {initials}
+                </span>
+
+                <div className="min-w-0">
+                  <h2
+                    id="account-overview-heading"
+                    className="text-xl font-semibold tracking-tight"
+                  >
+                    Account overview
+                  </h2>
+
+                  <p className="mt-1 text-sm text-[#625D55]">
+                    Your personal account information.
+                  </p>
+                </div>
+              </div>
+
+              <dl className="mt-6 grid gap-6 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-[#625D55]">Full name</dt>
+                  <dd className="mt-2 break-words text-base font-medium">
+                    {fullName}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-xs text-[#625D55]">Email address</dt>
+                  <dd className="mt-2 break-words text-base font-medium">
+                    {user.email || "Not provided"}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-xs text-[#625D55]">
+                    Email confirmation
+                  </dt>
+                  <dd className="mt-2 text-sm font-medium">
+                    {user.email_confirmed_at ? "Confirmed" : "Pending"}
+                  </dd>
+                </div>
+              </dl>
+              <Link
+                href="/shop/account/edit"
+                className="mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline decoration-[#F58220] underline-offset-4"
+              >
+                Edit your details
+                <ArrowUpRight size={16} aria-hidden="true" />
+              </Link>
+            </section>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  title: "Your orders",
+                  text: "View your purchases and production requests.",
+                  href: "/shop/order",
+                },
+                {
+                  title: "Saved pieces",
+                  text: "Return to the products in your wishlist.",
+                  href: "/shop/wish-list",
+                },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center justify-between gap-5 rounded-xl border border-black/10 p-6 transition-colors hover:bg-[#F4F1E9]"
+                >
+                  <div>
+                    <h2 className="text-base font-semibold">
+                      {item.title}
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-[#625D55]">
+                      {item.text}
+                    </p>
+                  </div>
+
+                  <ArrowUpRight
+                    size={20}
+                    aria-hidden="true"
+                    className="shrink-0 text-[#F58220]"
+                  />
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
 
       <Footer />
-    </main>
-  );
-}
-
-/* =========================================================
-   ACCOUNT CARD
-========================================================= */
-
-function AccountCard({
-  title,
-  icon,
-  action,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-[#f58220]/40 hover:bg-white/[0.05]">
-      {/* Card Header */}
-
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#f58220]/10 text-[#f58220]">
-            {icon}
-          </div>
-
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-500">
-            {title}
-          </h3>
-        </div>
-
-        {action}
-      </div>
-
-      {/* Card Content */}
-
-      <div className="p-4">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/* =========================================================
-   LOADING SKELETON
-========================================================= */
-
-function AccountSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E0E] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.35)] sm:p-6">
-      <div className="mb-6 flex items-center gap-3 animate-pulse">
-        <div className="h-12 w-12 rounded-full bg-white/10" />
-
-        <div className="space-y-2">
-          <div className="h-5 w-40 rounded-full bg-white/10" />
-          <div className="h-3 w-56 rounded-full bg-white/10" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {Array.from({
-          length: 6,
-        }).map((_, index) => (
-          <div
-            key={index}
-            className="overflow-hidden rounded-xl border border-white/10"
-          >
-            <div className="flex items-center gap-2 border-b border-white/10 p-4">
-              <div className="h-7 w-7 rounded-md bg-white/10" />
-
-              <div className="h-3 w-32 rounded-full bg-white/10" />
-            </div>
-
-            <div className="space-y-3 p-4">
-              <div className="h-4 w-3/4 rounded-full bg-white/10" />
-
-              <div className="h-3 w-full rounded-full bg-white/10" />
-
-              <div className="h-3 w-2/3 rounded-full bg-white/10" />
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

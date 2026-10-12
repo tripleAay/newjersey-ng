@@ -1,536 +1,434 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
-  Search,
-  UserRound,
-  CircleHelp,
-  ShoppingCart,
+  ArrowUpRight,
   ChevronDown,
-  Package,
-  Heart,
-  User,
-  LogIn,
-  ShoppingBag,
-  Truck,
-  XCircle,
-  RotateCcw,
-  MessageCircle,
-  ArrowRight,
+  CircleHelp,
+  Search,
+  ShoppingCart,
+  UserRound,
 } from "lucide-react";
 
 import { useCart } from "@/app/contexts/cartContext";
+import { createClient } from "@/app/lib/newjersey/supabase/client";
+
+type Panel = "account" | "help";
+
+const customerLinks = [
+  { label: "My account", href: "/shop/account" },
+  { label: "My orders", href: "/shop/order" },
+  { label: "Wishlist", href: "/shop/wish-list" },
+];
+
+const guestLinks = [
+  { label: "Sign in", href: "/login" },
+  { label: "Create an account", href: "/register" },
+];
+
+const helpLinks = [
+  { label: "How to order", href: "/shop/help/place-order" },
+  { label: "Track an order", href: "/shop/help/track-order" },
+  { label: "Cancellation help", href: "/shop/help/cancel-order" },
+  { label: "Returns & refunds", href: "/shop/help/returns-refunds" },
+];
+
+function getDisplayName(user: User | null) {
+  if (!user) return "";
+
+  const name = user.user_metadata?.full_name;
+
+  if (typeof name === "string" && name.trim()) {
+    return name.trim();
+  }
+
+  return user.email?.split("@")[0] || "Customer";
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => Array.from(part)[0])
+    .join("")
+    .toUpperCase();
+}
 
 export default function MainHeader() {
   const { itemCount, hydrated } = useCart();
 
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
+  const [openPanel, setOpenPanel] = useState<Panel | null>(null);
 
-  const accountRef = useRef<HTMLDivElement | null>(null);
-  const helpRef = useRef<HTMLDivElement | null>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
+  const signOutBusyRef = useRef(false);
 
-  /* =============================================================
-     CLOSE DROPDOWNS ON OUTSIDE CLICK
-  ============================================================= */
+  const pathname = usePathname();
+  const panelId = useId();
+
+  const name = getDisplayName(user);
+  const firstName = name.split(/\s+/)[0];
+  const initials = getInitials(name);
+
+  const count = hydrated ? itemCount : 0;
+  const cartLabel =
+    count > 0
+      ? `Cart with ${count} ${count === 1 ? "item" : "items"}`
+      : "Cart";
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
+    let mounted = true;
+    let authVersion = 0;
 
-      if (
-        accountRef.current &&
-        !accountRef.current.contains(target)
-      ) {
-        setAccountOpen(false);
-      }
+    const supabase = createClient();
 
-      if (
-        helpRef.current &&
-        !helpRef.current.contains(target)
-      ) {
-        setHelpOpen(false);
+    const { data: { subscription } } =
+      supabase.auth.onAuthStateChange((_event, session) => {
+        authVersion += 1;
+
+        if (!mounted) return;
+
+        setUser(session?.user ?? null);
+        setAuthReady(true);
+        setAuthError("");
+      });
+
+    const versionAtRequest = authVersion;
+
+    async function loadUser() {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+
+        // Don't overwrite a more recent sign-in or sign-out event.
+        if (!mounted || authVersion !== versionAtRequest) return;
+
+        if (error) {
+          setUser(null);
+
+          if (error.name !== "AuthSessionMissingError") {
+            setAuthError("Unable to check your account. Please reload.");
+          }
+        } else {
+          setUser(data.user);
+        }
+
+        setAuthReady(true);
+      } catch {
+        if (!mounted || authVersion !== versionAtRequest) return;
+
+        setAuthReady(true);
+        setAuthError("Unable to check your account. Please reload.");
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
+    void loadUser();
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+      mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
-  /* =============================================================
-     CLOSE DROPDOWNS WITH ESCAPE
-  ============================================================= */
-
   useEffect(() => {
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setAccountOpen(false);
-        setHelpOpen(false);
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !controlsRef.current?.contains(event.target)
+      ) {
+        setOpenPanel(null);
       }
     }
 
-    document.addEventListener("keydown", handleEscape);
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || !openPanel) return;
+
+      const button =
+        openPanel === "account"
+          ? accountButtonRef.current
+          : helpButtonRef.current;
+
+      setOpenPanel(null);
+      button?.focus();
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener(
-        "keydown",
-        handleEscape
-      );
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [openPanel]);
 
-  /* =============================================================
-     TOGGLES
-  ============================================================= */
+  useEffect(() => {
+    setOpenPanel(null);
+  }, [pathname]);
 
-  const toggleAccount = () => {
-    setAccountOpen((prev) => !prev);
-    setHelpOpen(false);
-  };
+  function togglePanel(panel: Panel) {
+    setOpenPanel((current) => (current === panel ? null : panel));
+  }
 
-  const toggleHelp = () => {
-    setHelpOpen((prev) => !prev);
-    setAccountOpen(false);
-  };
+  async function handleSignOut() {
+    if (signOutBusyRef.current) return;
 
-  const cartCount =
-    hydrated && itemCount > 0
-      ? itemCount > 99
-        ? "99+"
-        : itemCount
-      : null;
+    signOutBusyRef.current = true;
+    setSigningOut(true);
+    setAuthError("");
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+
+      if (error) {
+        throw error;
+      }
+
+      setUser(null);
+      setOpenPanel(null);
+
+      // Reload server-rendered content with the signed-out cookies.
+      window.location.replace("/shop");
+    } catch {
+      setAuthError("Unable to sign out. Please try again.");
+    } finally {
+      signOutBusyRef.current = false;
+      setSigningOut(false);
+    }
+  }
 
   return (
-    <header className="w-full border-b border-neutral-200/70 bg-[#E7E5DF] text-[#262626] shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
-      {/* =========================================================
-          DESKTOP HEADER
-      ========================================================= */}
+    <div className="border-b border-black/10 bg-[#FCFBF8] text-[#181818]">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-4 px-5 py-4 sm:px-8 lg:gap-x-6 lg:px-12">
+        <Link
+          href="/shop"
+          aria-label="NewJersey.ng shop home"
+          className="shrink-0 text-xl font-bold tracking-[-0.06em] sm:text-2xl"
+        >
+          <span>newjersey</span>
+          <span className="text-[#F58220]">.ng</span>
+        </Link>
 
-      <div className="hidden lg:block">
-        <div className="mx-auto flex h-[60px] max-w-[1440px] items-center gap-4 px-5 xl:px-7">
-          {/* BRAND */}
+        <form
+          action="/print"
+          method="get"
+          role="search"
+          aria-label="Search print products"
+          className="order-last flex w-full min-w-0 items-center rounded-full border border-black/15 bg-white lg:order-none lg:w-auto lg:flex-1"
+        >
+          <Search
+            size={18}
+            aria-hidden="true"
+            className="ml-4 shrink-0 text-[#625D55]"
+          />
 
-          <Link
-            href="/shop"
-            className="flex shrink-0 items-center"
-            aria-label="NewJersey.ng shop home"
+          <input
+            type="search"
+            name="q"
+            aria-label="Search print products"
+            placeholder="Search print products"
+            required
+            maxLength={120}
+            className="min-h-12 min-w-0 flex-1 rounded-full bg-transparent px-3 text-base placeholder:text-[#625D55]"
+          />
+
+          <button
+            type="submit"
+            className="mr-1 min-h-11 shrink-0 rounded-full bg-[#181818] px-4 text-sm font-semibold text-white hover:bg-[#363636]"
           >
-            <span className="text-[24px] font-black leading-none tracking-[-1.5px] text-[#242424]">
-              newjersey
-            </span>
+            Search
+          </button>
+        </form>
 
-            <span className="ml-0.5 text-[16px] font-bold leading-none tracking-[-0.7px] text-[#f58220]">
-              .ng
-            </span>
-          </Link>
-
-          {/* SEARCH */}
-
-          <div className="min-w-0 flex-1">
-            <form
-              onSubmit={(event) => event.preventDefault()}
-              className="flex h-[40px] w-full items-center overflow-hidden rounded-full bg-[#f3f3f3] transition-all focus-within:bg-[#eeeeee] focus-within:ring-2 focus-within:ring-[#f58220]/15"
-            >
-              <Search
-                size={19}
-                strokeWidth={2.2}
-                className="ml-4 shrink-0 text-[#333]"
-              />
-
-              <input
-                type="text"
-                placeholder="Search products, branding and print services"
-                className="min-w-0 flex-1 bg-transparent px-2.5 text-[13px] text-[#333] outline-none placeholder:text-[#777]"
-              />
-
-              <button
-                type="submit"
-                className="mr-1 h-[34px] rounded-full bg-[#f58220] px-5 text-[13px] font-semibold text-white transition hover:bg-[#e87512] active:scale-[0.98]"
+        <div
+          ref={controlsRef}
+          className="relative ml-auto flex shrink-0 items-center gap-1"
+          onBlur={(event) => {
+            if (
+              !event.relatedTarget ||
+              !event.currentTarget.contains(event.relatedTarget as Node)
+            ) {
+              setOpenPanel(null);
+            }
+          }}
+        >
+          <button
+            ref={accountButtonRef}
+            type="button"
+            aria-label={
+              user ? `Account options for ${name}` : "Account options"
+            }
+            aria-expanded={openPanel === "account"}
+            aria-controls={`${panelId}-account`}
+            onClick={() => togglePanel("account")}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5"
+          >
+            {authReady && user ? (
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#181818] text-xs font-semibold text-white"
               >
-                Search
-              </button>
-            </form>
-          </div>
-
-          {/* ACCOUNT */}
-
-          <div
-            ref={accountRef}
-            className="relative shrink-0"
-          >
-            <button
-              type="button"
-              onClick={toggleAccount}
-              aria-expanded={accountOpen}
-              aria-haspopup="true"
-              className={`flex h-[40px] items-center gap-1.5 rounded-lg px-2 transition ${
-                accountOpen
-                  ? "bg-[#f5f5f5]"
-                  : "hover:bg-[#f5f5f5]"
-              }`}
-            >
-              <UserRound
-                size={20}
-                strokeWidth={2}
-                className="text-[#303030]"
-              />
-
-              <span className="text-[13px] font-semibold">
-                Account
+                {initials}
               </span>
+            ) : (
+              <UserRound size={20} aria-hidden="true" />
+            )}
 
-              <ChevronDown
-                size={14}
-                strokeWidth={2.3}
-                className={`transition-transform duration-200 ${
-                  accountOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
+            <span className="hidden max-w-24 truncate text-sm font-medium xl:inline">
+              {authReady && user ? firstName : "Account"}
+            </span>
 
-            {/* ACCOUNT DROPDOWN */}
+            <ChevronDown
+              size={14}
+              aria-hidden="true"
+              className="hidden xl:block"
+            />
+          </button>
 
-            <div
-              className={`absolute right-0 top-[46px] z-[60] w-[225px] origin-top-right transition-all duration-200 ${
-                accountOpen
-                  ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-                  : "pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0"
-              }`}
-            >
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.12)]">
-                {/* SIGN IN */}
-
-                <Link
-                  href="/login"
-                  onClick={() => setAccountOpen(false)}
-                  className="group flex items-center gap-2.5 rounded-lg bg-[#fff8f3] px-2.5 py-2.5 transition hover:bg-[#fff1e5]"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff1e5]">
-                    <LogIn
-                      size={15}
-                      className="text-[#f58220]"
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-bold text-neutral-900">
-                      Sign in
-                    </p>
-
-                    <p className="mt-0.5 text-[9px] text-neutral-500">
-                      Access your account
-                    </p>
-                  </div>
-
-                  <ArrowRight
-                    size={13}
-                    className="text-neutral-400 transition group-hover:translate-x-0.5 group-hover:text-[#f58220]"
-                  />
-                </Link>
-
-                <div className="my-1.5 border-t border-neutral-100" />
-
-                <DropdownItem
-                  href="/shop/account"
-                  icon={<User size={16} />}
-                  label="Account"
-                  onNavigate={() => setAccountOpen(false)}
-                />
-
-                <DropdownItem
-                  href="/shop/order"
-                  icon={<Package size={16} />}
-                  label="Orders"
-                  onNavigate={() => setAccountOpen(false)}
-                />
-
-                <DropdownItem
-                  href="/shop/wish-list"
-                  icon={<Heart size={16} />}
-                  label="Wishlist"
-                  onNavigate={() => setAccountOpen(false)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* HELP */}
-
-          <div
-            ref={helpRef}
-            className="relative shrink-0"
+          <button
+            ref={helpButtonRef}
+            type="button"
+            aria-label="Help options"
+            aria-expanded={openPanel === "help"}
+            aria-controls={`${panelId}-help`}
+            onClick={() => togglePanel("help")}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5"
           >
-            <button
-              type="button"
-              onClick={toggleHelp}
-              aria-expanded={helpOpen}
-              aria-haspopup="true"
-              className={`flex h-[40px] items-center gap-1.5 rounded-lg px-2 transition ${
-                helpOpen
-                  ? "bg-[#f5f5f5]"
-                  : "hover:bg-[#f5f5f5]"
-              }`}
-            >
-              <CircleHelp
-                size={20}
-                strokeWidth={2}
-                className="text-[#303030]"
-              />
+            <CircleHelp size={20} aria-hidden="true" />
 
-              <span className="text-[13px] font-semibold">
-                Help
-              </span>
+            <span className="hidden text-sm font-medium xl:inline">
+              Help
+            </span>
 
-              <ChevronDown
-                size={14}
-                strokeWidth={2.3}
-                className={`transition-transform duration-200 ${
-                  helpOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {/* HELP DROPDOWN */}
-
-            <div
-              className={`absolute right-0 top-[46px] z-[60] w-[245px] origin-top-right transition-all duration-200 ${
-                helpOpen
-                  ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-                  : "pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0"
-              }`}
-            >
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-[0_15px_40px_rgba(0,0,0,0.12)]">
-                <DropdownItem
-                  href="/shop/help/place-order"
-                  icon={<ShoppingBag size={16} />}
-                  label="Place an order"
-                  description="Learn how to order"
-                  onNavigate={() => setHelpOpen(false)}
-                />
-
-                <DropdownItem
-                  href="/shop/help/track-order"
-                  icon={<Truck size={16} />}
-                  label="Track an order"
-                  description="Check production and delivery"
-                  onNavigate={() => setHelpOpen(false)}
-                />
-
-                <DropdownItem
-                  href="/shop/help/cancel-order"
-                  icon={<XCircle size={16} />}
-                  label="Cancel an order"
-                  description="Manage an existing order"
-                  onNavigate={() => setHelpOpen(false)}
-                />
-
-                <DropdownItem
-                  href="/shop/help/returns-refunds"
-                  icon={<RotateCcw size={16} />}
-                  label="Returns & refunds"
-                  description="Get help with an order"
-                  onNavigate={() => setHelpOpen(false)}
-                />
-
-                <div className="my-1.5 border-t border-neutral-100" />
-
-                <a
-                  href="https://wa.me/2340000000000"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setHelpOpen(false)}
-                  className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition hover:bg-[#f1faf4]"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e8f7ee]">
-                    <MessageCircle
-                      size={16}
-                      className="text-[#25D366]"
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-neutral-800 transition group-hover:text-[#168c45]">
-                      WhatsApp
-                    </p>
-
-                    <p className="mt-0.5 text-[9px] text-neutral-500">
-                      Chat with our support team
-                    </p>
-                  </div>
-
-                  <ArrowRight
-                    size={13}
-                    className="text-neutral-300 transition group-hover:translate-x-0.5 group-hover:text-[#25D366]"
-                  />
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* CART */}
+            <ChevronDown
+              size={14}
+              aria-hidden="true"
+              className="hidden xl:block"
+            />
+          </button>
 
           <Link
             href="/shop/cart"
-            className="flex h-[40px] shrink-0 items-center gap-1.5 rounded-lg px-2 transition hover:bg-[#f5f5f5]"
+            aria-label={cartLabel}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5"
           >
-            <div className="relative">
-              <ShoppingCart
-                size={21}
-                strokeWidth={2}
-              />
+            <span className="relative">
+              <ShoppingCart size={21} aria-hidden="true" />
 
-              {cartCount !== null && (
-                <span className="absolute -right-2 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#f58220] px-1 text-[8px] font-bold text-white">
-                  {cartCount}
+              {count > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-2 -top-2 rounded-full bg-[#181818] px-1.5 text-[10px] font-semibold leading-4 text-white"
+                >
+                  {count > 99 ? "99+" : count}
                 </span>
               )}
-            </div>
+            </span>
 
-            <span className="text-[13px] font-semibold">
+            <span className="hidden text-sm font-medium xl:inline">
               Cart
             </span>
           </Link>
-        </div>
-      </div>
 
-      {/* =========================================================
-          MOBILE HEADER
-      ========================================================= */}
-
-      <div className="lg:hidden">
-        <div className="flex h-[52px] items-center justify-between px-4">
-          {/* BRAND */}
-
-          <Link
-            href="/shop"
-            className="flex shrink-0 items-center"
-            aria-label="NewJersey.ng shop home"
+          <div
+            id={`${panelId}-account`}
+            hidden={openPanel !== "account"}
+            className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2.5rem)] rounded-xl border border-black/10 bg-white p-2 shadow-lg"
           >
-            <span className="text-[21px] font-black tracking-[-1.3px]">
-              newjersey
-            </span>
+            {!authReady ? (
+              <p role="status" className="px-3 py-4 text-sm text-[#625D55]">
+                Checking your account…
+              </p>
+            ) : (
+              <>
+                <div className="mb-2 border-b border-black/10 px-3 py-3">
+                  <p className="break-words text-sm font-semibold">
+                    {user ? name : "Welcome to NewJersey"}
+                  </p>
 
-            <span className="ml-0.5 text-[14px] font-bold text-[#f58220]">
-              .ng
-            </span>
-          </Link>
+                  <p className="mt-1 break-words text-xs leading-5 text-[#625D55]">
+                    {user
+                      ? user.email
+                      : "Sign in or create your account."}
+                  </p>
+                </div>
 
-          <div className="flex items-center gap-0.5">
-            {/* ACCOUNT */}
+                {(user ? customerLinks : guestLinks).map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setOpenPanel(null)}
+                    className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9]"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
 
-            <Link
-              href="/shop/account"
-              className="flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-neutral-100"
-              aria-label="Account"
+                {user && (
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    className="mt-2 flex min-h-11 w-full items-center rounded-lg border-t border-black/10 px-3 text-left text-sm font-medium hover:bg-[#F4F1E9] disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {signingOut ? "Signing out…" : "Sign out"}
+                  </button>
+                )}
+
+                {authError && (
+                  <p
+                    role="alert"
+                    className="px-3 py-3 text-xs leading-5 text-red-700"
+                  >
+                    {authError}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          <div
+            id={`${panelId}-help`}
+            hidden={openPanel !== "help"}
+            className="absolute right-0 top-full z-50 mt-2 w-60 max-w-[calc(100vw-2.5rem)] rounded-xl border border-black/10 bg-white p-2 shadow-lg"
+          >
+            <p className="px-3 py-2 text-xs font-semibold text-[#625D55]">
+              Order support
+            </p>
+
+            {helpLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpenPanel(null)}
+                className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9]"
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            <a
+              href="https://wa.me/2348089570493"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpenPanel(null)}
+              className="mt-2 flex min-h-11 items-center justify-between rounded-lg border-t border-black/10 px-3 text-sm font-semibold hover:bg-[#F4F1E9]"
             >
-              <UserRound size={19} />
-            </Link>
-
-            {/* CART */}
-
-            <Link
-              href="/shop/cart"
-              className="relative flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-neutral-100"
-              aria-label={
-                itemCount > 0
-                  ? `Cart with ${itemCount} ${
-                      itemCount === 1 ? "item" : "items"
-                    }`
-                  : "Cart"
-              }
-            >
-              <ShoppingCart size={20} />
-
-              {cartCount !== null && (
-                <span className="absolute right-0 top-0 flex h-[13px] min-w-[13px] items-center justify-center rounded-full bg-[#f58220] px-0.5 text-[7px] font-bold text-white">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
+              WhatsApp support
+              <ArrowUpRight size={16} aria-hidden="true" />
+              <span className="sr-only"> — opens in a new tab</span>
+            </a>
           </div>
         </div>
-
-        {/* MOBILE SEARCH */}
-
-        <div className="border-t border-neutral-100 px-4 py-2">
-          <form
-            onSubmit={(event) => event.preventDefault()}
-            className="flex h-[38px] items-center overflow-hidden rounded-full bg-[#f3f3f3]"
-          >
-            <Search
-              size={17}
-              className="ml-3.5 shrink-0 text-neutral-700"
-            />
-
-            <input
-              type="text"
-              placeholder="Search products, branding and print services"
-              className="min-w-0 flex-1 bg-transparent px-2.5 text-[12px] outline-none placeholder:text-neutral-500"
-            />
-
-            <button
-              type="submit"
-              className="mr-1 h-[32px] rounded-full bg-[#f58220] px-3.5 text-[11px] font-semibold text-white"
-            >
-              Search
-            </button>
-          </form>
-        </div>
       </div>
-    </header>
-  );
-}
-
-/* =============================================================
-   DROPDOWN ITEM
-============================================================= */
-
-function DropdownItem({
-  href,
-  icon,
-  label,
-  description,
-  onNavigate,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  description?: string;
-  onNavigate?: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition hover:bg-[#fff5ed]"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 transition group-hover:bg-[#fff1e5] group-hover:text-[#f58220]">
-        {icon}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-semibold text-neutral-800 transition group-hover:text-[#f58220]">
-          {label}
-        </p>
-
-        {description && (
-          <p className="mt-0.5 truncate text-[9px] text-neutral-500">
-            {description}
-          </p>
-        )}
-      </div>
-
-      <ArrowRight
-        size={12}
-        className="text-neutral-300 opacity-0 transition group-hover:translate-x-0.5 group-hover:text-[#f58220] group-hover:opacity-100"
-      />
-    </Link>
+    </div>
   );
 }

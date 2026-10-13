@@ -1,57 +1,108 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
+import { useCart } from "@/app/contexts/cartContext";
+
+const currency = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 2,
+});
+
 export default function OrderSummary() {
+  const {
+    items,
+    itemCount,
+    subtotal,
+    designFee,
+    estimatedTotal,
+    hydrated,
+  } = useCart();
+
+  const needsDesign = items.some(
+    (item) => item.artwork?.type === "design-needed"
+  );
+
   return (
-    <div className="rounded-[28px] border border-black/5 bg-white p-6 shadow-[0_18px_45px_rgba(0,0,0,0.05)]">
-      <h2 className="text-xl font-black text-black">Order Summary</h2>
+    <div className="rounded-[24px] border border-black/10 bg-white p-6 text-[#181818]">
+      <h2 className="text-xl font-bold tracking-tight">
+        Order summary
+      </h2>
 
-      <div className="mt-6 flex items-center justify-between border-b border-black/10 pb-5">
-        <span className="text-sm font-bold text-black/70">Total</span>
-        <span className="text-2xl font-black text-black">₦0</span>
-      </div>
+      <dl className="mt-6 space-y-4 text-sm">
+        <div className="flex justify-between gap-4">
+          <dt className="text-[#625D55]">Configured jobs</dt>
+          <dd className="font-semibold">
+            {hydrated ? itemCount : "—"}
+          </dd>
+        </div>
 
-      <p className="mt-4 text-sm leading-6 text-black/55">
-        Review your final amount before checkout.
+        <div className="flex justify-between gap-4">
+          <dt className="text-[#625D55]">Production</dt>
+          <dd className="font-semibold">
+            {hydrated ? currency.format(subtotal) : "—"}
+          </dd>
+        </div>
+
+        {needsDesign && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-[#625D55]">Design assistance</dt>
+            <dd className="font-semibold">
+              {hydrated ? currency.format(designFee) : "—"}
+            </dd>
+          </div>
+        )}
+
+        <div className="flex justify-between gap-4">
+          <dt className="text-[#625D55]">Delivery</dt>
+          <dd className="text-right text-xs text-[#625D55]">
+            Confirmed separately
+          </dd>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-black/10 pt-5">
+          <dt className="font-semibold">Estimated total</dt>
+          <dd className="text-2xl font-bold tracking-tight">
+            {hydrated ? currency.format(estimatedTotal) : "—"}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="mt-2 text-right text-xs text-[#625D55]">
+        Before delivery
       </p>
 
-      <button className="mt-5 h-12 w-full rounded-full bg-[#ff6b00] text-sm font-bold text-white transition hover:bg-black">
-        Checkout (0)
-      </button>
+      {needsDesign && (
+        <p className="mt-4 text-xs leading-6 text-[#625D55]">
+          Design assistance is included above, once per configured
+          design. Identical jobs share that design fee.
+        </p>
+      )}
 
-      <div className="mt-8 space-y-5">
-        <div className="rounded-2xl bg-[#fafafa] p-4">
-          <p className="text-sm leading-6 text-black/65">
-            🔒 You will not be charged until you review this order on the next
-            page.
-          </p>
-        </div>
+      {hydrated && items.length > 0 ? (
+        <Link
+          href="/shop/checkout"
+          className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F58220] px-5 py-4 text-sm font-semibold transition-colors hover:bg-[#D96B0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
+        >
+          Continue to checkout
+          <ArrowRight size={17} aria-hidden="true" />
+        </Link>
+      ) : (
+        <button
+          type="button"
+          disabled
+          className="mt-6 min-h-12 w-full rounded-xl bg-[#EFEDE7] px-5 py-4 text-sm font-semibold text-[#625D55]"
+        >
+          {hydrated ? "Add products to continue" : "Loading…"}
+        </button>
+      )}
 
-        <div className="rounded-2xl bg-[#fafafa] p-4">
-          <h3 className="text-sm font-black text-black">
-            🛡 Safe Payment Options
-          </h3>
-
-          <p className="mt-2 text-sm leading-6 text-black/55">
-            NewJersey.ng protects your payment information with secure checkout
-            and trusted payment methods.
-          </p>
-        </div>
-
-        <div>
-          <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-black/45">
-            Payment methods
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            {["Verve", "Visa", "Mastercard", "Transfer", "Opay"].map((item) => (
-              <span
-                key={item}
-                className="rounded-lg border border-black/10 px-3 py-2 text-[11px] font-bold text-black/55"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      <p className="mt-4 text-center text-xs leading-6 text-[#625D55]">
+        Review your details and production brief next.
+        Payment is not taken at this step.
+      </p>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  BadgeCheck,
-} from "lucide-react";
+import { ArrowLeft, BadgeCheck } from "lucide-react";
+
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import TopNav from "@/app/components/dashboard components/topnav";
+import Footer from "@/app/components/Footer";
 
 import {
   getProductBySlug,
@@ -43,76 +44,106 @@ export default async function ProductPage({
   params,
 }: ProductPageProps) {
   const { slug } = await params;
-
   const product = getProductBySlug(slug);
 
   if (
     !product ||
-    product.category !== "print"
+    product.category !== "print" ||
+    product.published === false
   ) {
     notFound();
   }
 
+  const galleryImages = product.images.length
+    ? product.images
+    : product.image
+      ? [product.image]
+      : [];
+
   return (
-    <main className="min-h-screen bg-[#fafafa] text-[#222]">
-      <div className="mx-auto w-[92%] max-w-[1440px]">
-        <div className="py-5 sm:py-7">
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-[#777] transition hover:text-[#FF6B00]"
-          >
-            <ArrowLeft size={15} />
-            Back to shop
-          </Link>
+    <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
+      <header className="sticky top-0 z-[100] w-full">
+        <div className="relative z-[110]">
+          <TopNav />
         </div>
 
-        <section className="grid gap-8 pb-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pb-16">
-          <ProductGallery
-            name={product.name}
-            images={
-              product.images.length
-                ? product.images
-                : [product.image]
-            }
-          />
+        <div className="relative z-[100] bg-[#6D1A36]/95 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-md">
+          <DashboardHeader />
+        </div>
+      </header>
 
-          <div>
-            <div className="mb-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#FF6B00]">
-                  Print
-                </span>
+      <main>
+        <div className="mx-auto w-[92%] max-w-[1440px]">
+          <nav
+            aria-label="Breadcrumb"
+            className="py-5 sm:py-7"
+          >
+            <Link
+              href="/print"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#777] transition hover:text-[#6D1A36]"
+            >
+              <ArrowLeft size={15} aria-hidden="true" />
+              Back to print products
+            </Link>
+          </nav>
 
-                <span className="text-[#ccc]">
-                  /
-                </span>
-
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f0f0ed] px-2.5 py-1 text-[10px] font-semibold text-[#666]">
-                  <BadgeCheck size={12} />
-
-                  {statusLabels[product.status]}
-                </span>
-              </div>
-
-              <h1 className="mt-4 text-3xl font-bold tracking-tight text-[#222] sm:text-4xl lg:text-5xl">
-                {product.name}
-              </h1>
-
-              <p className="mt-4 max-w-xl text-sm leading-7 text-[#777] sm:text-[15px]">
-                {product.description}
-              </p>
+          <section className="grid gap-8 pb-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pb-16">
+            <div className="min-w-0">
+              <ProductGallery
+                name={product.name}
+                images={galleryImages}
+              />
             </div>
 
-            <ProductConfigurator
-              product={product}
-            />
-          </div>
-        </section>
+            <div className="min-w-0">
+              <div className="mb-6">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href="/print"
+                    className="text-xs font-bold uppercase tracking-[0.18em] text-[#6D1A36]"
+                  >
+                    Print
+                  </Link>
 
-        <ProductInformation
-          turnaround={product.turnaround}
-        />
-      </div>
-    </main>
+                  <span
+                    aria-hidden="true"
+                    className="text-[#ccc]"
+                  >
+                    /
+                  </span>
+
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEECE6] px-2.5 py-1 text-[10px] font-semibold text-[#666]">
+                    <BadgeCheck
+                      size={12}
+                      aria-hidden="true"
+                    />
+                    {statusLabels[product.status]}
+                  </span>
+                </div>
+
+                <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                  {product.name}
+                </h1>
+
+                <p className="mt-4 max-w-xl text-sm leading-7 text-[#777] sm:text-[15px]">
+                  {product.description}
+                </p>
+              </div>
+
+              <ProductConfigurator
+                key={product.id}
+                product={product}
+              />
+            </div>
+          </section>
+
+          <ProductInformation
+            turnaround={product.turnaround}
+          />
+        </div>
+      </main>
+
+      <Footer />
+    </div>
   );
 }

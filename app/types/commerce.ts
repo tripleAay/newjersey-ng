@@ -57,6 +57,14 @@ export type NewJerseyProduct = {
   image: string;
   images: string[];
   pricing: ProductPricing;
+
+  /*
+   * Artwork creation fee when the customer needs design help.
+   * undefined = fee has not been configured.
+   * 0 = design is included at no extra charge.
+   */
+  designFee?: number;
+
   options?: ProductOption[];
   turnaround?: string;
   featured?: boolean;

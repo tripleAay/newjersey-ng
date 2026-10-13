@@ -7,6 +7,7 @@ import { requireStoreAdmin } from "@/app/lib/newjersey/auth/admin";
 import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
 
 const MAX_IMAGES = 4;
+const MAX_PRICE = 9999999999;
 
 function fail(message: string): never {
   redirect(
@@ -29,30 +30,60 @@ function isValidImageUrl(value: string) {
   }
 }
 
+function parseMoney(
+  raw: string,
+  label: string,
+  required: boolean
+): number | null {
+  if (!raw) {
+    if (required) {
+      fail(`Enter a ${label.toLowerCase()}.`);
+    }
+
+    return null;
+  }
+
+  const amount = Number(raw);
+
+  if (
+    !/^\d+(?:\.\d{1,2})?$/.test(raw) ||
+    !Number.isFinite(amount) ||
+    amount < 0 ||
+    amount > MAX_PRICE
+  ) {
+    fail(
+      `${label} must be a valid amount without currency symbols or commas.`
+    );
+  }
+
+  return Math.round(amount * 100) / 100;
+}
+
 export async function saveProduct(formData: FormData) {
   await requireStoreAdmin();
 
-  const read = (key: string) =>
-    String(formData.get(key) ?? "").trim();
+  const read = (key: string): string => {
+    const value = formData.get(key);
+
+    if (value === null) return "";
+
+    if (typeof value !== "string") {
+      fail("The submitted product details are invalid.");
+    }
+
+    return value.trim();
+  };
 
   const name = read("name");
   const slug = read("slug").toLowerCase();
   const description = read("description");
   const category = read("category");
 
-  const rawPrice = read("price");
-  const price = Number(rawPrice);
-
   const saleMode = read("sale_mode") || "fixed";
   const fulfillment =
     read("fulfillment_type") || "made_to_order";
   const publication =
     read("publication_status") || "draft";
-
-  const imageUrls = read("image_urls")
-    .split(/\r?\n/)
-    .map((value) => value.trim())
-    .filter(Boolean);
 
   if (!name || name.length > 160) {
     fail("Enter a product name of up to 160 characters.");
@@ -79,19 +110,16 @@ export async function saveProduct(formData: FormData) {
     fail("Choose a valid pricing type.");
   }
 
-  if (
-    saleMode !== "quote" &&
-    (
-      !/^\d+(?:\.\d{1,2})?$/.test(rawPrice) ||
-      !Number.isFinite(price) ||
-      price < 0 ||
-      price > 9999999999
-    )
-  ) {
-    fail(
-      "Enter a valid price without currency symbols or commas, such as 18000."
-    );
-  }
+  const price =
+    saleMode === "quote"
+      ? 0
+      : parseMoney(read("price"), "Production price", true);
+
+  const designFee = parseMoney(
+    read("design_fee"),
+    "Design fee",
+    false
+  );
 
   if (
     ![
@@ -108,6 +136,11 @@ export async function saveProduct(formData: FormData) {
   if (!["draft", "published"].includes(publication)) {
     fail("Choose draft or published.");
   }
+
+  const imageUrls = read("image_urls")
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   if (imageUrls.length > MAX_IMAGES) {
     fail("Use up to four images per product.");
@@ -133,10 +166,8 @@ export async function saveProduct(formData: FormData) {
       slug,
       description: description || null,
       category: category || null,
-      price:
-        saleMode === "quote"
-          ? 0
-          : Math.round(price * 100) / 100,
+      price,
+      design_fee: designFee,
       currency: "NGN",
       sale_mode: saleMode,
       fulfillment_type: fulfillment,
@@ -160,7 +191,7 @@ export async function saveProduct(formData: FormData) {
   }
 
   revalidatePath("/admin/products");
-  revalidatePath("/shop");
+  revalidatePath("/shop", "layout");
 
   redirect("/admin/products?created=1");
 }

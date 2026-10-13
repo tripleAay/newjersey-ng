@@ -6,10 +6,11 @@ import ShopDepartments from "@/app/components/dashboard components/shopDepartmen
 import ShopProcess from "@/app/components/dashboard components/shopProcess";
 import Footer from "@/app/components/Footer";
 
+export const dynamic = "force-dynamic";
+
 export default function ShopPage() {
   return (
     <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
-      {/* HEADER */}
       <header className="sticky top-0 z-[100] w-full">
         <div className="relative z-[110]">
           <TopNav />
@@ -20,14 +21,10 @@ export default function ShopPage() {
         </div>
       </header>
 
-      {/* STOREFRONT */}
       <main>
         <HeroSlider />
-
         <TopProducts />
-
         <ShopDepartments />
-
         <ShopProcess />
       </main>
 

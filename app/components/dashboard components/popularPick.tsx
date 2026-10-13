@@ -108,7 +108,7 @@ export default function TopProducts() {
   return (
     <section
       aria-labelledby="featured-products-heading"
-      className="bg-[#FCFBF8] py-12 sm:py-16 lg:py-20"
+      className="bg-[#F4F1E9] py-12 sm:py-16 lg:py-20"
     >
       <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4 sm:mb-9">

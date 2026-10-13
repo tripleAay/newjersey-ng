@@ -206,7 +206,7 @@ export default function MainHeader() {
   }
 
   return (
-    <div className="border-b border-black/10 bg-[#FCFBF8] text-[#181818]">
+    <div className="border-b border-black/10 bg-[#F4F1E9] text-[#181818]">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-4 px-5 py-4 sm:px-8 lg:gap-x-6 lg:px-12">
         <Link
           href="/shop"

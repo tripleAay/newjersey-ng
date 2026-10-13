@@ -12,7 +12,7 @@ const departments = [
     label: "Print",
     description:
       "Business cards, flyers, banners, stickers and packaging.",
-    href: "/print",
+    href: "/shop/print",
     cta: "Explore print",
     icon: Printer,
   },
@@ -20,7 +20,7 @@ const departments = [
     label: "Apparel & Merch",
     description:
       "Branded T-shirts, jerseys, caps, uniforms and tote bags.",
-    href: "/apparel",
+    href: "/shop/apparel",
     cta: "Explore apparel",
     icon: Shirt,
   },
@@ -28,7 +28,7 @@ const departments = [
     label: "Branding",
     description:
       "Brand identity, signage and branding for vehicles and spaces.",
-    href: "/branding",
+    href: "/shop/branding",
     cta: "Explore branding",
     icon: Palette,
   },
@@ -36,7 +36,7 @@ const departments = [
     label: "Custom Projects",
     description:
       "Have a different idea or a bulk request? Share your requirements.",
-    href: "/custom",
+    href: "/shop/custom",
     cta: "Discuss your project",
     icon: Sparkles,
   },

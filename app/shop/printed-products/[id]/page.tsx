@@ -8,10 +8,10 @@ import {
   Flame,
   Star,
 } from "lucide-react";
-import DashboardHeader from "@/components/dashboard components/mainheader";
-import DashboardBreadcrumb from "@/components/dashboard components/breadcrumb";
-import Footer from "@/components/footer";
-import ProductCheckoutSection from "@/components/dashboard components/ProductCheckoutSection";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import DashboardBreadcrumb from "@/app/components/dashboard components/breadcrumb";
+import Footer from "@/app/components/Footer";
+import ProductCheckoutSection from "@/app/components/dashboard components/ProductCheckoutSection";
 
 type ProductSpec = {
   label: string;

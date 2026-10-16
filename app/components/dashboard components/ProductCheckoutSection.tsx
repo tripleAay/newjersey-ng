@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PayNowButton from "@/components/dashboard components/PayNowButton";
+import PayNowButton from "@/app/components/dashboard components/PayNowButton";
 
 type ProductCheckoutSectionProps = {
   product: {

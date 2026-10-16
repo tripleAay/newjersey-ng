@@ -11,10 +11,10 @@ import {
   Sparkles,
   WalletCards,
 } from "lucide-react";
-import DashboardHeader from "@/components/dashboard components/mainheader";
-import DashboardBreadcrumb from "@/components/dashboard components/breadcrumb";
-import Footer from "@/components/footer";
-import PayNowButton from "@/components//dashboard components/PayNowButton";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import DashboardBreadcrumb from "@/app/components/dashboard components/breadcrumb";
+import Footer from "@/app/components/Footer";
+import PayNowButton from "@/app/components//dashboard components/PayNowButton";
 
 type ServiceData = {
   id: string | number;

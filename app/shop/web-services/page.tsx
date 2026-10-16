@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import DashboardHeader from "@/components/dashboard components/mainheader";
-import WebServicesHero from "@/components/dashboard components/WebServicesHero";
-import DashboardBreadcrumb from "@/components/dashboard components/breadcrumb";
-import Footer from "@/components/footer";
-import HowItWorksSection from "@/components/dashboard components/howItWorksSection";
-import ProjectModeCTA from "@/components/dashboard components/projectModeCTA";
-import ServiceTilesSection from "@/components/dashboard components/webserviceTilesSection";
-import ExploreByCategorySection from "@/components/dashboard components/exploreByCategorySection";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import WebServicesHero from "@/app/components/dashboard components/WebServicesHero";
+import DashboardBreadcrumb from "@/app/components/dashboard components/breadcrumb";
+import Footer from "@/app/components/Footer";
+import HowItWorksSection from "@/app/components/dashboard components/howItWorksSection";
+import ProjectModeCTA from "@/app/components/dashboard components/projectModeCTA";
+import ServiceTilesSection from "@/app/components/dashboard components/webserviceTilesSection";
+import ExploreByCategorySection from "@/app/components/dashboard components/exploreByCategorySection";
 
 const dashboardCategories = [
   {

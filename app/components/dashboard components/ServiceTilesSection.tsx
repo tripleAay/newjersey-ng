@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ServiceDisplayTile, {
   ServiceDisplayItem,
-} from "@/components/dashboard components/service-display-tile";
+} from "@/app/components/dashboard components/service-display-tile";
 
 type DbService = {
   id: string;

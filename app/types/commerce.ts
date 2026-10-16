@@ -202,5 +202,7 @@ export type CreateOrderResult = {
   orderNumber: string;
   status: OrderStatus;
   subtotal: number;
+  designFee: number;
+  estimatedTotal: number;
   createdAt: string;
 };

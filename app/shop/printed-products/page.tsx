@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardHeader from "@/components/dashboard components/mainheader";
-import DashboardBreadcrumb from "@/components/dashboard components/breadcrumb";
-import PrintedProductsHero from "@/components/dashboard components/printed-products-hero";
-import PrintedProductsTilesSection from "@/components/dashboard components/printedProductsTilesSection";
-import HowItWorksSection from "@/components/dashboard components/howItWorksSection";
-import ProjectModeCTA from "@/components/dashboard components/projectModeCTA";
-import ExploreByCategorySection from "@/components/dashboard components/exploreByCategorySection";
-import Footer from "@/components/footer";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import DashboardBreadcrumb from "@/app/components/dashboard components/breadcrumb";
+import PrintedProductsHero from "@/app/components/dashboard components/printed-products-hero";
+import PrintedProductsTilesSection from "@/app/components/dashboard components/printedProductsTilesSection";
+import HowItWorksSection from "@/app/components/dashboard components/howItWorksSection";
+import ProjectModeCTA from "@/app/components/dashboard components/projectModeCTA";
+import ExploreByCategorySection from "@/app/components/dashboard components/exploreByCategorySection";
+import Footer from "@/app/components/Footer";
 
 const dashboardCategories = [
   {

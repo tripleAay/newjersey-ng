@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import PayNowButton from "@/components//dashboard components/PayNowButton";
+import PayNowButton from "@/app/components//dashboard components/PayNowButton";
 
 export type ServiceDisplayItem = {
   id: string;

@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 
-import DashboardHeader from "@/components/dashboard components/mainheader";
-import DashboardBreadcrumb from "@/components/dashboard components/breadcrumb";
-import Footer from "@/components/footer";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import DashboardBreadcrumb from "@/app/components/dashboard components/breadcrumb";
+import Footer from "@/app/components/Footer";
 
-import HowItWorksSection from "@/components/dashboard components/howItWorksSection";
-import ProjectModeCTA from "@/components/dashboard components/projectModeCTA";
+import HowItWorksSection from "@/app/components/dashboard components/howItWorksSection";
+import ProjectModeCTA from "@/app/components/dashboard components/projectModeCTA";
 
 // 🔹 Dashboard-style categories (AutoTech-flavoured)
 const dashboardCategories = [

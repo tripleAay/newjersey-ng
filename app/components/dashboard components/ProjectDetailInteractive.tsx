@@ -11,7 +11,7 @@ import {
   Layers3,
   Sparkles,
 } from "lucide-react";
-import ProductCheckoutSection from "@/components/dashboard components/ProductCheckoutSection";
+import ProductCheckoutSection from "@/app/components/dashboard components/ProductCheckoutSection";
 
 type ProjectData = {
   id: string;

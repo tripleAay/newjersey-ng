@@ -7,6 +7,7 @@ import {
   Check,
   FileCheck2,
   Package,
+  Truck,
 } from "lucide-react";
 
 import DashboardHeader from "@/app/components/dashboard components/mainheader";
@@ -51,6 +52,9 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
 
 const buttonClass =
   "inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-[#181818] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-4";
+
+const textLinkClass =
+  "inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]";
 
 function parseMoney(value: MoneyValue): number | null {
   if (
@@ -97,7 +101,7 @@ function label(value: string) {
   return value.replaceAll("-", " ");
 }
 
-function getOrderState(status: string) {
+function getOrderState(status: string, pickup: boolean) {
   switch (status) {
     case "submitted":
       return {
@@ -127,7 +131,7 @@ function getOrderState(status: string) {
       return {
         title: "Your final price is ready.",
         description:
-          "Review the confirmed total below. Payment instructions will be provided separately.",
+          "Open payment details to pay by bank transfer or check an existing submission.",
         stage: 1,
       };
 
@@ -150,8 +154,9 @@ function getOrderState(status: string) {
     case "ready":
       return {
         title: "Your order is ready.",
-        description:
-          "Collection or delivery arrangements will be confirmed.",
+        description: pickup
+          ? "We’ll confirm where and when to collect your order."
+          : "Your finished order is ready for delivery arrangements.",
         stage: 3,
       };
 
@@ -159,13 +164,15 @@ function getOrderState(status: string) {
       return {
         title: "Your order is on its way.",
         description:
-          "Your finished order has been dispatched.",
+          "Your order has been dispatched. Check the delivery details below.",
         stage: 3,
       };
 
     case "completed":
       return {
-        title: "All done.",
+        title: pickup
+          ? "Your order has been collected."
+          : "Your order has been delivered.",
         description:
           "Your order is complete. Thank you for choosing NewJersey.ng.",
         stage: 4,
@@ -241,12 +248,10 @@ function Detail({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs text-[#7A7368]">
-        {title}
-      </dt>
+      <dt className="text-xs text-[#7A7368]">{title}</dt>
 
       <dd className="mt-2 break-words whitespace-pre-wrap text-sm leading-7">
-        {children || "Not provided"}
+        {children ?? "Not provided"}
       </dd>
     </div>
   );
@@ -307,6 +312,10 @@ export default async function OrderDetailsPage({
       delivery_city,
       delivery_address,
       delivery_landmark,
+      delivery_carrier,
+      delivery_tracking_reference,
+      dispatched_at,
+      completed_at,
       preferred_deadline,
       production_instructions,
       item_count,
@@ -362,8 +371,8 @@ export default async function OrderDetailsPage({
 
   if (itemsResult.error || artworksResult.error) {
     console.error("[Customer order details]", {
-      itemsError: itemsResult.error,
-      artworksError: artworksResult.error,
+      items: itemsResult.error,
+      artworks: artworksResult.error,
     });
 
     throw new Error("Unable to load your order details.");
@@ -374,7 +383,7 @@ export default async function OrderDetailsPage({
 
   const pickup = order.delivery_method === "pickup";
   const pricingConfirmed = order.final_total !== null;
-  const state = getOrderState(order.status);
+  const state = getOrderState(order.status, pickup);
 
   const production = parseMoney(order.subtotal);
   const designFee = parseMoney(order.design_fee);
@@ -388,6 +397,21 @@ export default async function OrderDetailsPage({
     (item) => item.artwork_type === "customer-supplied"
   );
 
+  const hasTrackingDetails =
+    !pickup &&
+    Boolean(
+      order.delivery_carrier ||
+        order.delivery_tracking_reference ||
+        order.dispatched_at
+    );
+
+  const location = [
+    order.delivery_city,
+    order.delivery_state,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   const steps = [
     "Review",
     "Confirmation",
@@ -396,13 +420,13 @@ export default async function OrderDetailsPage({
   ];
 
   return (
-    <div className="min-h-screen bg-[#F4F1E9] text-[#181818]">
+    <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
       <header className="sticky top-0 z-[100] w-full">
         <div className="relative z-[110]">
           <TopNav />
         </div>
 
-        <div className="relative z-[100] bg-[#F4F1E9]/95 shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-md">
+        <div className="relative z-[100] bg-[#FCFBF8]/95 shadow-[0_2px_12px_rgba(0,0,0,0.04)] backdrop-blur-md">
           <DashboardHeader />
         </div>
       </header>
@@ -410,7 +434,7 @@ export default async function OrderDetailsPage({
       <main className="mx-auto max-w-[1280px] px-5 pb-16 pt-6 sm:px-8 sm:pb-24 lg:px-12">
         <Link
           href="/shop/order"
-          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-semibold text-[#625D55] transition-colors hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-semibold text-[#625D55] hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
         >
           <ArrowLeft size={15} aria-hidden="true" />
           All orders
@@ -439,7 +463,10 @@ export default async function OrderDetailsPage({
           <div className="min-w-0">
             <section className="border-t border-black/10 pb-9 pt-7 sm:pb-12 sm:pt-8">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#F58220]" />
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 rounded-full bg-[#F58220]"
+                />
 
                 <p className="text-xs font-semibold capitalize text-[#625D55]">
                   {label(order.status)}
@@ -461,10 +488,7 @@ export default async function OrderDetailsPage({
                     className={`${buttonClass} mt-5`}
                   >
                     Open your artwork
-                    <ArrowUpRight
-                      size={16}
-                      aria-hidden="true"
-                    />
+                    <ArrowUpRight size={16} aria-hidden="true" />
                   </Link>
                 )}
 
@@ -477,9 +501,7 @@ export default async function OrderDetailsPage({
                     return (
                       <li
                         key={step}
-                        aria-current={
-                          active ? "step" : undefined
-                        }
+                        aria-current={active ? "step" : undefined}
                       >
                         <div
                           className={[
@@ -507,7 +529,6 @@ export default async function OrderDetailsPage({
                               className="mt-0.5 hidden shrink-0 sm:block"
                             />
                           )}
-
                           {step}
                         </p>
                       </li>
@@ -520,15 +541,13 @@ export default async function OrderDetailsPage({
             <Section number="01" title="What you ordered">
               {items.length === 0 ? (
                 <p className="text-sm leading-7 text-[#625D55]">
-                  Product details are unavailable. Contact
-                  us with your order reference.
+                  Product details are unavailable. Contact us
+                  with your order reference.
                 </p>
               ) : (
                 <div className="space-y-8">
                   {items.map((item, index) => {
-                    const options = selections(
-                      item.selections
-                    );
+                    const options = selections(item.selections);
 
                     const itemArtworks = artworks.filter(
                       (artwork) =>
@@ -576,32 +595,25 @@ export default async function OrderDetailsPage({
 
                             {options.length > 0 && (
                               <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs leading-6 text-[#625D55]">
-                                {options.map(
-                                  (option, optionIndex) => (
-                                    <li
-                                      key={`${item.id}-${optionIndex}`}
-                                    >
-                                      {option}
-                                    </li>
-                                  )
-                                )}
+                                {options.map((option, optionIndex) => (
+                                  <li key={`${item.id}-${optionIndex}`}>
+                                    {option}
+                                  </li>
+                                ))}
                               </ul>
                             )}
 
                             <p className="mt-3 text-xs leading-6 text-[#625D55]">
-                              {money(item.unit_price)} per
-                              job
+                              {money(item.unit_price)} per job
                             </p>
 
                             {item.artwork_type && (
                               <p className="mt-1 text-xs leading-6 text-[#625D55]">
-                                {item.artwork_type ===
-                                "customer-supplied"
+                                {item.artwork_type === "customer-supplied"
                                   ? "Your own artwork"
                                   : "Design assistance"}
                                 {" · "}
-                                {money(item.design_fee)}{" "}
-                                design fee
+                                {money(item.design_fee)} design fee
                               </p>
                             )}
                           </div>
@@ -612,7 +624,7 @@ export default async function OrderDetailsPage({
                             {itemArtworks.map((artwork) => (
                               <div
                                 key={artwork.id}
-                                className="rounded-2xl bg-white/70 p-4 sm:p-5"
+                                className="rounded-2xl border border-black/5 bg-white p-4 sm:p-5"
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                   <p className="inline-flex items-center gap-2 text-xs font-semibold capitalize">
@@ -621,15 +633,14 @@ export default async function OrderDetailsPage({
                                       aria-hidden="true"
                                       className="text-[#625D55]"
                                     />
-                                    Artwork{" "}
-                                    {label(artwork.status)}
+                                    Artwork {label(artwork.status)}
                                   </p>
 
                                   {item.artwork_type ===
                                     "customer-supplied" && (
                                     <Link
                                       href={`/shop/artwork/${order.id}`}
-                                      className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+                                      className={textLinkClass}
                                     >
                                       View
                                       <ArrowUpRight
@@ -673,13 +684,10 @@ export default async function OrderDetailsPage({
               {hasCustomerArtwork && (
                 <Link
                   href={`/shop/artwork/${order.id}`}
-                  className="mt-7 inline-flex min-h-11 items-center gap-2 text-xs font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+                  className={`${textLinkClass} mt-7`}
                 >
                   Artwork, uploads and feedback
-                  <ArrowUpRight
-                    size={15}
-                    aria-hidden="true"
-                  />
+                  <ArrowUpRight size={15} aria-hidden="true" />
                 </Link>
               )}
             </Section>
@@ -689,32 +697,92 @@ export default async function OrderDetailsPage({
               title={pickup ? "Collection details" : "Delivery details"}
             >
               {pickup ? (
-                <p className="max-w-xl text-sm leading-7 text-[#625D55]">
-                  You selected pickup. We’ll confirm where
-                  and when to collect your order once it
-                  is ready.
-                </p>
-              ) : (
-                <dl className="grid gap-6 sm:grid-cols-2">
-                  <Detail title="Delivery address">
-                    {order.delivery_address}
-                  </Detail>
+                <>
+                  {order.completed_at ? (
+                    <div className="rounded-2xl border border-black/10 bg-white p-5">
+                      <p className="text-sm font-semibold">
+                        Collection confirmed
+                      </p>
 
-                  <Detail title="City and state">
-                    {[
-                      order.delivery_city,
-                      order.delivery_state,
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </Detail>
-
-                  {order.delivery_landmark && (
-                    <Detail title="Landmark">
-                      {order.delivery_landmark}
-                    </Detail>
+                      <p className="mt-2 text-sm leading-7 text-[#625D55]">
+                        Our team recorded collection on{" "}
+                        {date(order.completed_at, true)} WAT.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="max-w-xl text-sm leading-7 text-[#625D55]">
+                      You selected pickup. We’ll confirm where
+                      and when to collect your order once it
+                      is ready.
+                    </p>
                   )}
-                </dl>
+                </>
+              ) : (
+                <>
+                  <dl className="grid gap-6 sm:grid-cols-2">
+                    <Detail title="Delivery address">
+                      {order.delivery_address || "Not provided"}
+                    </Detail>
+
+                    <Detail title="City and state">
+                      {location || "Not provided"}
+                    </Detail>
+
+                    {order.delivery_landmark && (
+                      <Detail title="Landmark">
+                        {order.delivery_landmark}
+                      </Detail>
+                    )}
+                  </dl>
+
+                  {(hasTrackingDetails || order.completed_at) && (
+                    <div className="mt-7 rounded-2xl border border-black/10 bg-white p-5 sm:p-6">
+                      <h3 className="flex items-center gap-2 text-sm font-semibold">
+                        <Truck
+                          size={18}
+                          strokeWidth={1.7}
+                          aria-hidden="true"
+                          className="text-[#625D55]"
+                        />
+                        Delivery tracking
+                      </h3>
+
+                      <dl className="mt-5 grid gap-6 sm:grid-cols-2">
+                        {order.delivery_carrier && (
+                          <Detail title="Courier / delivery provider">
+                            {order.delivery_carrier}
+                          </Detail>
+                        )}
+
+                        {order.delivery_tracking_reference && (
+                          <Detail title="Tracking reference">
+                            <span className="select-all break-all font-mono text-sm">
+                              {order.delivery_tracking_reference}
+                            </span>
+                          </Detail>
+                        )}
+
+                        {order.dispatched_at && (
+                          <Detail title="Dispatched">
+                            {date(order.dispatched_at, true)} WAT
+                          </Detail>
+                        )}
+
+                        {order.completed_at && (
+                          <Detail title="Delivery confirmed">
+                            {date(order.completed_at, true)} WAT
+                          </Detail>
+                        )}
+                      </dl>
+
+                      <p className="mt-5 border-t border-black/10 pt-4 text-xs leading-6 text-[#7A7368]">
+                        Updates are recorded by our team.
+                        {order.delivery_tracking_reference &&
+                          " Use your tracking reference when contacting the delivery provider."}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </Section>
 
@@ -743,7 +811,7 @@ export default async function OrderDetailsPage({
             <Section number="04" title="Production brief">
               <dl className="grid gap-6 sm:grid-cols-2">
                 <Detail title="Project">
-                  {order.project_name}
+                  {order.project_name || "Not provided"}
                 </Detail>
 
                 <Detail title="Preferred deadline">
@@ -752,20 +820,19 @@ export default async function OrderDetailsPage({
 
                 <div className="sm:col-span-2">
                   <Detail title="Instructions">
-                    {order.production_instructions}
+                    {order.production_instructions || "Not provided"}
                   </Detail>
                 </div>
               </dl>
 
               <p className="mt-5 text-xs leading-6 text-[#7A7368]">
-                Preferred dates are subject to production
-                confirmation.
+                Preferred dates are subject to production confirmation.
               </p>
             </Section>
           </div>
 
           <aside className="min-w-0 pb-8 lg:sticky lg:top-44">
-            <div className="rounded-[24px] bg-white p-6 sm:p-7">
+            <div className="rounded-[24px] border border-black/5 bg-white p-6 sm:p-7">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7A7368]">
                 Order summary
               </p>
@@ -816,37 +883,50 @@ export default async function OrderDetailsPage({
                 />
               </dl>
 
-              {order.status === "awaiting-payment" && (
-                <div className="mt-6 border-t border-black/10 pt-5">
-                  <p className="text-sm font-semibold">
-                    Ready for payment
-                  </p>
+              {order.status === "awaiting-payment" &&
+                pricingConfirmed && (
+                  <div className="mt-6 border-t border-black/10 pt-5">
+                    <p className="text-sm font-semibold">
+                      Payment details
+                    </p>
 
-                  <p className="mt-2 text-xs leading-6 text-[#625D55]">
-                    Payment instructions will be provided
-                    separately.
-                  </p>
-                </div>
-              )}
+                    <p className="mt-2 text-xs leading-6 text-[#625D55]">
+                      Get bank transfer instructions, submit
+                      your receipt, or check verification progress.
+                    </p>
+
+                    <Link
+                      href={`/shop/order/${order.id}/payment`}
+                      className={`${buttonClass} mt-5 w-full`}
+                    >
+                      Open payment
+                      <ArrowUpRight size={16} aria-hidden="true" />
+                    </Link>
+                  </div>
+                )}
+
+              <Link
+                href={`/shop/order/${order.id}/payment`}
+                className={`${textLinkClass} mt-5`}
+              >
+                Payment details and history
+                <ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
 
               {hasCustomerArtwork &&
                 order.status === "awaiting-artwork" && (
                   <Link
                     href={`/shop/artwork/${order.id}`}
-                    className={`${buttonClass} mt-6 w-full`}
+                    className={`${buttonClass} mt-4 w-full`}
                   >
                     Manage artwork
-                    <ArrowUpRight
-                      size={16}
-                      aria-hidden="true"
-                    />
+                    <ArrowUpRight size={16} aria-hidden="true" />
                   </Link>
                 )}
 
               {!pricingConfirmed && !pickup && (
-                <p className="mt-6 text-xs leading-6 text-[#7A7368]">
-                  Delivery is excluded from the total
-                  shown above.
+                <p className="mt-5 text-xs leading-6 text-[#7A7368]">
+                  Delivery is excluded from the total shown above.
                 </p>
               )}
             </div>
@@ -860,13 +940,10 @@ export default async function OrderDetailsPage({
                 href={`mailto:hello@newjersey.ng?subject=${encodeURIComponent(
                   `Order ${order.order_number}`
                 )}`}
-                className="mt-2 inline-flex min-h-9 items-center gap-2 text-xs text-[#625D55] underline decoration-black/20 underline-offset-4 hover:text-[#181818]"
+                className={`${textLinkClass} mt-2 text-[#625D55]`}
               >
                 Contact our team
-                <ArrowUpRight
-                  size={14}
-                  aria-hidden="true"
-                />
+                <ArrowUpRight size={14} aria-hidden="true" />
               </a>
 
               <p className="mt-4 text-[11px] leading-6 text-[#7A7368]">

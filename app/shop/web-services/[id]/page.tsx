@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { ArrowLeft } from "lucide-react";
-import DashboardHeader from "@/components/dashboard components/mainheader";
-import DashboardBreadcrumb from "@/components/dashboard components/breadcrumb";
-import Footer from "@/components/footer";
-import ProjectDetailInteractive from "@/components/dashboard components/ProjectDetailInteractive";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import DashboardBreadcrumb from "@/app/components/dashboard components/breadcrumb";
+import Footer from "@/app/components/Footer";
+import ProjectDetailInteractive from "@/app/components/dashboard components/ProjectDetailInteractive";
 
 type ProjectData = {
   id: string;

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import Header from "@/components/dashboard components/mainheader";
+import Header from "@/app/components/dashboard components/mainheader";
 import {
   ArrowLeft,
   CreditCard,

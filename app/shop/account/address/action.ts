@@ -5,27 +5,37 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/app/lib/newjersey/supabase/server";
 
-export async function saveAddress(formData: FormData) {
+const ADDRESS_PATH = "/shop/account/address";
+const LOGIN_PATH = "/login?next=%2Fshop%2Faccount%2Faddress";
+
+function readText(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export async function saveAddress(
+  formData: FormData
+): Promise<void> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } =
-    await supabase.auth.getUser();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    redirect("/login?next=%2Fshop%2Faccount%2Faddress");
+    redirect(LOGIN_PATH);
   }
 
-  const read = (key: string) =>
-    String(formData.get(key) ?? "").trim();
-
   const address = {
-    recipient_name: read("recipient_name"),
-    phone: read("phone"),
-    address_line_1: read("address_line_1"),
-    address_line_2: read("address_line_2"),
-    city: read("city"),
-    region: read("region"),
-    postal_code: read("postal_code"),
-    country_code: read("country_code").toUpperCase(),
+    recipient_name: readText(formData, "recipient_name"),
+    phone: readText(formData, "phone"),
+    address_line_1: readText(formData, "address_line_1"),
+    address_line_2: readText(formData, "address_line_2"),
+    city: readText(formData, "city"),
+    region: readText(formData, "region"),
+    postal_code: readText(formData, "postal_code"),
+    country_code: readText(formData, "country_code").toUpperCase(),
   };
 
   const required = [
@@ -47,7 +57,7 @@ export async function saveAddress(formData: FormData) {
     address.postal_code.length > 20 ||
     !/^[A-Z]{2}$/.test(address.country_code)
   ) {
-    redirect("/shop/account/address?error=details");
+    redirect(`${ADDRESS_PATH}?error=details`);
   }
 
   const phoneDigits = address.phone.replace(/\D/g, "");
@@ -58,7 +68,7 @@ export async function saveAddress(formData: FormData) {
     phoneDigits.length < 7 ||
     phoneDigits.length > 15
   ) {
-    redirect("/shop/account/address?error=phone");
+    redirect(`${ADDRESS_PATH}?error=phone`);
   }
 
   const { error } = await supabase
@@ -76,20 +86,23 @@ export async function saveAddress(formData: FormData) {
 
   if (error) {
     console.error("[NewJersey Save Address]", error);
-    redirect("/shop/account/address?error=save");
+    redirect(`${ADDRESS_PATH}?error=save`);
   }
 
-  revalidatePath("/shop/account/address");
-  redirect("/shop/account/address?saved=1");
+  revalidatePath(ADDRESS_PATH);
+  redirect(`${ADDRESS_PATH}?saved=1`);
 }
 
-export async function deleteAddress() {
+export async function deleteAddress(): Promise<void> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } =
-    await supabase.auth.getUser();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    redirect("/login?next=%2Fshop%2Faccount%2Faddress");
+    redirect(LOGIN_PATH);
   }
 
   const { error } = await supabase
@@ -99,9 +112,9 @@ export async function deleteAddress() {
 
   if (error) {
     console.error("[NewJersey Delete Address]", error);
-    redirect("/shop/account/address?error=delete");
+    redirect(`${ADDRESS_PATH}?error=delete`);
   }
 
-  revalidatePath("/shop/account/address");
-  redirect("/shop/account/address?removed=1");
+  revalidatePath(ADDRESS_PATH);
+  redirect(`${ADDRESS_PATH}?removed=1`);
 }

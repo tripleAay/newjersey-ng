@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 
 import { requireAdmin } from "@/app/lib/newjersey/auth/admin";
 import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
-import { confirmOrderPricing } from "./actions";
+import { confirmOrderPricing } from "./action";
 
 export const dynamic = "force-dynamic";
 

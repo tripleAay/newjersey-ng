@@ -5,7 +5,7 @@ import Header from "@/app/components/dashboard components/mainheader";
 import Footer from "@/app/components/Footer";
 import { createClient } from "@/app/lib/newjersey/supabase/server";
 
-import { saveAddress, deleteAddress } from "./actions";
+import { saveAddress, deleteAddress } from "./action";
 
 type Props = {
   searchParams: Promise<{

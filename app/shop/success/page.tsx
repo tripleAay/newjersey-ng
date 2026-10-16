@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Header from "@/components/dashboard components/mainheader";
+import Header from "@/app/components/dashboard components/mainheader";
 import { CheckCircle2, ArrowLeft } from "lucide-react";
 
 export default async function PaymentSuccessPage({

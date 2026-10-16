@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,8 +20,9 @@ import {
 
 import { useCart } from "@/app/contexts/cartContext";
 import { createClient } from "@/app/lib/newjersey/supabase/client";
+import CustomerNotifications from "@/app/components/newjersey/CustomerNotifications";
 
-type Panel = "account" | "help";
+type Panel = "account" | "help" | "notifications";
 
 const customerLinks = [
   { label: "My account", href: "/shop/account" },
@@ -65,7 +71,8 @@ export default function MainHeader() {
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
-  const [openPanel, setOpenPanel] = useState<Panel | null>(null);
+  const [openPanel, setOpenPanel] =
+    useState<Panel | null>(null);
 
   const controlsRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
@@ -80,6 +87,7 @@ export default function MainHeader() {
   const initials = getInitials(name);
 
   const count = hydrated ? itemCount : 0;
+
   const cartLabel =
     count > 0
       ? `Cart with ${count} ${count === 1 ? "item" : "items"}`
@@ -91,31 +99,40 @@ export default function MainHeader() {
 
     const supabase = createClient();
 
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange((_event, session) => {
-        authVersion += 1;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      authVersion += 1;
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        setUser(session?.user ?? null);
-        setAuthReady(true);
-        setAuthError("");
-      });
+      setUser(session?.user ?? null);
+      setAuthReady(true);
+      setAuthError("");
+      setOpenPanel(null);
+    });
 
     const versionAtRequest = authVersion;
 
     async function loadUser() {
       try {
-        const { data, error } = await supabase.auth.getUser();
+        const { data, error } =
+          await supabase.auth.getUser();
 
-        // Don't overwrite a more recent sign-in or sign-out event.
-        if (!mounted || authVersion !== versionAtRequest) return;
+        if (
+          !mounted ||
+          authVersion !== versionAtRequest
+        ) {
+          return;
+        }
 
         if (error) {
           setUser(null);
 
           if (error.name !== "AuthSessionMissingError") {
-            setAuthError("Unable to check your account. Please reload.");
+            setAuthError(
+              "Unable to check your account. Please reload."
+            );
           }
         } else {
           setUser(data.user);
@@ -123,10 +140,17 @@ export default function MainHeader() {
 
         setAuthReady(true);
       } catch {
-        if (!mounted || authVersion !== versionAtRequest) return;
+        if (
+          !mounted ||
+          authVersion !== versionAtRequest
+        ) {
+          return;
+        }
 
         setAuthReady(true);
-        setAuthError("Unable to check your account. Please reload.");
+        setAuthError(
+          "Unable to check your account. Please reload."
+        );
       }
     }
 
@@ -154,18 +178,31 @@ export default function MainHeader() {
       const button =
         openPanel === "account"
           ? accountButtonRef.current
-          : helpButtonRef.current;
+          : openPanel === "help"
+            ? helpButtonRef.current
+            : controlsRef.current?.querySelector<HTMLButtonElement>(
+                "[data-notification-toggle]"
+              );
 
       setOpenPanel(null);
       button?.focus();
     }
 
-    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener(
+      "pointerdown",
+      handlePointerDown
+    );
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener(
+        "pointerdown",
+        handlePointerDown
+      );
+      document.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
     };
   }, [openPanel]);
 
@@ -174,7 +211,9 @@ export default function MainHeader() {
   }, [pathname]);
 
   function togglePanel(panel: Panel) {
-    setOpenPanel((current) => (current === panel ? null : panel));
+    setOpenPanel((current) =>
+      current === panel ? null : panel
+    );
   }
 
   async function handleSignOut() {
@@ -186,19 +225,20 @@ export default function MainHeader() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signOut({ scope: "local" });
 
-      if (error) {
-        throw error;
-      }
+      const { error } = await supabase.auth.signOut({
+        scope: "local",
+      });
+
+      if (error) throw error;
 
       setUser(null);
       setOpenPanel(null);
-
-      // Reload server-rendered content with the signed-out cookies.
       window.location.replace("/shop");
     } catch {
-      setAuthError("Unable to sign out. Please try again.");
+      setAuthError(
+        "Unable to sign out. Please try again."
+      );
     } finally {
       signOutBusyRef.current = false;
       setSigningOut(false);
@@ -218,7 +258,7 @@ export default function MainHeader() {
         </Link>
 
         <form
-          action="/print"
+          action="/shop/print"
           method="get"
           role="search"
           aria-label="Search print products"
@@ -237,12 +277,12 @@ export default function MainHeader() {
             placeholder="Search print products"
             required
             maxLength={120}
-            className="min-h-12 min-w-0 flex-1 rounded-full bg-transparent px-3 text-base placeholder:text-[#625D55]"
+            className="min-h-12 min-w-0 flex-1 rounded-full bg-transparent px-3 text-base placeholder:text-[#625D55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#F58220]"
           />
 
           <button
             type="submit"
-            className="mr-1 min-h-11 shrink-0 rounded-full bg-[#181818] px-4 text-sm font-semibold text-white hover:bg-[#363636]"
+            className="mr-1 min-h-11 shrink-0 rounded-full bg-[#181818] px-4 text-sm font-semibold text-white hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
           >
             Search
           </button>
@@ -252,9 +292,11 @@ export default function MainHeader() {
           ref={controlsRef}
           className="relative ml-auto flex shrink-0 items-center gap-1"
           onBlur={(event) => {
+            const nextTarget = event.relatedTarget;
+
             if (
-              !event.relatedTarget ||
-              !event.currentTarget.contains(event.relatedTarget as Node)
+              !(nextTarget instanceof Node) ||
+              !event.currentTarget.contains(nextTarget)
             ) {
               setOpenPanel(null);
             }
@@ -264,12 +306,14 @@ export default function MainHeader() {
             ref={accountButtonRef}
             type="button"
             aria-label={
-              user ? `Account options for ${name}` : "Account options"
+              user
+                ? `Account options for ${name}`
+                : "Account options"
             }
             aria-expanded={openPanel === "account"}
             aria-controls={`${panelId}-account`}
             onClick={() => togglePanel("account")}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
           >
             {authReady && user ? (
               <span
@@ -293,6 +337,15 @@ export default function MainHeader() {
             />
           </button>
 
+          {authReady && user && (
+            <CustomerNotifications
+              key={user.id}
+              open={openPanel === "notifications"}
+              onToggle={() => togglePanel("notifications")}
+              onClose={() => setOpenPanel(null)}
+            />
+          )}
+
           <button
             ref={helpButtonRef}
             type="button"
@@ -300,7 +353,7 @@ export default function MainHeader() {
             aria-expanded={openPanel === "help"}
             aria-controls={`${panelId}-help`}
             onClick={() => togglePanel("help")}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
           >
             <CircleHelp size={20} aria-hidden="true" />
 
@@ -318,7 +371,7 @@ export default function MainHeader() {
           <Link
             href="/shop/cart"
             aria-label={cartLabel}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
           >
             <span className="relative">
               <ShoppingCart size={21} aria-hidden="true" />
@@ -344,7 +397,10 @@ export default function MainHeader() {
             className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2.5rem)] rounded-xl border border-black/10 bg-white p-2 shadow-lg"
           >
             {!authReady ? (
-              <p role="status" className="px-3 py-4 text-sm text-[#625D55]">
+              <p
+                role="status"
+                className="px-3 py-4 text-sm text-[#625D55]"
+              >
                 Checking your account…
               </p>
             ) : (
@@ -361,16 +417,18 @@ export default function MainHeader() {
                   </p>
                 </div>
 
-                {(user ? customerLinks : guestLinks).map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setOpenPanel(null)}
-                    className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9]"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {(user ? customerLinks : guestLinks).map(
+                  (link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setOpenPanel(null)}
+                      className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+                    >
+                      {link.label}
+                    </Link>
+                  )
+                )}
 
                 {user && (
                   <button
@@ -409,7 +467,7 @@ export default function MainHeader() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpenPanel(null)}
-                className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9]"
+                className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
               >
                 {link.label}
               </Link>
@@ -424,7 +482,9 @@ export default function MainHeader() {
             >
               WhatsApp support
               <ArrowUpRight size={16} aria-hidden="true" />
-              <span className="sr-only"> — opens in a new tab</span>
+              <span className="sr-only">
+                {" "}— opens in a new tab
+              </span>
             </a>
           </div>
         </div>

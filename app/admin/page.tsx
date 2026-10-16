@@ -187,7 +187,7 @@ export default async function AdminPage() {
       title: "Awaiting artwork",
       value: artworkResult.error ? "—" : (artworkResult.count ?? 0),
       description: "Customer files required",
-      href: "/admin/artwork",
+      href: "/admin/artworks",
       icon: FileImage,
     },
     {

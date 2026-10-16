@@ -25,7 +25,7 @@ const navigation = [
   { name: "Collections", href: "/admin/collections", icon: Tags },
   { name: "Showcase", href: "/admin/showcase", icon: Images },
   { name: "Orders", href: "/admin/orders", icon: ClipboardList },
-  { name: "Artwork", href: "/admin/artwork", icon: FileImage },
+  { name: "Artwork", href: "/admin/artworks", icon: FileImage },
   { name: "Production", href: "/admin/production", icon: Boxes },
   { name: "Delivery", href: "/admin/delivery", icon: Truck },
   { name: "Settings", href: "/admin/settings", icon: Settings },

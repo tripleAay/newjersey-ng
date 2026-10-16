@@ -1,464 +1,480 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import MainHeader from "@/app/components/dashboard components/mainheader";
+import { redirect } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Package,
+} from "lucide-react";
+
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import TopNav from "@/app/components/dashboard components/topnav";
 import Footer from "@/app/components/Footer";
-import { ArrowLeft, CheckCircle2, Eye } from "lucide-react";
 
-type RawOrder = {
-  id: string;
-  item_title: string | null;
-  amount: number | string | null;
-  order_status: string | null;
-  payment_status: string | null;
-  tx_ref: string | null;
-  transaction_id: string | null;
-  created_at: string | null;
-  metadata?: {
-    quantity?: number;
-    [key: string]: unknown;
-  } | null;
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+type Props = {
+  searchParams: Promise<{
+    page?: string | string[];
+  }>;
 };
 
-type OrderItem = {
-  id: string;
-  orderNumber: string;
-  product: string;
-  amount: number;
-  quantity: number;
-  status: "Paid" | "Processing" | "Delivered";
-  date: string;
-  ref: string;
-};
+const PAGE_SIZE = 12;
 
-const formatNGN = (amount: number) =>
-  `₦${amount.toLocaleString("en-NG", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+const currency = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 2,
+});
 
-const statusStyles: Record<OrderItem["status"], string> = {
-  Paid: "border-emerald-800/60 bg-emerald-950/50 text-emerald-400",
-  Processing: "border-amber-800/60 bg-amber-950/50 text-amber-400",
-  Delivered: "border-sky-800/60 bg-sky-950/50 text-sky-400",
-};
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Africa/Lagos",
+});
 
-function formatOrderDate(dateString: string | null) {
-  if (!dateString) return "—";
-
-  const date = new Date(dateString);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
+function parseAmount(value: unknown): number | null {
+  if (
+    (typeof value !== "number" &&
+      typeof value !== "string") ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null;
   }
 
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const amount = Number(value);
+
+  return Number.isFinite(amount) && amount >= 0
+    ? amount
+    : null;
 }
 
-function makeOrderNumber(order: RawOrder, index: number) {
-  if (order.transaction_id) {
-    return `NJ-${order.transaction_id}`;
-  }
-
-  if (order.tx_ref) {
-    return order.tx_ref.slice(0, 18).toUpperCase();
-  }
-
-  return `NJ-ORDER-${index + 1}`;
+function formatAmount(value: number | null) {
+  return value === null
+    ? "Unavailable"
+    : currency.format(value);
 }
 
-function mapStatus(order: RawOrder): OrderItem["status"] {
-  const normalizedOrderStatus = String(
-    order.order_status || ""
-  ).toLowerCase();
+function formatDate(value: string) {
+  const date = new Date(value);
 
-  const normalizedPaymentStatus = String(
-    order.payment_status || ""
-  ).toLowerCase();
-
-  if (normalizedOrderStatus === "completed") {
-    return "Delivered";
-  }
-
-  if (normalizedOrderStatus === "processing") {
-    return "Processing";
-  }
-
-  if (normalizedPaymentStatus === "paid") {
-    return "Paid";
-  }
-
-  return "Processing";
+  return Number.isNaN(date.getTime())
+    ? "Date unavailable"
+    : dateFormatter.format(date);
 }
 
-export default function OrdersPage() {
-  const [rawOrders, setRawOrders] = useState<RawOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
+function statusDetails(status: string) {
+  switch (status) {
+    case "submitted":
+      return {
+        label: "Received",
+        className: "bg-[#F1F1EE] text-[#625D55]",
+      };
 
-  useEffect(() => {
-    let isMounted = true;
+    case "under-review":
+      return {
+        label: "Under review",
+        className: "bg-[#F1F1EE] text-[#625D55]",
+      };
 
-    const loadOrders = async () => {
-      try {
-        setIsLoading(true);
-        setErrorMessage("");
+    case "awaiting-artwork":
+      return {
+        label: "Artwork needed",
+        className: "bg-[#F8F0E5] text-[#805323]",
+      };
 
-        const res = await fetch("/api/orders", {
-          method: "GET",
-          cache: "no-store",
-        });
+    case "awaiting-payment":
+      return {
+        label: "Awaiting payment",
+        className: "bg-[#F8F0E5] text-[#805323]",
+      };
 
-        const data = await res.json();
+    case "confirmed":
+      return {
+        label: "Confirmed",
+        className: "bg-[#EDF3ED] text-[#426247]",
+      };
 
-        if (!res.ok) {
-          throw new Error(
-            data?.error || "Failed to load orders."
-          );
-        }
+    case "in-production":
+      return {
+        label: "In production",
+        className: "bg-[#EDF1F5] text-[#435C73]",
+      };
 
-        if (isMounted) {
-          setRawOrders(
-            Array.isArray(data?.orders)
-              ? data.orders
-              : []
-          );
-        }
-      } catch (error) {
-        if (isMounted) {
-          setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : "Unable to load orders."
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+    case "ready":
+      return {
+        label: "Ready",
+        className: "bg-[#EDF3ED] text-[#426247]",
+      };
 
-    loadOrders();
+    case "dispatched":
+      return {
+        label: "Dispatched",
+        className: "bg-[#EDF1F5] text-[#435C73]",
+      };
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    case "completed":
+      return {
+        label: "Completed",
+        className: "bg-[#EDF3ED] text-[#426247]",
+      };
 
-  const orders = useMemo<OrderItem[]>(() => {
-    return rawOrders.map((order, index) => ({
-      id: order.id,
-      orderNumber: makeOrderNumber(order, index),
-      product: order.item_title || "Untitled order",
-      amount: Number(order.amount || 0),
-      quantity: Number(
-        order.metadata?.quantity || 1
-      ),
-      status: mapStatus(order),
-      date: formatOrderDate(order.created_at),
-      ref: order.tx_ref || "—",
-    }));
-  }, [rawOrders]);
+    case "cancelled":
+      return {
+        label: "Cancelled",
+        className: "bg-[#F7ECEB] text-[#8A4B45]",
+      };
+
+    default:
+      return {
+        label: status.replaceAll("-", " "),
+        className: "bg-[#F1F1EE] text-[#625D55]",
+      };
+  }
+}
+
+export default async function OrdersPage({
+  searchParams,
+}: Props) {
+  const params = await searchParams;
+
+  const rawPage =
+    typeof params.page === "string" ? params.page : "1";
+
+  const parsedPage = Number(rawPage);
+
+  const page =
+    Number.isSafeInteger(parsedPage) &&
+    parsedPage >= 1 &&
+    parsedPage <= 100000
+      ? parsedPage
+      : 1;
+
+  const auth = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await auth.auth.getUser();
+
+  if (authError || !user) {
+    redirect("/login?next=/shop/order");
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  const from = (page - 1) * PAGE_SIZE;
+
+  const {
+    data,
+    error,
+    count,
+  } = await supabase
+    .from("orders")
+    .select(
+      `
+        id,
+        order_number,
+        project_name,
+        item_count,
+        subtotal,
+        design_fee,
+        final_total,
+        status,
+        created_at
+      `,
+      { count: "exact" }
+    )
+    .eq("customer_id", user.id)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(from, from + PAGE_SIZE - 1);
+
+  if (error) {
+    console.error("[Customer orders]", error);
+    throw new Error("Unable to load your orders.");
+  }
+
+  const orders = data ?? [];
+  const totalOrders = count ?? 0;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalOrders / PAGE_SIZE)
+  );
+
+  if (page > totalPages) {
+    redirect(`/shop/order?page=${totalPages}`);
+  }
 
   return (
-    <main className="min-h-screen bg-[#FF6B00] text-neutral-900">
-
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-      <div className="sticky top-0 z-50 bg-[#E7E5DF]/95 shadow-[0_2px_12px_rgba(0,0,0,0.06)] backdrop-blur-md">
-        <MainHeader />
-      </div>
-
-      {/* =====================================================
-          MAIN CONTENT
-      ===================================================== */}
-      <section className="relative overflow-hidden px-4 pb-12 pt-8 sm:px-6 sm:pt-10 lg:px-8">
-
-        {/* Background decoration */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -right-24 top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-
-          <div className="absolute -left-24 bottom-20 h-64 w-64 rounded-full bg-black/5 blur-3xl" />
+    <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
+      <header className="sticky top-0 z-[100] w-full">
+        <div className="relative z-[110]">
+          <TopNav />
         </div>
 
-        <div className="relative mx-auto max-w-7xl">
+        <div className="relative z-[100] bg-[#FCFBF8]/95 shadow-[0_2px_12px_rgba(0,0,0,0.04)] backdrop-blur-md">
+          <DashboardHeader />
+        </div>
+      </header>
 
-          {/* =================================================
-              PAGE HEADER
-          ================================================= */}
-          <div className="mb-6 flex items-start justify-between gap-4 sm:mb-8">
+      <main className="mx-auto w-full max-w-[1200px] px-5 pb-16 pt-6 sm:px-8 sm:pb-24 sm:pt-8">
+        <Link
+          href="/shop"
+          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-semibold text-[#625D55] transition-colors hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+        >
+          <ArrowLeft size={15} aria-hidden="true" />
+          Back to shop
+        </Link>
 
-            <div>
+        <div className="flex flex-wrap items-end justify-between gap-5 pb-8 pt-7 sm:pb-10 sm:pt-10">
+          <div>
+            <p className="text-xs font-medium text-[#7A7368]">
+              Your account
+            </p>
 
-              <Link
-                href="/shop"
-                className="inline-flex items-center gap-2 text-sm font-medium text-white/80 transition hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to shop
-              </Link>
+            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] sm:text-5xl">
+              My orders.
+            </h1>
 
-              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">
-                NewJersey.ng
-              </p>
-
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-                Your order history
-              </h1>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/75">
-                See every order you&apos;ve made in one place.
-                Open any order to view the complete details.
-              </p>
-
-            </div>
-
-            {/* TOTAL ORDERS */}
-            <div className="hidden rounded-2xl border border-white/10 bg-[#0E0E0E] px-5 py-4 shadow-[0_8px_30px_rgba(0,0,0,0.35)] sm:block">
-
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Total orders
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-white">
-                {orders.length}
-              </p>
-
-            </div>
-
+            <p className="mt-4 max-w-lg text-sm leading-7 text-[#625D55]">
+              Track your orders, review artwork feedback,
+              and check confirmed prices.
+            </p>
           </div>
 
-          {/* =================================================
-              ERROR
-          ================================================= */}
-          {errorMessage ? (
-            <div className="mb-6 rounded-2xl border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-300">
-              {errorMessage}
-            </div>
-          ) : null}
+          <Link
+            href="/shop"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-black/15 px-5 text-xs font-semibold transition-colors hover:bg-black/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+          >
+            Continue shopping
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </Link>
+        </div>
 
-          {/* =================================================
-              ORDERS TABLE
-          ================================================= */}
-          <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#0E0E0E] shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
+        <section aria-labelledby="orders-heading">
+          <div className="flex items-center justify-between gap-4 border-t border-black/10 py-5">
+            <h2
+              id="orders-heading"
+              className="text-sm font-semibold"
+            >
+              Order history
+            </h2>
 
-            {/* DESKTOP TABLE HEADER */}
-            <div className="hidden grid-cols-[1.2fr_1fr_.7fr_.8fr_.9fr_.9fr] gap-4 border-b border-white/10 bg-white/5 px-6 py-4 text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-500 md:grid">
-
-              <p>Product</p>
-              <p>Order ID</p>
-              <p>Qty</p>
-              <p>Amount</p>
-              <p>Status</p>
-              <p className="text-right">Action</p>
-
-            </div>
-
-            <div className="divide-y divide-white/10">
-
-              {/* LOADING */}
-              {isLoading ? (
-                <div className="px-6 py-12 text-sm text-neutral-400">
-                  Loading orders...
-                </div>
-              ) : (
-
-                orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="px-4 py-5 transition-colors hover:bg-white/[0.03] sm:px-6"
-                  >
-
-                    {/* =================================================
-                        MOBILE
-                    ================================================= */}
-                    <div className="space-y-4 md:hidden">
-
-                      <div className="flex items-start justify-between gap-3">
-
-                        <div className="min-w-0">
-
-                          <p className="truncate text-sm font-semibold text-white">
-                            {order.product}
-                          </p>
-
-                          <p className="mt-1 text-xs text-neutral-500">
-                            {order.orderNumber}
-                          </p>
-
-                        </div>
-
-                        <span
-                          className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${statusStyles[order.status]}`}
-                        >
-                          {order.status}
-                        </span>
-
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 text-xs">
-
-                        <div>
-                          <p className="text-neutral-500">
-                            Qty
-                          </p>
-
-                          <p className="mt-1 font-medium text-neutral-200">
-                            {order.quantity}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-neutral-500">
-                            Amount
-                          </p>
-
-                          <p className="mt-1 font-medium text-neutral-200">
-                            {formatNGN(order.amount)}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-neutral-500">
-                            Date
-                          </p>
-
-                          <p className="mt-1 font-medium text-neutral-200">
-                            {order.date}
-                          </p>
-                        </div>
-
-                      </div>
-
-                      <Link
-                        href={`/shop/order/${order.id}`}
-                        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:border-[#f58220] hover:bg-[#f58220]/10"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View details
-                      </Link>
-
-                    </div>
-
-                    {/* =================================================
-                        DESKTOP
-                    ================================================= */}
-                    <div className="hidden md:grid md:grid-cols-[1.2fr_1fr_.7fr_.8fr_.9fr_.9fr] md:items-center md:gap-4">
-
-                      {/* PRODUCT */}
-                      <div className="min-w-0">
-
-                        <p className="truncate text-sm font-semibold text-white">
-                          {order.product}
-                        </p>
-
-                        <p className="mt-1 text-xs text-neutral-500">
-                          {order.date}
-                        </p>
-
-                      </div>
-
-                      {/* ORDER ID */}
-                      <div className="min-w-0">
-
-                        <p className="truncate text-sm font-semibold text-[#f58220]">
-                          {order.orderNumber}
-                        </p>
-
-                        <p className="mt-1 truncate text-xs text-neutral-500">
-                          {order.ref}
-                        </p>
-
-                      </div>
-
-                      {/* QUANTITY */}
-                      <p className="text-sm text-neutral-300">
-                        {order.quantity}
-                      </p>
-
-                      {/* AMOUNT */}
-                      <p className="text-sm font-semibold text-white">
-                        {formatNGN(order.amount)}
-                      </p>
-
-                      {/* STATUS */}
-                      <div>
-
-                        <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${statusStyles[order.status]}`}
-                        >
-                          {order.status}
-                        </span>
-
-                      </div>
-
-                      {/* ACTION */}
-                      <div className="flex justify-end">
-
-                        <Link
-                          href={`/shop/order/${order.id}`}
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:border-[#f58220] hover:bg-[#f58220]/10"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View details
-                        </Link>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-                ))
-
-              )}
-
-            </div>
-
+            <p className="text-xs text-[#7A7368]">
+              {totalOrders}{" "}
+              {totalOrders === 1 ? "order" : "orders"}
+            </p>
           </div>
 
-          {/* =================================================
-              EMPTY STATE
-          ================================================= */}
-          {!isLoading && orders.length === 0 ? (
-            <div className="mt-6 rounded-[28px] border border-white/10 bg-[#0E0E0E] px-6 py-12 text-center shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
-
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-800/60 bg-emerald-950/50 text-emerald-400">
-                <CheckCircle2 className="h-6 w-6" />
+          {orders.length === 0 ? (
+            <div className="rounded-[24px] border border-black/10 bg-white px-6 py-16 text-center sm:py-20">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F5F4F0]">
+                <Package
+                  size={24}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className="text-[#625D55]"
+                />
               </div>
 
-              <h2 className="mt-4 text-lg font-semibold text-white">
-                No orders yet
-              </h2>
+              <h3 className="mt-6 text-2xl font-semibold tracking-tight">
+                Your first order starts here.
+              </h3>
 
-              <p className="mt-2 text-sm text-neutral-400">
-                Once you place an order, it will appear here.
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-[#625D55]">
+                Once you place an order, its details and
+                updates will appear here.
               </p>
 
               <Link
                 href="/shop"
-                className="mt-6 inline-flex items-center justify-center rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-neutral-200"
+                className="mt-7 inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-[#181818] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-4"
               >
-                Start shopping
+                Explore the shop
+                <ArrowRight size={16} aria-hidden="true" />
               </Link>
-
             </div>
-          ) : null}
+          ) : (
+            <>
+              <div className="hidden grid-cols-[minmax(0,1fr)_140px_170px_130px] gap-5 px-6 pb-4 pt-2 text-xs text-[#7A7368] lg:grid">
+                <p>Order</p>
+                <p>Status</p>
+                <p className="text-right">Total</p>
+                <p className="text-right">Details</p>
+              </div>
 
-        </div>
-      </section>
+              <div className="space-y-3 lg:space-y-0 lg:overflow-hidden lg:rounded-[20px] lg:border lg:border-black/10 lg:bg-white">
+                {orders.map((order) => {
+                  const status = statusDetails(
+                    order.status
+                  );
 
-      {/* =====================================================
-          FOOTER
-      ===================================================== */}
+                  const confirmed =
+                    order.final_total !== null;
+
+                  const production = parseAmount(
+                    order.subtotal
+                  );
+
+                  const design = parseAmount(
+                    order.design_fee
+                  );
+
+                  const estimate =
+                    production !== null &&
+                    design !== null
+                      ? Math.round(
+                          (production + design) * 100
+                        ) / 100
+                      : null;
+
+                  const total = confirmed
+                    ? parseAmount(order.final_total)
+                    : estimate;
+
+                  return (
+                    <article
+                      key={order.id}
+                      className="rounded-[20px] border border-black/10 bg-white p-5 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_140px_170px_130px] lg:items-center lg:gap-5 lg:rounded-none lg:border-0 lg:border-b lg:last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#7A7368]">
+                          <p className="break-all font-medium">
+                            {order.order_number}
+                          </p>
+
+                          <span
+                            aria-hidden="true"
+                            className="h-1 w-1 rounded-full bg-black/20"
+                          />
+
+                          <p>
+                            {formatDate(order.created_at)}
+                          </p>
+                        </div>
+
+                        <h3 className="mt-2 break-words text-base font-semibold tracking-tight">
+                          <Link
+                            href={`/shop/order/${order.id}`}
+                            className="rounded-sm transition-colors hover:text-[#625D55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+                          >
+                            {order.project_name ||
+                              "Your order"}
+                          </Link>
+                        </h3>
+
+                        <p className="mt-2 text-xs text-[#7A7368]">
+                          {order.item_count}{" "}
+                          {order.item_count === 1
+                            ? "configured job"
+                            : "configured jobs"}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 lg:mt-0">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1.5 text-[11px] font-medium capitalize ${status.className}`}
+                        >
+                          {status.label}
+                        </span>
+                      </div>
+
+                      <div className="mt-5 flex items-start justify-between gap-4 border-t border-black/[0.07] pt-4 lg:mt-0 lg:block lg:border-0 lg:pt-0 lg:text-right">
+                        <p className="text-xs text-[#7A7368] lg:hidden">
+                          {confirmed
+                            ? "Confirmed total"
+                            : "Before delivery"}
+                        </p>
+
+                        <div>
+                          <p className="text-right text-base font-semibold tracking-tight">
+                            {formatAmount(total)}
+                          </p>
+
+                          <p className="mt-1 hidden text-[11px] text-[#7A7368] lg:block">
+                            {confirmed
+                              ? "Confirmed total"
+                              : "Before delivery"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 flex justify-end lg:mt-0">
+                        <Link
+                          href={`/shop/order/${order.id}`}
+                          aria-label={`View order ${order.order_number}`}
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-black/15 px-4 text-xs font-semibold transition-colors hover:bg-[#F5F4F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+                        >
+                          View order
+                          <ArrowUpRight
+                            size={14}
+                            aria-hidden="true"
+                          />
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <nav
+                aria-label="Order history pages"
+                className="mt-7 flex flex-wrap items-center justify-between gap-4"
+              >
+                <p className="text-xs text-[#7A7368]">
+                  Showing {from + 1}–
+                  {Math.min(
+                    from + orders.length,
+                    totalOrders
+                  )}{" "}
+                  of {totalOrders}
+                </p>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-3">
+                    {page > 1 ? (
+                      <Link
+                        href={`/shop/order?page=${page - 1}`}
+                        className="inline-flex min-h-11 items-center rounded-full border border-black/15 px-4 text-xs font-semibold hover:bg-black/[0.03]"
+                      >
+                        Previous
+                      </Link>
+                    ) : (
+                      <span className="inline-flex min-h-11 items-center px-4 text-xs text-[#9B958C]">
+                        Previous
+                      </span>
+                    )}
+
+                    <span className="text-xs text-[#625D55]">
+                      {page} / {totalPages}
+                    </span>
+
+                    {page < totalPages ? (
+                      <Link
+                        href={`/shop/order?page=${page + 1}`}
+                        className="inline-flex min-h-11 items-center rounded-full border border-black/15 px-4 text-xs font-semibold hover:bg-black/[0.03]"
+                      >
+                        Next
+                      </Link>
+                    ) : (
+                      <span className="inline-flex min-h-11 items-center px-4 text-xs text-[#9B958C]">
+                        Next
+                      </span>
+                    )}
+                  </div>
+                )}
+              </nav>
+            </>
+          )}
+        </section>
+      </main>
+
       <Footer />
-
-    </main>
+    </div>
   );
 }

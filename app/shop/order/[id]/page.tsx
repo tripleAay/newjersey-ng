@@ -1,1767 +1,883 @@
-import Image from "next/image";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
-
 import {
   ArrowLeft,
-  Building2,
-  CalendarDays,
+  ArrowUpRight,
   Check,
-  CheckCircle2,
-  CircleDollarSign,
-  Clock3,
   FileCheck2,
-  FileText,
-  Mail,
-  MapPin,
   Package,
-  PackageCheck,
-  Palette,
-  Phone,
-  ReceiptText,
-  Store,
-  Truck,
-  UserRound,
 } from "lucide-react";
 
-import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
-import ArtworkUploader from "@/app/components/newjersey/order/ArtworkUploader";
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import TopNav from "@/app/components/dashboard components/topnav";
+import Footer from "@/app/components/Footer";
 
-type PageProps = {
-  params: Promise<{
-    id: string;
-  }>;
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+type Props = {
+  params: Promise<{ Id: string }>;
 };
 
-type OrderStatus =
-  | "submitted"
-  | "under-review"
-  | "awaiting-artwork"
-  | "awaiting-payment"
-  | "confirmed"
-  | "in-production"
-  | "ready"
-  | "dispatched"
-  | "completed"
-  | "cancelled";
+type MoneyValue = number | string | null | undefined;
 
-type ArtworkStatus =
-  | "pending"
-  | "uploaded"
-  | "reviewing"
-  | "approved"
-  | "revision-required"
-  | "rejected";
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type ProductSelection = {
-  optionId?: string;
-  optionLabel?: string;
-  choiceId?: string;
-  choiceLabel?: string;
-  priceModifier?: number;
-};
+const currency = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 2,
+});
 
-type ArtworkRecord = {
-  id: string;
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Africa/Lagos",
+});
 
-  file_name: string | null;
-  storage_path: string | null;
+const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Africa/Lagos",
+});
 
-  mime_type: string | null;
-  file_size: number | null;
+const buttonClass =
+  "inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-[#181818] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-4";
 
-  status: ArtworkStatus;
+function parseMoney(value: MoneyValue): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return null;
+  }
 
-  notes: string | null;
-
-  created_at: string;
-  updated_at: string;
-};
-
-type OrderItem = {
-  id: string;
-
-  cart_item_id: string;
-
-  product_id: string;
-  product_slug: string;
-  product_name: string;
-  product_image: string | null;
-
-  quantity: number;
-
-  base_price: number | string;
-  options_total: number | string;
-  unit_price: number | string;
-  total_price: number | string;
-
-  selections: ProductSelection[] | null;
-
-  artwork_type:
-    | "customer-supplied"
-    | "design-needed"
-    | null;
-
-  design_fee: number | string;
-
-  created_at: string;
-
-  order_artworks:
-    | ArtworkRecord[]
-    | null;
-};
-
-type Order = {
-  id: string;
-
-  order_number: string;
-
-  customer_full_name: string;
-  customer_phone: string;
-  customer_email: string;
-
-  customer_organization:
-    | string
-    | null;
-
-  delivery_method:
-    | "delivery"
-    | "pickup";
-
-  delivery_state:
-    | string
-    | null;
-
-  delivery_city:
-    | string
-    | null;
-
-  delivery_address:
-    | string
-    | null;
-
-  delivery_landmark:
-    | string
-    | null;
-
-  project_name: string;
-
-  preferred_deadline:
-    | string
-    | null;
-
-  production_instructions:
-    | string
-    | null;
-
-  item_count: number;
-
-  subtotal:
-    | number
-    | string;
-
-  design_fee:
-    | number
-    | string;
-
-  delivery_fee:
-    | number
-    | string;
-
-  final_total:
-    | number
-    | string
-    | null;
-
-  status: OrderStatus;
-
-  created_at: string;
-  updated_at: string;
-
-  order_items:
-    | OrderItem[]
-    | null;
-};
-
-const STATUS_ORDER: OrderStatus[] = [
-  "submitted",
-  "under-review",
-  "awaiting-artwork",
-  "awaiting-payment",
-  "confirmed",
-  "in-production",
-  "ready",
-  "dispatched",
-  "completed",
-];
-
-function numberValue(
-  value:
-    | number
-    | string
-    | null
-    | undefined
-) {
   const parsed = Number(value);
 
-  return Number.isFinite(parsed)
+  return Number.isFinite(parsed) && parsed >= 0
     ? parsed
-    : 0;
+    : null;
 }
 
-function formatNGN(
-  value:
-    | number
-    | string
-    | null
-    | undefined
-) {
-  return new Intl.NumberFormat(
-    "en-NG",
-    {
-      style: "currency",
-      currency: "NGN",
-      maximumFractionDigits: 0,
-    }
-  ).format(
-    numberValue(value)
-  );
+function money(value: MoneyValue) {
+  const parsed = parseMoney(value);
+
+  return parsed === null
+    ? "Unavailable"
+    : currency.format(parsed);
 }
 
-function formatDate(
-  value:
-    | string
-    | null
-    | undefined
+function date(
+  value: string | null | undefined,
+  includeTime = false
 ) {
-  if (!value) {
-    return "—";
+  if (!value) return "Not provided";
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "Not provided";
   }
 
-  const date =
-    new Date(value);
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return "—";
-  }
-
-  return date.toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  );
+  return includeTime
+    ? dateTimeFormatter.format(parsed)
+    : dateFormatter.format(parsed);
 }
 
-function formatDateTime(
-  value:
-    | string
-    | null
-    | undefined
-) {
-  if (!value) {
-    return "—";
-  }
-
-  const date =
-    new Date(value);
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return "—";
-  }
-
-  return date.toLocaleString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
-  );
+function label(value: string) {
+  return value.replaceAll("-", " ");
 }
 
-function formatStatus(
-  status: string
-) {
-  return status
-    .replaceAll("-", " ")
-    .replace(
-      /\b\w/g,
-      (letter) =>
-        letter.toUpperCase()
-    );
-}
-
-function getStatusDescription(
-  status: OrderStatus
-) {
+function getOrderState(status: string) {
   switch (status) {
     case "submitted":
-      return "Your production request has been received.";
+      return {
+        title: "We have your order.",
+        description:
+          "We’ll check the details and confirm what happens next.",
+        stage: 0,
+      };
 
     case "under-review":
-      return "NewJersey is reviewing the specifications, artwork requirements and pricing.";
+      return {
+        title: "We’re checking the details.",
+        description:
+          "Your specifications and artwork are being reviewed before production.",
+        stage: 0,
+      };
 
     case "awaiting-artwork":
-      return "Artwork is required before this job can move forward.";
+      return {
+        title: "Your artwork is the next step.",
+        description:
+          "Open your artwork page to upload a file or respond to feedback.",
+        stage: 0,
+      };
 
     case "awaiting-payment":
-      return "The job has been reviewed and is waiting for payment.";
+      return {
+        title: "Your final price is ready.",
+        description:
+          "Review the confirmed total below. Payment instructions will be provided separately.",
+        stage: 1,
+      };
 
     case "confirmed":
-      return "The order has been confirmed and is ready for production.";
+      return {
+        title: "Your order is confirmed.",
+        description:
+          "Everything is being prepared for production.",
+        stage: 1,
+      };
 
     case "in-production":
-      return "Your job is currently being produced.";
+      return {
+        title: "Your order is taking shape.",
+        description:
+          "Production is underway. We’ll update your order when it is ready.",
+        stage: 2,
+      };
 
     case "ready":
-      return "Production is complete and your order is ready.";
+      return {
+        title: "Your order is ready.",
+        description:
+          "Collection or delivery arrangements will be confirmed.",
+        stage: 3,
+      };
 
     case "dispatched":
-      return "Your finished order has been dispatched.";
+      return {
+        title: "Your order is on its way.",
+        description:
+          "Your finished order has been dispatched.",
+        stage: 3,
+      };
 
     case "completed":
-      return "This order has been completed.";
+      return {
+        title: "All done.",
+        description:
+          "Your order is complete. Thank you for choosing NewJersey.ng.",
+        stage: 4,
+      };
 
     case "cancelled":
-      return "This production request has been cancelled.";
+      return {
+        title: "This order is cancelled.",
+        description:
+          "Contact us with your order reference if you need help.",
+        stage: -1,
+      };
 
     default:
-      return "Order status updated.";
+      return {
+        title: "Your order update.",
+        description:
+          "You’ll find the latest order details here.",
+        stage: -1,
+      };
   }
 }
 
-function getStatusIndex(
-  status: OrderStatus
-) {
-  return STATUS_ORDER.indexOf(
-    status
-  );
-}
+function selections(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
 
-function artworkIsComplete(
-  artwork: ArtworkRecord
-) {
-  return [
-    "uploaded",
-    "reviewing",
-    "approved",
-  ].includes(
-    artwork.status
-  );
-}
-
-export default async function OrderDetailsPage({
-  params,
-}: PageProps) {
-  const { id } =
-    await params;
-
-  const rawId =
-    decodeURIComponent(
-      id
-    ).trim();
-
-  const supabase =
-    getSupabaseAdmin();
-
-  const isUuid =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      rawId
-    );
-
-  let query = supabase
-    .from("orders")
-    .select(
-      `
-        id,
-        order_number,
-
-        customer_full_name,
-        customer_phone,
-        customer_email,
-        customer_organization,
-
-        delivery_method,
-        delivery_state,
-        delivery_city,
-        delivery_address,
-        delivery_landmark,
-
-        project_name,
-        preferred_deadline,
-        production_instructions,
-
-        item_count,
-
-        subtotal,
-        design_fee,
-        delivery_fee,
-        final_total,
-
-        status,
-
-        created_at,
-        updated_at,
-
-        order_items (
-          id,
-          cart_item_id,
-          product_id,
-          product_slug,
-          product_name,
-          product_image,
-
-          quantity,
-
-          base_price,
-          options_total,
-          unit_price,
-          total_price,
-
-          selections,
-
-          artwork_type,
-          design_fee,
-
-          created_at,
-
-          order_artworks (
-            id,
-            file_name,
-            storage_path,
-            mime_type,
-            file_size,
-            status,
-            notes,
-            created_at,
-            updated_at
-          )
-        )
-      `
-    );
-
-  if (isUuid) {
-    query =
-      query.eq(
-        "id",
-        rawId
-      );
-  } else {
-    query =
-      query.eq(
-        "order_number",
-        rawId.toUpperCase()
-      );
-  }
-
-  const {
-    data,
-    error,
-  } =
-    await query.maybeSingle();
-
-  const order =
-    data as Order | null;
-
-  if (
-    error ||
-    !order
-  ) {
-    if (error) {
-      console.error(
-        "[NewJersey] order page error",
-        error
-      );
+  return value.flatMap((entry) => {
+    if (
+      typeof entry !== "object" ||
+      entry === null ||
+      typeof entry.optionLabel !== "string" ||
+      typeof entry.choiceLabel !== "string"
+    ) {
+      return [];
     }
 
-    return (
-      <main className="min-h-screen bg-[#f7f7f5] px-5 py-16 text-[#222] sm:px-8">
-        <div className="mx-auto max-w-5xl">
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-[#777] transition hover:text-[#FF6B00]"
-          >
-            <ArrowLeft
-              size={15}
-            />
-
-            Back to shop
-          </Link>
-
-          <div className="mt-16 max-w-lg">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
-              <Package
-                size={23}
-                className="text-[#FF6B00]"
-              />
-            </div>
-
-            <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.17em] text-[#FF6B00]">
-              NewJersey Order
-            </p>
-
-            <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em]">
-              Order not found.
-            </h1>
-
-            <p className="mt-3 text-sm leading-6 text-[#777]">
-              We couldn&apos;t
-              find an order
-              matching{" "}
-              <span className="font-semibold text-[#444]">
-                {rawId}
-              </span>
-              .
-            </p>
-
-            <Link
-              href="/shop"
-              className="mt-7 inline-flex items-center justify-center rounded-xl bg-[#222] px-5 py-3 text-xs font-bold text-white transition hover:bg-[#FF6B00]"
-            >
-              Return to shop
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const orderItems =
-    order.order_items ??
-    [];
-
-  const subtotal =
-    numberValue(
-      order.subtotal
-    );
-
-  const designFee =
-    numberValue(
-      order.design_fee
-    );
-
-  const deliveryFee =
-    numberValue(
-      order.delivery_fee
-    );
-
-  const finalTotal =
-    order.final_total ===
-    null
-      ? null
-      : numberValue(
-          order.final_total
-        );
-
-  const estimatedTotal =
-    subtotal +
-    designFee +
-    deliveryFee;
-
-  const currentStatusIndex =
-    getStatusIndex(
-      order.status
-    );
-
-  const customerSuppliedArtwork =
-    orderItems.filter(
-      (item) =>
-        item.artwork_type ===
-        "customer-supplied"
-    );
-
-  const designNeeded =
-    orderItems.filter(
-      (item) =>
-        item.artwork_type ===
-        "design-needed"
-    );
-
-  const artworkRecords =
-    customerSuppliedArtwork.flatMap(
-      (item) =>
-        item.order_artworks ??
-        []
-    );
-
-  const completedArtworkCount =
-    artworkRecords.filter(
-      artworkIsComplete
-    ).length;
-
-  const pendingArtworkCount =
-    Math.max(
-      artworkRecords.length -
-        completedArtworkCount,
-      0
-    );
-
-  return (
-    <main className="min-h-screen bg-[#f7f7f5] text-[#222]">
-      <div className="mx-auto w-[92%] max-w-[1440px] py-8 sm:py-12">
-        {/* TOP */}
-
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Link
-            href="/shop"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-[#777] transition hover:text-[#FF6B00]"
-          >
-            <ArrowLeft
-              size={15}
-            />
-
-            Back to shop
-          </Link>
-
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#aaa]">
-            NewJersey.ng
-          </span>
-        </div>
-
-        {/* HERO */}
-
-        <section className="mt-8 rounded-[30px] bg-[#222] p-6 text-white sm:p-8 lg:p-10">
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/[0.07] px-3 py-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#FF6B00]" />
-
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
-                  {formatStatus(
-                    order.status
-                  )}
-                </span>
-              </div>
-
-              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF8A33]">
-                Production order
-              </p>
-
-              <h1 className="mt-2 max-w-3xl text-3xl font-bold tracking-[-0.045em] sm:text-4xl lg:text-5xl">
-                {
-                  order.project_name
-                }
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-white/55">
-                {getStatusDescription(
-                  order.status
-                )}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-5 py-4">
-              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-white/40">
-                Order reference
-              </p>
-
-              <p className="mt-1 font-mono text-lg font-bold">
-                {
-                  order.order_number
-                }
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* MAIN */}
-
-        <div className="mt-7 grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_370px]">
-          <div className="space-y-7">
-            {/* PROGRESS */}
-
-            <SectionCard>
-              <SectionHeading
-                eyebrow="Production"
-                title="Order progress"
-                description="Follow this job from review through production and delivery."
-              />
-
-              {order.status ===
-              "cancelled" ? (
-                <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5">
-                  <p className="text-sm font-bold text-red-700">
-                    Order
-                    cancelled
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-red-600/70">
-                    This production
-                    request is no
-                    longer active.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <TimelineCard
-                    number="01"
-                    title="Review"
-                    description="Specifications and artwork are checked."
-                    complete={
-                      currentStatusIndex >
-                      1
-                    }
-                    active={[
-                      "submitted",
-                      "under-review",
-                      "awaiting-artwork",
-                    ].includes(
-                      order.status
-                    )}
-                  />
-
-                  <TimelineCard
-                    number="02"
-                    title="Confirmation"
-                    description="Pricing and production are confirmed."
-                    complete={
-                      currentStatusIndex >
-                      4
-                    }
-                    active={[
-                      "awaiting-payment",
-                      "confirmed",
-                    ].includes(
-                      order.status
-                    )}
-                  />
-
-                  <TimelineCard
-                    number="03"
-                    title="Production"
-                    description="Your approved job is produced."
-                    complete={
-                      currentStatusIndex >
-                      5
-                    }
-                    active={
-                      order.status ===
-                      "in-production"
-                    }
-                  />
-
-                  <TimelineCard
-                    number="04"
-                    title={
-                      order.delivery_method ===
-                      "pickup"
-                        ? "Ready"
-                        : "Delivery"
-                    }
-                    description={
-                      order.delivery_method ===
-                      "pickup"
-                        ? "Your finished job is ready for collection."
-                        : "Your finished order moves to delivery."
-                    }
-                    complete={
-                      order.status ===
-                      "completed"
-                    }
-                    active={[
-                      "ready",
-                      "dispatched",
-                    ].includes(
-                      order.status
-                    )}
-                  />
-                </div>
-              )}
-            </SectionCard>
-
-            {/* JOBS */}
-
-            <SectionCard>
-              <SectionHeading
-                eyebrow="Production jobs"
-                title={`${orderItems.length} configured ${
-                  orderItems.length ===
-                  1
-                    ? "job"
-                    : "jobs"
-                }`}
-                description="These are the product configurations attached to this production order."
-              />
-
-              <div className="mt-7 space-y-4">
-                {orderItems.map(
-                  (item) => {
-                    const selections =
-                      Array.isArray(
-                        item.selections
-                      )
-                        ? item.selections
-                        : [];
-
-                    const artworks =
-                      item.order_artworks ??
-                      [];
-
-                    return (
-                      <article
-                        key={
-                          item.id
-                        }
-                        className="rounded-2xl border border-black/[0.07] p-4 sm:p-5"
-                      >
-                        <div className="flex gap-4">
-                          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[#f5f5f3]">
-                            {item.product_image ? (
-                              <Image
-                                src={
-                                  item.product_image
-                                }
-                                alt={
-                                  item.product_name
-                                }
-                                fill
-                                sizes="80px"
-                                className="object-contain p-2"
-                              />
-                            ) : (
-                              <div className="flex h-full items-center justify-center">
-                                <Package
-                                  size={
-                                    22
-                                  }
-                                  className="text-[#bbb]"
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div>
-                                <h3 className="text-sm font-bold">
-                                  {
-                                    item.product_name
-                                  }
-                                </h3>
-
-                                <p className="mt-1 text-[10px] text-[#999]">
-                                  Job
-                                  quantity:{" "}
-                                  {
-                                    item.quantity
-                                  }
-                                </p>
-                              </div>
-
-                              <p className="text-sm font-bold">
-                                {formatNGN(
-                                  item.total_price
-                                )}
-                              </p>
-                            </div>
-
-                            {selections.length >
-                              0 && (
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                {selections.map(
-                                  (
-                                    selection,
-                                    index
-                                  ) => (
-                                    <span
-                                      key={`${selection.optionId ?? index}-${selection.choiceId ?? index}`}
-                                      className="rounded-full bg-[#f5f5f3] px-3 py-1.5 text-[9px] font-semibold text-[#666]"
-                                    >
-                                      {selection.optionLabel &&
-                                        `${selection.optionLabel}: `}
-
-                                      {selection.choiceLabel ??
-                                        "Option"}
-                                    </span>
-                                  )
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* ARTWORK PER JOB */}
-
-                        <div className="mt-5 border-t border-black/[0.06] pt-5">
-                          {item.artwork_type ===
-                          "customer-supplied" ? (
-                            <div className="space-y-4">
-                              <div className="flex items-center gap-3">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff5ed] text-[#FF6B00]">
-                                  <FileCheck2
-                                    size={
-                                      16
-                                    }
-                                  />
-                                </div>
-
-                                <div>
-                                  <p className="text-xs font-bold">
-                                    Customer
-                                    artwork
-                                  </p>
-
-                                  <p className="mt-0.5 text-[9px] text-[#999]">
-                                    Upload
-                                    the
-                                    production
-                                    artwork
-                                    for
-                                    this
-                                    job.
-                                  </p>
-                                </div>
-                              </div>
-
-                              {artworks.length >
-                              0 ? (
-                                <div className="space-y-3">
-                                  {artworks.map(
-                                    (
-                                      artwork
-                                    ) => (
-                                      <ArtworkUploader
-                                        key={
-                                          artwork.id
-                                        }
-                                        orderNumber={
-                                          order.order_number
-                                        }
-                                        artworkId={
-                                          artwork.id
-                                        }
-                                        currentStatus={
-                                          artwork.status
-                                        }
-                                        currentFileName={
-                                          artwork.file_name
-                                        }
-                                      />
-                                    )
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3">
-                                  <p className="text-[10px] font-semibold text-red-600">
-                                    Artwork
-                                    record
-                                    missing
-                                    for
-                                    this
-                                    job.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff5ed] text-[#FF6B00]">
-                                <Palette
-                                  size={
-                                    16
-                                  }
-                                />
-                              </div>
-
-                              <div>
-                                <p className="text-xs font-bold">
-                                  Design
-                                  support
-                                </p>
-
-                                <p className="mt-0.5 text-[9px] text-[#999]">
-                                  NewJersey
-                                  will
-                                  review
-                                  the
-                                  design
-                                  requirements
-                                  for
-                                  this
-                                  job.
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  }
-                )}
-              </div>
-            </SectionCard>
-
-            {/* ARTWORK OVERVIEW */}
-
-            {(customerSuppliedArtwork.length >
-              0 ||
-              designNeeded.length >
-                0) && (
-              <SectionCard>
-                <SectionHeading
-                  eyebrow="Artwork"
-                  title="Artwork requirements"
-                  description="Artwork and design requirements are reviewed before production begins."
-                />
-
-                <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {customerSuppliedArtwork.length >
-                    0 && (
-                    <InfoPanel
-                      icon={
-                        <FileCheck2
-                          size={18}
-                        />
-                      }
-                      title="Customer artwork"
-                      value={`${customerSuppliedArtwork.length} ${
-                        customerSuppliedArtwork.length ===
-                        1
-                          ? "job"
-                          : "jobs"
-                      }`}
-                      description="These jobs require artwork supplied by the customer."
-                    />
-                  )}
-
-                  {artworkRecords.length >
-                    0 && (
-                    <InfoPanel
-                      icon={
-                        <CheckCircle2
-                          size={18}
-                        />
-                      }
-                      title="Files received"
-                      value={`${completedArtworkCount}/${artworkRecords.length}`}
-                      description={
-                        pendingArtworkCount >
-                        0
-                          ? `${pendingArtworkCount} artwork file${
-                              pendingArtworkCount ===
-                              1
-                                ? ""
-                                : "s"
-                            } still pending.`
-                          : "All required artwork files have been received."
-                      }
-                    />
-                  )}
-
-                  {designNeeded.length >
-                    0 && (
-                    <InfoPanel
-                      icon={
-                        <Palette
-                          size={18}
-                        />
-                      }
-                      title="Design support"
-                      value={`${designNeeded.length} ${
-                        designNeeded.length ===
-                        1
-                          ? "job"
-                          : "jobs"
-                      }`}
-                      description="NewJersey design support was requested for these jobs."
-                    />
-                  )}
-                </div>
-
-                {order.status ===
-                  "awaiting-artwork" &&
-                  pendingArtworkCount >
-                    0 && (
-                    <div className="mt-5 rounded-2xl bg-[#fff7f0] p-5">
-                      <div className="flex gap-3">
-                        <FileText
-                          size={18}
-                          className="mt-0.5 shrink-0 text-[#FF6B00]"
-                        />
-
-                        <div>
-                          <p className="text-xs font-bold">
-                            Artwork
-                            upload is
-                            required.
-                          </p>
-
-                          <p className="mt-1 text-[10px] leading-5 text-[#777]">
-                            Upload
-                            the
-                            remaining{" "}
-                            {
-                              pendingArtworkCount
-                            }{" "}
-                            artwork{" "}
-                            {pendingArtworkCount ===
-                            1
-                              ? "file"
-                              : "files"}{" "}
-                            above.
-                            Once all
-                            required
-                            artwork is
-                            received,
-                            the job can
-                            move into
-                            review.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                {artworkRecords.length >
-                  0 &&
-                  pendingArtworkCount ===
-                    0 && (
-                    <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
-                      <div className="flex gap-3">
-                        <CheckCircle2
-                          size={18}
-                          className="mt-0.5 shrink-0 text-emerald-600"
-                        />
-
-                        <div>
-                          <p className="text-xs font-bold text-emerald-800">
-                            Artwork
-                            received.
-                          </p>
-
-                          <p className="mt-1 text-[10px] leading-5 text-emerald-700/70">
-                            All
-                            required
-                            customer
-                            artwork
-                            files have
-                            been
-                            uploaded.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-              </SectionCard>
-            )}
-
-            {/* CUSTOMER + DELIVERY */}
-
-            <div className="grid gap-7 xl:grid-cols-2">
-              <SectionCard>
-                <SectionHeading
-                  eyebrow="Customer"
-                  title="Contact details"
-                />
-
-                <div className="mt-6 space-y-4">
-                  <DetailRow
-                    icon={
-                      <UserRound
-                        size={15}
-                      />
-                    }
-                    label="Name"
-                    value={
-                      order.customer_full_name
-                    }
-                  />
-
-                  <DetailRow
-                    icon={
-                      <Mail
-                        size={15}
-                      />
-                    }
-                    label="Email"
-                    value={
-                      order.customer_email
-                    }
-                  />
-
-                  <DetailRow
-                    icon={
-                      <Phone
-                        size={15}
-                      />
-                    }
-                    label="Phone"
-                    value={
-                      order.customer_phone
-                    }
-                  />
-
-                  {order.customer_organization && (
-                    <DetailRow
-                      icon={
-                        <Building2
-                          size={15}
-                        />
-                      }
-                      label="Organisation"
-                      value={
-                        order.customer_organization
-                      }
-                    />
-                  )}
-                </div>
-              </SectionCard>
-
-              <SectionCard>
-                <SectionHeading
-                  eyebrow="Fulfilment"
-                  title={
-                    order.delivery_method ===
-                    "delivery"
-                      ? "Delivery"
-                      : "Pickup"
-                  }
-                />
-
-                <div className="mt-6 space-y-4">
-                  <DetailRow
-                    icon={
-                      order.delivery_method ===
-                      "delivery" ? (
-                        <Truck
-                          size={15}
-                        />
-                      ) : (
-                        <Store
-                          size={15}
-                        />
-                      )
-                    }
-                    label="Method"
-                    value={
-                      order.delivery_method ===
-                      "delivery"
-                        ? "Delivery"
-                        : "Pickup"
-                    }
-                  />
-
-                  {order.delivery_method ===
-                    "delivery" && (
-                    <>
-                      <DetailRow
-                        icon={
-                          <MapPin
-                            size={15}
-                          />
-                        }
-                        label="Location"
-                        value={[
-                          order.delivery_city,
-                          order.delivery_state,
-                        ]
-                          .filter(
-                            Boolean
-                          )
-                          .join(
-                            ", "
-                          )}
-                      />
-
-                      <DetailRow
-                        icon={
-                          <MapPin
-                            size={15}
-                          />
-                        }
-                        label="Address"
-                        value={
-                          order.delivery_address ??
-                          "—"
-                        }
-                      />
-
-                      {order.delivery_landmark && (
-                        <DetailRow
-                          icon={
-                            <MapPin
-                              size={
-                                15
-                              }
-                            />
-                          }
-                          label="Landmark"
-                          value={
-                            order.delivery_landmark
-                          }
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-              </SectionCard>
-            </div>
-
-            {/* BRIEF */}
-
-            <SectionCard>
-              <SectionHeading
-                eyebrow="Brief"
-                title="Production brief"
-              />
-
-              <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                <DetailRow
-                  icon={
-                    <ReceiptText
-                      size={15}
-                    />
-                  }
-                  label="Project"
-                  value={
-                    order.project_name
-                  }
-                />
-
-                <DetailRow
-                  icon={
-                    <CalendarDays
-                      size={15}
-                    />
-                  }
-                  label="Preferred deadline"
-                  value={formatDate(
-                    order.preferred_deadline
-                  )}
-                />
-              </div>
-
-              {order.production_instructions && (
-                <div className="mt-6 rounded-2xl bg-[#f7f7f5] p-5">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#999]">
-                    Production
-                    notes
-                  </p>
-
-                  <p className="mt-2 whitespace-pre-wrap text-xs leading-6 text-[#555]">
-                    {
-                      order.production_instructions
-                    }
-                  </p>
-                </div>
-              )}
-            </SectionCard>
-          </div>
-
-          {/* SIDEBAR */}
-
-          <aside className="space-y-4 lg:sticky lg:top-8">
-            <div className="rounded-[26px] border border-black/[0.06] bg-white p-6">
-              <div className="flex items-center gap-2">
-                <CircleDollarSign
-                  size={16}
-                  className="text-[#FF6B00]"
-                />
-
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#999]">
-                  Order summary
-                </p>
-              </div>
-
-              <div className="mt-6 space-y-4">
-                <PriceRow
-                  label="Production"
-                  value={formatNGN(
-                    subtotal
-                  )}
-                />
-
-                <PriceRow
-                  label="Design"
-                  value={
-                    designFee > 0
-                      ? formatNGN(
-                          designFee
-                        )
-                      : designNeeded.length >
-                          0
-                        ? "Pending"
-                        : formatNGN(
-                            0
-                          )
-                  }
-                />
-
-                <PriceRow
-                  label="Delivery"
-                  value={
-                    order.delivery_method ===
-                    "pickup"
-                      ? formatNGN(
-                          0
-                        )
-                      : deliveryFee >
-                          0
-                        ? formatNGN(
-                            deliveryFee
-                          )
-                        : "Pending"
-                  }
-                />
-              </div>
-
-              <div className="mt-6 border-t border-black/[0.07] pt-5">
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#999]">
-                      {finalTotal !==
-                      null
-                        ? "Final total"
-                        : "Current estimate"}
-                    </p>
-
-                    <p className="mt-1 text-2xl font-bold tracking-[-0.04em]">
-                      {formatNGN(
-                        finalTotal ??
-                          estimatedTotal
-                      )}
-                    </p>
-                  </div>
-
-                  {finalTotal !==
-                    null && (
-                    <CheckCircle2
-                      size={20}
-                      className="text-[#FF6B00]"
-                    />
-                  )}
-                </div>
-
-                {finalTotal ===
-                  null && (
-                  <p className="mt-3 text-[9px] leading-4 text-[#999]">
-                    Final
-                    pricing has
-                    not been
-                    confirmed
-                    yet.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* ARTWORK SIDEBAR */}
-
-            {customerSuppliedArtwork.length >
-              0 && (
-              <div className="rounded-[26px] border border-black/[0.06] bg-white p-6">
-                <div className="flex items-center gap-3">
-                  <FileCheck2
-                    size={18}
-                    className="text-[#FF6B00]"
-                  />
-
-                  <div>
-                    <p className="text-xs font-bold">
-                      Artwork
-                    </p>
-
-                    <p className="mt-1 text-[9px] text-[#999]">
-                      {
-                        completedArtworkCount
-                      }
-                      /
-                      {
-                        artworkRecords.length
-                      }{" "}
-                      received
-                    </p>
-                  </div>
-                </div>
-
-                {artworkRecords.length >
-                  0 && (
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#eee]">
-                    <div
-                      className="h-full rounded-full bg-[#FF6B00] transition-all"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          Math.round(
-                            (completedArtworkCount /
-                              artworkRecords.length) *
-                              100
-                          )
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                )}
-
-                <p className="mt-4 text-[9px] leading-4 text-[#999]">
-                  {pendingArtworkCount >
-                  0
-                    ? `${pendingArtworkCount} artwork file${
-                        pendingArtworkCount ===
-                        1
-                          ? ""
-                          : "s"
-                      } still required.`
-                    : "All required artwork has been received."}
-                </p>
-              </div>
-            )}
-
-            {/* STATUS */}
-
-            <div className="rounded-[26px] bg-[#222] p-6 text-white">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#FF8A33]">
-                Current status
-              </p>
-
-              <h2 className="mt-3 text-lg font-bold">
-                {formatStatus(
-                  order.status
-                )}
-              </h2>
-
-              <p className="mt-2 text-[10px] leading-5 text-white/60">
-                {getStatusDescription(
-                  order.status
-                )}
-              </p>
-
-              <div className="mt-5 border-t border-white/10 pt-5">
-                <div className="flex items-center gap-2 text-[9px] text-white/40">
-                  <Clock3
-                    size={13}
-                  />
-
-                  Last updated{" "}
-                  {formatDateTime(
-                    order.updated_at
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* REFERENCE */}
-
-            <div className="rounded-[26px] border border-black/[0.06] bg-white p-6">
-              <div className="flex items-center gap-3">
-                <PackageCheck
-                  size={18}
-                  className="text-[#FF6B00]"
-                />
-
-                <div>
-                  <p className="text-xs font-bold">
-                    Order
-                    reference
-                  </p>
-
-                  <p className="mt-1 font-mono text-[11px] text-[#777]">
-                    {
-                      order.order_number
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <p className="mt-4 text-[9px] leading-4 text-[#999]">
-                Keep this
-                reference when
-                contacting
-                NewJersey about
-                this production
-                job.
-              </p>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </main>
-  );
+    return [`${entry.optionLabel}: ${entry.choiceLabel}`];
+  });
 }
 
-/* =========================================================
-   COMPONENTS
-========================================================= */
-
-function SectionCard({
+function Section({
+  number,
+  title,
   children,
 }: {
+  number: string;
+  title: string;
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[26px] border border-black/[0.06] bg-white p-5 sm:p-7">
+    <section className="border-t border-black/10 py-8 sm:py-10">
+      <div className="mb-6 flex items-center gap-3">
+        <span className="text-xs font-medium text-[#948D82]">
+          {number}
+        </span>
+
+        <h2 className="text-lg font-semibold tracking-tight">
+          {title}
+        </h2>
+      </div>
+
       {children}
     </section>
   );
 }
 
-function SectionHeading({
-  eyebrow,
+function Detail({
   title,
-  description,
+  children,
 }: {
-  eyebrow: string;
   title: string;
-  description?: string;
+  children: ReactNode;
 }) {
   return (
-    <div>
-      <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#FF6B00]">
-        {eyebrow}
-      </p>
-
-      <h2 className="mt-2 text-xl font-bold tracking-[-0.03em]">
+    <div className="min-w-0">
+      <dt className="text-xs text-[#7A7368]">
         {title}
-      </h2>
+      </dt>
 
-      {description && (
-        <p className="mt-2 max-w-2xl text-xs leading-5 text-[#888]">
-          {description}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function TimelineCard({
-  number,
-  title,
-  description,
-  active = false,
-  complete = false,
-}: {
-  number: string;
-  title: string;
-  description: string;
-  active?: boolean;
-  complete?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-2xl border p-4 ${
-        active
-          ? "border-[#FF6B00]/30 bg-[#fff7f0]"
-          : complete
-            ? "border-black/[0.07] bg-[#f7f7f5]"
-            : "border-black/[0.06] bg-white"
-      }`}
-    >
-      <div
-        className={`flex h-8 w-8 items-center justify-center rounded-xl text-[9px] font-bold ${
-          complete
-            ? "bg-[#222] text-white"
-            : active
-              ? "bg-[#FF6B00] text-white"
-              : "bg-[#f2f2f0] text-[#999]"
-        }`}
-      >
-        {complete ? (
-          <Check size={14} />
-        ) : (
-          number
-        )}
-      </div>
-
-      <p className="mt-4 text-xs font-bold">
-        {title}
-      </p>
-
-      <p className="mt-1.5 text-[9px] leading-4 text-[#999]">
-        {description}
-      </p>
-    </div>
-  );
-}
-
-function DetailRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex gap-3">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f5f5f3] text-[#777]">
-        {icon}
-      </div>
-
-      <div className="min-w-0">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#aaa]">
-          {label}
-        </p>
-
-        <p className="mt-1 break-words text-xs font-semibold text-[#444]">
-          {value || "—"}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function InfoPanel({
-  icon,
-  title,
-  value,
-  description,
-}: {
-  icon: ReactNode;
-  title: string;
-  value: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-[#f7f7f5] p-5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#FF6B00]">
-        {icon}
-      </div>
-
-      <p className="mt-4 text-xs font-bold">
-        {title}
-      </p>
-
-      <p className="mt-1 text-lg font-bold tracking-[-0.03em]">
-        {value}
-      </p>
-
-      <p className="mt-2 text-[9px] leading-4 text-[#999]">
-        {description}
-      </p>
+      <dd className="mt-2 break-words whitespace-pre-wrap text-sm leading-7">
+        {children || "Not provided"}
+      </dd>
     </div>
   );
 }
 
 function PriceRow({
-  label,
+  title,
   value,
 }: {
-  label: string;
+  title: string;
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-xs text-[#777]">
-        {label}
-      </span>
+    <div className="flex items-start justify-between gap-5 text-sm">
+      <dt className="text-[#625D55]">{title}</dt>
+      <dd className="text-right font-medium">{value}</dd>
+    </div>
+  );
+}
 
-      <span className="text-xs font-bold">
-        {value}
-      </span>
+export default async function OrderDetailsPage({
+  params,
+}: Props) {
+  const { Id: id } = await params;
+
+  if (typeof id !== "string" || !UUID.test(id)) {
+    notFound();
+  }
+
+  const auth = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await auth.auth.getUser();
+
+  if (authError || !user) {
+    redirect(
+      `/login?next=${encodeURIComponent(`/shop/order/${id}`)}`
+    );
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select(`
+      id,
+      order_number,
+      project_name,
+      status,
+      customer_full_name,
+      customer_phone,
+      customer_email,
+      customer_organization,
+      delivery_method,
+      delivery_state,
+      delivery_city,
+      delivery_address,
+      delivery_landmark,
+      preferred_deadline,
+      production_instructions,
+      item_count,
+      subtotal,
+      design_fee,
+      delivery_fee,
+      final_total,
+      created_at,
+      updated_at
+    `)
+    .eq("id", id)
+    .eq("customer_id", user.id)
+    .maybeSingle();
+
+  if (orderError) {
+    console.error("[Customer order]", orderError);
+    throw new Error("Unable to load your order.");
+  }
+
+  if (!order) notFound();
+
+  const [itemsResult, artworksResult] = await Promise.all([
+    supabase
+      .from("order_items")
+      .select(`
+        id,
+        product_name,
+        quantity,
+        unit_price,
+        total_price,
+        design_fee,
+        artwork_type,
+        selections
+      `)
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true }),
+
+    supabase
+      .from("order_artworks")
+      .select(`
+        id,
+        order_item_id,
+        status,
+        file_name,
+        notes,
+        updated_at
+      `)
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true }),
+  ]);
+
+  if (itemsResult.error || artworksResult.error) {
+    console.error("[Customer order details]", {
+      itemsError: itemsResult.error,
+      artworksError: artworksResult.error,
+    });
+
+    throw new Error("Unable to load your order details.");
+  }
+
+  const items = itemsResult.data ?? [];
+  const artworks = artworksResult.data ?? [];
+
+  const pickup = order.delivery_method === "pickup";
+  const pricingConfirmed = order.final_total !== null;
+  const state = getOrderState(order.status);
+
+  const production = parseMoney(order.subtotal);
+  const designFee = parseMoney(order.design_fee);
+
+  const estimate =
+    production !== null && designFee !== null
+      ? Math.round((production + designFee) * 100) / 100
+      : null;
+
+  const hasCustomerArtwork = items.some(
+    (item) => item.artwork_type === "customer-supplied"
+  );
+
+  const steps = [
+    "Review",
+    "Confirmation",
+    "Production",
+    pickup ? "Collection" : "Delivery",
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#F4F1E9] text-[#181818]">
+      <header className="sticky top-0 z-[100] w-full">
+        <div className="relative z-[110]">
+          <TopNav />
+        </div>
+
+        <div className="relative z-[100] bg-[#F4F1E9]/95 shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-md">
+          <DashboardHeader />
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[1280px] px-5 pb-16 pt-6 sm:px-8 sm:pb-24 lg:px-12">
+        <Link
+          href="/shop/order"
+          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-semibold text-[#625D55] transition-colors hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+        >
+          <ArrowLeft size={15} aria-hidden="true" />
+          All orders
+        </Link>
+
+        <div className="pb-9 pt-7 sm:pb-12 sm:pt-10">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#625D55]">
+            <p className="break-all font-medium">
+              {order.order_number}
+            </p>
+
+            <span
+              aria-hidden="true"
+              className="hidden h-1 w-1 rounded-full bg-[#B3AC9F] sm:block"
+            />
+
+            <p>Placed {date(order.created_at)}</p>
+          </div>
+
+          <h1 className="mt-4 max-w-3xl break-words text-4xl font-semibold leading-[1.1] tracking-[-0.055em] sm:text-5xl">
+            {order.project_name || "Your order"}
+          </h1>
+        </div>
+
+        <div className="grid items-start gap-x-12 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-x-20">
+          <div className="min-w-0">
+            <section className="border-t border-black/10 pb-9 pt-7 sm:pb-12 sm:pt-8">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-[#F58220]" />
+
+                <p className="text-xs font-semibold capitalize text-[#625D55]">
+                  {label(order.status)}
+                </p>
+              </div>
+
+              <h2 className="mt-4 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
+                {state.title}
+              </h2>
+
+              <p className="mt-3 max-w-xl text-sm leading-7 text-[#625D55]">
+                {state.description}
+              </p>
+
+              {order.status === "awaiting-artwork" &&
+                hasCustomerArtwork && (
+                  <Link
+                    href={`/shop/artwork/${order.id}`}
+                    className={`${buttonClass} mt-5`}
+                  >
+                    Open your artwork
+                    <ArrowUpRight
+                      size={16}
+                      aria-hidden="true"
+                    />
+                  </Link>
+                )}
+
+              {state.stage >= 0 && (
+                <ol className="mt-8 grid grid-cols-4 gap-2 sm:gap-4">
+                  {steps.map((step, index) => {
+                    const completed = state.stage > index;
+                    const active = state.stage === index;
+
+                    return (
+                      <li
+                        key={step}
+                        aria-current={
+                          active ? "step" : undefined
+                        }
+                      >
+                        <div
+                          className={[
+                            "h-1 rounded-full",
+                            completed
+                              ? "bg-[#181818]"
+                              : active
+                                ? "bg-[#F58220]"
+                                : "bg-black/10",
+                          ].join(" ")}
+                        />
+
+                        <p
+                          className={[
+                            "mt-3 flex min-h-8 items-start gap-1 text-[10px] leading-4 sm:text-xs",
+                            active || completed
+                              ? "font-semibold text-[#181818]"
+                              : "text-[#7A7368]",
+                          ].join(" ")}
+                        >
+                          {completed && (
+                            <Check
+                              size={12}
+                              aria-hidden="true"
+                              className="mt-0.5 hidden shrink-0 sm:block"
+                            />
+                          )}
+
+                          {step}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
+
+            <Section number="01" title="What you ordered">
+              {items.length === 0 ? (
+                <p className="text-sm leading-7 text-[#625D55]">
+                  Product details are unavailable. Contact
+                  us with your order reference.
+                </p>
+              ) : (
+                <div className="space-y-8">
+                  {items.map((item, index) => {
+                    const options = selections(
+                      item.selections
+                    );
+
+                    const itemArtworks = artworks.filter(
+                      (artwork) =>
+                        artwork.order_item_id === item.id
+                    );
+
+                    return (
+                      <article
+                        key={item.id}
+                        className={
+                          index > 0
+                            ? "border-t border-black/10 pt-8"
+                            : ""
+                        }
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-black/10">
+                            <Package
+                              size={21}
+                              strokeWidth={1.5}
+                              aria-hidden="true"
+                              className="text-[#625D55]"
+                            />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-2">
+                              <div>
+                                <h3 className="break-words text-lg font-semibold tracking-tight">
+                                  {item.product_name}
+                                </h3>
+
+                                <p className="mt-1 text-xs text-[#625D55]">
+                                  {item.quantity}{" "}
+                                  {item.quantity === 1
+                                    ? "configured job"
+                                    : "configured jobs"}
+                                </p>
+                              </div>
+
+                              <p className="text-base font-semibold">
+                                {money(item.total_price)}
+                              </p>
+                            </div>
+
+                            {options.length > 0 && (
+                              <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs leading-6 text-[#625D55]">
+                                {options.map(
+                                  (option, optionIndex) => (
+                                    <li
+                                      key={`${item.id}-${optionIndex}`}
+                                    >
+                                      {option}
+                                    </li>
+                                  )
+                                )}
+                              </ul>
+                            )}
+
+                            <p className="mt-3 text-xs leading-6 text-[#625D55]">
+                              {money(item.unit_price)} per
+                              job
+                            </p>
+
+                            {item.artwork_type && (
+                              <p className="mt-1 text-xs leading-6 text-[#625D55]">
+                                {item.artwork_type ===
+                                "customer-supplied"
+                                  ? "Your own artwork"
+                                  : "Design assistance"}
+                                {" · "}
+                                {money(item.design_fee)}{" "}
+                                design fee
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {itemArtworks.length > 0 && (
+                          <div className="mt-5 space-y-3 sm:ml-16">
+                            {itemArtworks.map((artwork) => (
+                              <div
+                                key={artwork.id}
+                                className="rounded-2xl bg-white/70 p-4 sm:p-5"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <p className="inline-flex items-center gap-2 text-xs font-semibold capitalize">
+                                    <FileCheck2
+                                      size={15}
+                                      aria-hidden="true"
+                                      className="text-[#625D55]"
+                                    />
+                                    Artwork{" "}
+                                    {label(artwork.status)}
+                                  </p>
+
+                                  {item.artwork_type ===
+                                    "customer-supplied" && (
+                                    <Link
+                                      href={`/shop/artwork/${order.id}`}
+                                      className="inline-flex min-h-8 items-center gap-1 text-xs font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+                                    >
+                                      View
+                                      <ArrowUpRight
+                                        size={13}
+                                        aria-hidden="true"
+                                      />
+                                    </Link>
+                                  )}
+                                </div>
+
+                                {artwork.file_name && (
+                                  <p className="mt-2 break-all text-xs leading-6 text-[#625D55]">
+                                    {artwork.file_name}
+                                  </p>
+                                )}
+
+                                {artwork.notes && (
+                                  <div className="mt-4 border-t border-black/10 pt-4">
+                                    <p className="text-xs font-semibold">
+                                      {artwork.status ===
+                                      "revision-required"
+                                        ? "What needs changing"
+                                        : "Feedback from our team"}
+                                    </p>
+
+                                    <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-7 text-[#625D55]">
+                                      {artwork.notes}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+
+              {hasCustomerArtwork && (
+                <Link
+                  href={`/shop/artwork/${order.id}`}
+                  className="mt-7 inline-flex min-h-11 items-center gap-2 text-xs font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+                >
+                  Artwork, uploads and feedback
+                  <ArrowUpRight
+                    size={15}
+                    aria-hidden="true"
+                  />
+                </Link>
+              )}
+            </Section>
+
+            <Section
+              number="02"
+              title={pickup ? "Collection details" : "Delivery details"}
+            >
+              {pickup ? (
+                <p className="max-w-xl text-sm leading-7 text-[#625D55]">
+                  You selected pickup. We’ll confirm where
+                  and when to collect your order once it
+                  is ready.
+                </p>
+              ) : (
+                <dl className="grid gap-6 sm:grid-cols-2">
+                  <Detail title="Delivery address">
+                    {order.delivery_address}
+                  </Detail>
+
+                  <Detail title="City and state">
+                    {[
+                      order.delivery_city,
+                      order.delivery_state,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </Detail>
+
+                  {order.delivery_landmark && (
+                    <Detail title="Landmark">
+                      {order.delivery_landmark}
+                    </Detail>
+                  )}
+                </dl>
+              )}
+            </Section>
+
+            <Section number="03" title="Your details">
+              <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+                <Detail title="Full name">
+                  {order.customer_full_name}
+                </Detail>
+
+                <Detail title="Phone">
+                  {order.customer_phone}
+                </Detail>
+
+                <Detail title="Email">
+                  {order.customer_email}
+                </Detail>
+
+                {order.customer_organization && (
+                  <Detail title="Organization">
+                    {order.customer_organization}
+                  </Detail>
+                )}
+              </dl>
+            </Section>
+
+            <Section number="04" title="Production brief">
+              <dl className="grid gap-6 sm:grid-cols-2">
+                <Detail title="Project">
+                  {order.project_name}
+                </Detail>
+
+                <Detail title="Preferred deadline">
+                  {date(order.preferred_deadline)}
+                </Detail>
+
+                <div className="sm:col-span-2">
+                  <Detail title="Instructions">
+                    {order.production_instructions}
+                  </Detail>
+                </div>
+              </dl>
+
+              <p className="mt-5 text-xs leading-6 text-[#7A7368]">
+                Preferred dates are subject to production
+                confirmation.
+              </p>
+            </Section>
+          </div>
+
+          <aside className="min-w-0 pb-8 lg:sticky lg:top-44">
+            <div className="rounded-[24px] bg-white p-6 sm:p-7">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7A7368]">
+                Order summary
+              </p>
+
+              <p className="mt-6 text-xs text-[#625D55]">
+                {pricingConfirmed
+                  ? "Confirmed total"
+                  : "Total before delivery"}
+              </p>
+
+              <p className="mt-2 break-words text-4xl font-semibold tracking-[-0.05em]">
+                {pricingConfirmed
+                  ? money(order.final_total)
+                  : money(estimate)}
+              </p>
+
+              <p className="mt-3 text-xs leading-6 text-[#7A7368]">
+                {pricingConfirmed
+                  ? "Your final order price has been confirmed."
+                  : "Final pricing will be confirmed after review."}
+              </p>
+
+              <dl className="mt-7 space-y-4 border-t border-black/10 pt-6">
+                <PriceRow
+                  title="Production"
+                  value={money(order.subtotal)}
+                />
+
+                <PriceRow
+                  title="Design assistance"
+                  value={money(order.design_fee)}
+                />
+
+                <PriceRow
+                  title={pickup ? "Pickup" : "Delivery"}
+                  value={
+                    pickup
+                      ? money(0)
+                      : pricingConfirmed
+                        ? money(order.delivery_fee)
+                        : "To be confirmed"
+                  }
+                />
+
+                <PriceRow
+                  title="Configured jobs"
+                  value={String(order.item_count)}
+                />
+              </dl>
+
+              {order.status === "awaiting-payment" && (
+                <div className="mt-6 border-t border-black/10 pt-5">
+                  <p className="text-sm font-semibold">
+                    Ready for payment
+                  </p>
+
+                  <p className="mt-2 text-xs leading-6 text-[#625D55]">
+                    Payment instructions will be provided
+                    separately.
+                  </p>
+                </div>
+              )}
+
+              {hasCustomerArtwork &&
+                order.status === "awaiting-artwork" && (
+                  <Link
+                    href={`/shop/artwork/${order.id}`}
+                    className={`${buttonClass} mt-6 w-full`}
+                  >
+                    Manage artwork
+                    <ArrowUpRight
+                      size={16}
+                      aria-hidden="true"
+                    />
+                  </Link>
+                )}
+
+              {!pricingConfirmed && !pickup && (
+                <p className="mt-6 text-xs leading-6 text-[#7A7368]">
+                  Delivery is excluded from the total
+                  shown above.
+                </p>
+              )}
+            </div>
+
+            <div className="px-1 pt-6">
+              <p className="text-xs font-semibold">
+                Need help with this order?
+              </p>
+
+              <a
+                href={`mailto:hello@newjersey.ng?subject=${encodeURIComponent(
+                  `Order ${order.order_number}`
+                )}`}
+                className="mt-2 inline-flex min-h-9 items-center gap-2 text-xs text-[#625D55] underline decoration-black/20 underline-offset-4 hover:text-[#181818]"
+              >
+                Contact our team
+                <ArrowUpRight
+                  size={14}
+                  aria-hidden="true"
+                />
+              </a>
+
+              <p className="mt-4 text-[11px] leading-6 text-[#7A7368]">
+                Last updated {date(order.updated_at, true)}
+              </p>
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

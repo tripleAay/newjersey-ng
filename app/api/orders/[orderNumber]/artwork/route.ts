@@ -1,567 +1,368 @@
-import {
-  type NextRequest,
-  NextResponse,
-} from "next/server";
+import { randomUUID } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
 
-import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
 
-export const runtime =
-  "nodejs";
+export const runtime = "nodejs";
 
-const BUCKET =
-  "order-artwork";
+const BUCKET = "newjersey-order-artworks";
+const MAX_BYTES = 20 * 1024 * 1024;
 
-const MAX_FILE_SIZE =
-  15 * 1024 * 1024;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const ALLOWED_TYPES =
-  new Set([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "application/pdf",
-  ]);
-
-type RouteContext = {
+type Context = {
   params: Promise<{
     orderNumber: string;
   }>;
 };
 
-function sanitizeFileName(
-  fileName: string
-) {
-  const extension =
-    fileName
-      .split(".")
-      .pop()
-      ?.toLowerCase() ??
-    "";
+function detectFile(bytes: Uint8Array) {
+  if (
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46 &&
+    bytes[4] === 0x2d
+  ) {
+    return {
+      mime: "application/pdf",
+      extension: "pdf",
+    };
+  }
 
-  const base =
-    fileName
-      .replace(
-        /\.[^/.]+$/,
-        ""
-      )
-      .trim()
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9-_]+/g,
-        "-"
-      )
-      .replace(
-        /-+/g,
-        "-"
-      )
-      .replace(
-        /^-|-$/g,
-        ""
-      )
-      .slice(
-        0,
-        80
-      ) || "artwork";
+  if (
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return {
+      mime: "image/jpeg",
+      extension: "jpg",
+    };
+  }
 
-  return extension
-    ? `${base}.${extension}`
-    : base;
+  const pngSignature = [
+    137, 80, 78, 71, 13, 10, 26, 10,
+  ];
+
+  if (
+    pngSignature.every(
+      (value, index) => bytes[index] === value
+    )
+  ) {
+    return {
+      mime: "image/png",
+      extension: "png",
+    };
+  }
+
+  const decoder = new TextDecoder();
+
+  if (
+    decoder.decode(bytes.slice(0, 4)) === "RIFF" &&
+    decoder.decode(bytes.slice(8, 12)) === "WEBP"
+  ) {
+    return {
+      mime: "image/webp",
+      extension: "webp",
+    };
+  }
+
+  return null;
 }
 
 export async function POST(
   request: NextRequest,
-  {
-    params,
-  }: RouteContext
+  context: Context
 ) {
   try {
-    const {
-      orderNumber,
-    } =
-      await params;
+    const origin = request.headers.get("origin");
 
-    const normalizedOrderNumber =
-      decodeURIComponent(
-        orderNumber
-      )
-        .trim()
-        .toUpperCase();
-
-    const formData =
-      await request.formData();
-
-    const file =
-      formData.get(
-        "file"
-      );
-
-    const artworkId =
-      formData
-        .get(
-          "artworkId"
-        )
-        ?.toString()
-        .trim();
-
-    if (
-      !artworkId
-    ) {
+    if (origin && origin !== request.nextUrl.origin) {
       return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "Artwork record is required.",
-        },
-        {
-          status: 400,
-        }
+        { message: "Invalid request origin." },
+        { status: 403 }
       );
     }
 
-    if (
-      !(file instanceof
-        File)
-    ) {
+    const { orderNumber: id } = await context.params;
+
+    if (!UUID.test(id)) {
       return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "Select an artwork file.",
-        },
-        {
-          status: 400,
-        }
+        { message: "Order not found." },
+        { status: 404 }
       );
     }
 
-    if (
-      file.size <=
-      0
-    ) {
-      return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "The selected file is empty.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (
-      file.size >
-      MAX_FILE_SIZE
-    ) {
-      return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "Artwork must be 15 MB or smaller.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (
-      !ALLOWED_TYPES.has(
-        file.type
-      )
-    ) {
-      return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "Upload a JPG, PNG, WebP or PDF file.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const supabase =
-      getSupabaseAdmin();
+    const auth = await createClient();
 
     const {
-      data: order,
-      error:
-        orderError,
-    } =
+      data: { user },
+      error: authError,
+    } = await auth.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        {
+          message:
+            "Please sign in to upload your artwork.",
+        },
+        { status: 401 }
+      );
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    const { data: order, error: orderError } =
       await supabase
-        .from(
-          "orders"
-        )
-        .select(
-          "id, order_number, status"
-        )
-        .eq(
-          "order_number",
-          normalizedOrderNumber
-        )
+        .from("orders")
+        .select("id, status")
+        .eq("id", id)
+        .eq("customer_id", user.id)
         .maybeSingle();
 
-    if (
-      orderError ||
-      !order
-    ) {
-      console.error(
-        "[NewJersey] order lookup:",
-        orderError
-      );
+    if (orderError) throw orderError;
 
+    if (!order) {
       return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "Order not found.",
-        },
-        {
-          status: 404,
-        }
+        { message: "Order not found." },
+        { status: 404 }
       );
     }
 
-    const {
-      data:
-        artwork,
-      error:
-        artworkError,
-    } =
+    if (
+      ![
+        "submitted",
+        "under-review",
+        "awaiting-artwork",
+      ].includes(order.status)
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Artwork uploads are closed for this order.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const contentLength = Number(
+      request.headers.get("content-length")
+    );
+
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > MAX_BYTES + 1024 * 1024
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "Choose a file no larger than 20 MB.",
+        },
+        { status: 413 }
+      );
+    }
+
+    let form: FormData;
+
+    try {
+      form = await request.formData();
+    } catch {
+      return NextResponse.json(
+        { message: "Invalid upload request." },
+        { status: 400 }
+      );
+    }
+
+    const artworkId = form.get("artworkId");
+    const file = form.get("file");
+
+    if (
+      typeof artworkId !== "string" ||
+      !UUID.test(artworkId) ||
+      !(file instanceof File)
+    ) {
+      return NextResponse.json(
+        { message: "Choose a valid artwork file." },
+        { status: 400 }
+      );
+    }
+
+    if (file.size === 0 || file.size > MAX_BYTES) {
+      return NextResponse.json(
+        {
+          message:
+            "Choose a non-empty file no larger than 20 MB.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data: artwork, error: artworkError } =
       await supabase
-        .from(
-          "order_artworks"
-        )
+        .from("order_artworks")
         .select(
-          `
-            id,
-            order_id,
-            order_item_id,
-            storage_path,
-            status
-          `
+          "id, status, updated_at, order_item_id"
         )
-        .eq(
-          "id",
-          artworkId
-        )
-        .eq(
-          "order_id",
-          order.id
-        )
+        .eq("id", artworkId)
+        .eq("order_id", order.id)
         .maybeSingle();
 
-    if (
-      artworkError ||
-      !artwork
-    ) {
-      console.error(
-        "[NewJersey] artwork lookup:",
-        artworkError
-      );
+    if (artworkError) throw artworkError;
 
+    if (!artwork || !artwork.order_item_id) {
       return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "Artwork request not found for this order.",
-        },
-        {
-          status: 404,
-        }
+        { message: "Artwork record not found." },
+        { status: 404 }
       );
     }
 
-    const oldStoragePath =
-      artwork.storage_path;
-
-    const safeName =
-      sanitizeFileName(
-        file.name
+    if (
+      !["pending", "revision-required"].includes(
+        artwork.status
+      )
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "This artwork has already been submitted for review.",
+        },
+        { status: 409 }
       );
+    }
+
+    const { data: item, error: itemError } =
+      await supabase
+        .from("order_items")
+        .select("id")
+        .eq("id", artwork.order_item_id)
+        .eq("order_id", order.id)
+        .eq("artwork_type", "customer-supplied")
+        .maybeSingle();
+
+    if (itemError) throw itemError;
+
+    if (!item) {
+      return NextResponse.json(
+        {
+          message:
+            "This item does not accept customer artwork.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const bytes = new Uint8Array(
+      await file.arrayBuffer()
+    );
+
+    const detected = detectFile(bytes);
+
+    if (!detected) {
+      return NextResponse.json(
+        {
+          message:
+            "Upload a PDF, JPG, PNG or WebP file.",
+        },
+        { status: 400 }
+      );
+    }
 
     const storagePath =
-      [
-        order.id,
-        artwork.order_item_id ??
-          "general",
-        artwork.id,
-        `${crypto.randomUUID()}-${safeName}`,
-      ].join("/");
+      `${user.id}/${order.id}/${artwork.id}/` +
+      `${randomUUID()}.${detected.extension}`;
 
-    const buffer =
-      await file.arrayBuffer();
-
-    const {
-      error:
-        uploadError,
-    } =
+    const { error: uploadError } =
       await supabase.storage
         .from(BUCKET)
-        .upload(
-          storagePath,
-          buffer,
-          {
-            contentType:
-              file.type,
-            upsert:
-              false,
-          }
-        );
+        .upload(storagePath, bytes, {
+          contentType: detected.mime,
+          upsert: false,
+        });
 
-    if (
-      uploadError
-    ) {
-      console.error(
-        "[NewJersey] storage upload:",
-        uploadError
-      );
+    if (uploadError) throw uploadError;
 
-      return NextResponse.json(
-        {
-          success:
-            false,
-          message:
-            "Unable to upload artwork.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
+    const fileName =
+      file.name
+        .replace(/[/\\\u0000-\u001f\u007f]/g, "_")
+        .slice(0, 200) ||
+      `artwork.${detected.extension}`;
 
-    const now =
-      new Date().toISOString();
-
-    const {
-      error:
-        updateError,
-    } =
+    const { data: saved, error: saveError } =
       await supabase
-        .from(
-          "order_artworks"
-        )
+        .from("order_artworks")
         .update({
-          file_name:
-            file.name,
-
-          storage_path:
-            storagePath,
-
-          mime_type:
-            file.type,
-
-          file_size:
-            file.size,
-
-          status:
-            "uploaded",
-
-          updated_at:
-            now,
+          storage_path: storagePath,
+          public_url: null,
+          file_name: fileName,
+          file_size: file.size,
+          mime_type: detected.mime,
+          status: "uploaded",
+          updated_at: new Date().toISOString(),
         })
-        .eq(
-          "id",
-          artwork.id
-        )
-        .eq(
-          "order_id",
-          order.id
-        );
+        .eq("id", artwork.id)
+        .eq("order_id", order.id)
+        .eq("status", artwork.status)
+        .eq("updated_at", artwork.updated_at)
+        .select("id")
+        .maybeSingle();
 
-    if (
-      updateError
-    ) {
-      await supabase.storage
-        .from(BUCKET)
-        .remove([
-          storagePath,
-        ]);
-
+    if (saveError) {
       console.error(
-        "[NewJersey] artwork DB update:",
-        updateError
+        "[Artwork metadata save]",
+        saveError
       );
 
       return NextResponse.json(
         {
-          success:
-            false,
           message:
-            "Unable to attach artwork to this order.",
+            "Unable to confirm your upload. Refresh the page to check its status before trying again.",
         },
-        {
-          status: 500,
-        }
+        { status: 500 }
       );
     }
 
-    if (
-      oldStoragePath &&
-      oldStoragePath !==
-        storagePath
-    ) {
-      const {
-        error:
-          cleanupError,
-      } =
+    if (!saved) {
+      const { error: cleanupError } =
         await supabase.storage
-          .from(
-            BUCKET
-          )
-          .remove([
-            oldStoragePath,
-          ]);
+          .from(BUCKET)
+          .remove([storagePath]);
 
-      if (
-        cleanupError
-      ) {
+      if (cleanupError) {
         console.error(
-          "[NewJersey] old artwork cleanup:",
+          "[Unused artwork cleanup]",
           cleanupError
         );
       }
-    }
 
-    const {
-      data:
-        artworkRecords,
-      error:
-        artworkCheckError,
-    } =
-      await supabase
-        .from(
-          "order_artworks"
-        )
-        .select(
-          "id, status, storage_path"
-        )
-        .eq(
-          "order_id",
-          order.id
-        );
-
-    if (
-      artworkCheckError
-    ) {
-      console.error(
-        "[NewJersey] artwork completion check:",
-        artworkCheckError
+      return NextResponse.json(
+        {
+          message:
+            "The artwork record changed during upload. Refresh the page.",
+        },
+        { status: 409 }
       );
-    } else {
-      const records =
-        artworkRecords ??
-        [];
-
-      const allUploaded =
-        records.length >
-          0 &&
-        records.every(
-          (
-            record
-          ) =>
-            Boolean(
-              record.storage_path
-            ) &&
-            [
-              "uploaded",
-              "reviewing",
-              "approved",
-            ].includes(
-              record.status
-            )
-        );
-
-      if (
-        allUploaded &&
-        order.status ===
-          "awaiting-artwork"
-      ) {
-        const {
-          error:
-            statusError,
-        } =
-          await supabase
-            .from(
-              "orders"
-            )
-            .update({
-              status:
-                "under-review",
-
-              updated_at:
-                now,
-            })
-            .eq(
-              "id",
-              order.id
-            )
-            .eq(
-              "status",
-              "awaiting-artwork"
-            );
-
-        if (
-          statusError
-        ) {
-          console.error(
-            "[NewJersey] order status update:",
-            statusError
-          );
-        }
-      }
     }
 
     return NextResponse.json({
       success: true,
-
       message:
-        "Artwork uploaded successfully.",
-
-      artwork: {
-        id:
-          artwork.id,
-
-        fileName:
-          file.name,
-
-        mimeType:
-          file.type,
-
-        fileSize:
-          file.size,
-
-        status:
-          "uploaded",
-      },
+        "Artwork uploaded. It is awaiting review.",
     });
   } catch (error) {
     console.error(
-      "[NewJersey] artwork upload:",
+      "[NewJersey artwork upload]",
       error
     );
 
     return NextResponse.json(
       {
-        success:
-          false,
-
         message:
-          "Unable to upload artwork.",
+          "Unable to upload artwork. Please try again.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

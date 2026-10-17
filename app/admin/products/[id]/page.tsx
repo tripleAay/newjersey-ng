@@ -230,6 +230,8 @@ export default async function ProductPage({
           </p>
         )}
 
+        <Link href={`/admin/jerseys/${id}`} className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Manage jersey details and images</Link>
+
         <div className="mt-6 grid min-w-0 items-start gap-6 xl:grid-cols-2">
           <section
             aria-labelledby="product-images-heading"

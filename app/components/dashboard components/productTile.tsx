@@ -20,7 +20,9 @@ function productHref(product: NewJerseyProduct): string {
       return `/shop/print/${slug}`;
 
     case "apparel":
-      return `/shop/apparel/${slug}`;
+      return slug === "custom-jerseys"
+        ? "/shop/jerseys"
+        : `/shop/custom/${slug}`;
 
     default:
       return "/shop/quote";
@@ -50,7 +52,7 @@ function priceLabel(product: NewJerseyProduct): string {
 
 export default function ProductTileGrid() {
   const visibleProducts = products.filter(
-    (product) => product.published !== false
+    (product) => product.published !== false,
   );
 
   if (visibleProducts.length === 0) {

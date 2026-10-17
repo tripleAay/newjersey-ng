@@ -24,8 +24,7 @@ const currency = new Intl.NumberFormat("en-NG", {
 const inputClass =
   "mt-2 block min-h-12 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base text-[#181818] outline-none transition focus:border-[#F58220] focus:ring-2 focus:ring-[#F58220]/20";
 
-const sectionClass =
-  "rounded-2xl border border-black/10 bg-white p-5 sm:p-7";
+const sectionClass = "rounded-2xl border border-black/10 bg-white p-5 sm:p-7";
 
 const buttonClass =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F58220] px-6 py-3.5 text-sm font-semibold text-[#181818] transition-colors hover:bg-[#D96B0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
@@ -46,14 +45,8 @@ const statuses = new Set([
   "cancelled",
 ]);
 
-function isRecord(
-  value: unknown
-): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value)
-  );
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isMoney(value: unknown): value is number {
@@ -65,9 +58,7 @@ function isMoney(value: unknown): value is number {
   );
 }
 
-function isOrderResult(
-  value: unknown
-): value is CreateOrderResult {
+function isOrderResult(value: unknown): value is CreateOrderResult {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
@@ -103,20 +94,20 @@ export default function CheckoutPage() {
     clearCart,
   } = useCart();
 
-  const [deliveryMethod, setDeliveryMethod] =
-    useState<"delivery" | "pickup">("delivery");
+  const [deliveryMethod, setDeliveryMethod] = useState<"delivery" | "pickup">(
+    "delivery",
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const [createdOrder, setCreatedOrder] =
-    useState<CreateOrderResult | null>(null);
+  const [createdOrder, setCreatedOrder] = useState<CreateOrderResult | null>(
+    null,
+  );
 
   const submittingRef = useRef(false);
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (submittingRef.current || createdOrder) return;
@@ -134,8 +125,7 @@ export default function CheckoutPage() {
       fullName: readText(form, "fullName"),
       phone: readText(form, "phone"),
       email: readText(form, "email").toLowerCase(),
-      organization:
-        readText(form, "organization") || undefined,
+      organization: readText(form, "organization") || undefined,
     };
 
     const projectName = readText(form, "projectName");
@@ -159,10 +149,7 @@ export default function CheckoutPage() {
     const city = readText(form, "city");
     const address = readText(form, "address");
 
-    if (
-      deliveryMethod === "delivery" &&
-      (!state || !city || !address)
-    ) {
+    if (deliveryMethod === "delivery" && (!state || !city || !address)) {
       setError("Complete your delivery address.");
       return;
     }
@@ -176,18 +163,15 @@ export default function CheckoutPage() {
               state,
               city,
               address,
-              landmark:
-                readText(form, "landmark") || undefined,
+              landmark: readText(form, "landmark") || undefined,
             }
           : {
               method: "pickup",
             },
       brief: {
         projectName,
-        deadline:
-          readText(form, "deadline") || undefined,
-        instructions:
-          readText(form, "instructions") || undefined,
+        deadline: readText(form, "deadline") || undefined,
+        instructions: readText(form, "instructions") || undefined,
       },
       items,
 
@@ -214,26 +198,21 @@ export default function CheckoutPage() {
         result = await response.json();
       } catch {
         throw new Error(
-          "The response could not be read. Check whether your order was created before submitting again."
+          "The response could not be read. Check whether your order was created before submitting again.",
         );
       }
 
-      if (
-        !response.ok ||
-        !isRecord(result) ||
-        result.success !== true
-      ) {
+      if (!response.ok || !isRecord(result) || result.success !== true) {
         throw new Error(
-          isRecord(result) &&
-          typeof result.message === "string"
+          isRecord(result) && typeof result.message === "string"
             ? result.message
-            : "Unable to confirm your order. Check whether it was created before trying again."
+            : "Unable to confirm your order. Check whether it was created before trying again.",
         );
       }
 
       if (!isOrderResult(result.order)) {
         throw new Error(
-          "The order confirmation was incomplete. Check whether your order was created before submitting again."
+          "The order confirmation was incomplete. Check whether your order was created before submitting again.",
         );
       }
 
@@ -243,7 +222,7 @@ export default function CheckoutPage() {
       setError(
         caught instanceof Error
           ? caught.message
-          : "Unable to confirm your order. Check whether it was created before trying again."
+          : "Unable to confirm your order. Check whether it was created before trying again.",
       );
     } finally {
       submittingRef.current = false;
@@ -265,28 +244,24 @@ export default function CheckoutPage() {
 
       <main className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
         {createdOrder ? (
-          <section
-            className={`${sectionClass} mx-auto max-w-2xl`}
-          >
+          <section className={`${sectionClass} mx-auto max-w-2xl`}>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#625D55]">
               Request received
             </p>
 
             <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em]">
-              Your production request is in.
+              Your order is in.
             </h1>
 
             <p className="mt-4 text-sm leading-7 text-[#625D55]">
-              Keep your order reference. We’ll review your
-              specifications and artwork before confirming
-              production and any delivery charges.
+              Keep your order reference. We’ll review your selections and any
+              required artwork before confirming production and any delivery
+              charges.
             </p>
 
             <dl className="mt-6 space-y-4 rounded-xl bg-[#F4F1E9] p-5">
               <div>
-                <dt className="text-xs text-[#625D55]">
-                  Order reference
-                </dt>
+                <dt className="text-xs text-[#625D55]">Order reference</dt>
 
                 <dd className="mt-1 break-all text-lg font-semibold">
                   {createdOrder.orderNumber}
@@ -294,41 +269,27 @@ export default function CheckoutPage() {
               </div>
 
               <div className="flex justify-between gap-4 text-sm">
-                <dt className="text-[#625D55]">
-                  Production
-                </dt>
+                <dt className="text-[#625D55]">Production</dt>
 
-                <dd>
-                  {currency.format(createdOrder.subtotal)}
-                </dd>
+                <dd>{currency.format(createdOrder.subtotal)}</dd>
               </div>
 
               <div className="flex justify-between gap-4 text-sm">
-                <dt className="text-[#625D55]">
-                  Design assistance
-                </dt>
+                <dt className="text-[#625D55]">Design assistance</dt>
 
-                <dd>
-                  {currency.format(createdOrder.designFee)}
-                </dd>
+                <dd>{currency.format(createdOrder.designFee)}</dd>
               </div>
 
               <div className="flex flex-wrap justify-between gap-4 border-t border-black/10 pt-4">
-                <dt className="font-semibold">
-                  Total before delivery
-                </dt>
+                <dt className="font-semibold">Total before delivery</dt>
 
                 <dd className="text-xl font-bold">
-                  {currency.format(
-                    createdOrder.estimatedTotal
-                  )}
+                  {currency.format(createdOrder.estimatedTotal)}
                 </dd>
               </div>
 
               <div>
-                <dt className="text-xs text-[#625D55]">
-                  Status
-                </dt>
+                <dt className="text-xs text-[#625D55]">Status</dt>
 
                 <dd className="mt-1 font-medium capitalize">
                   {createdOrder.status.replaceAll("-", " ")}
@@ -343,9 +304,8 @@ export default function CheckoutPage() {
                 </h2>
 
                 <p className="mt-2 text-sm leading-7 text-[#625D55]">
-                  Upload the production-ready files for
-                  your customer-supplied items. We’ll
-                  review them before production begins.
+                  Upload the production-ready files for your customer-supplied
+                  items. We’ll review them before production begins.
                 </p>
 
                 <Link
@@ -368,28 +328,18 @@ export default function CheckoutPage() {
             </Link>
           </section>
         ) : !hydrated ? (
-          <p
-            role="status"
-            className="py-12 text-sm text-[#625D55]"
-          >
+          <p role="status" className="py-12 text-sm text-[#625D55]">
             Loading your order…
           </p>
         ) : items.length === 0 ? (
-          <section
-            className={`${sectionClass} text-center`}
-          >
-            <h1 className="text-2xl font-bold">
-              Your order is empty.
-            </h1>
+          <section className={`${sectionClass} text-center`}>
+            <h1 className="text-2xl font-bold">Your order is empty.</h1>
 
             <p className="mt-3 text-sm text-[#625D55]">
               Add products before continuing to checkout.
             </p>
 
-            <Link
-              href="/shop"
-              className={`${buttonClass} mt-6`}
-            >
+            <Link href="/shop" className={`${buttonClass} mt-6`}>
               Explore the shop
             </Link>
           </section>
@@ -406,9 +356,7 @@ export default function CheckoutPage() {
             <div className="mb-8">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#625D55]">
                 NewJersey.ng
-                <span className="px-2 text-[#F58220]">
-                  /
-                </span>
+                <span className="px-2 text-[#F58220]">/</span>
                 Checkout
               </p>
 
@@ -417,8 +365,8 @@ export default function CheckoutPage() {
               </h1>
 
               <p className="mt-3 max-w-xl text-sm leading-7 text-[#625D55]">
-                Add your contact details, delivery
-                preference, and production brief.
+                Add your contact details, delivery preference, and production
+                brief.
               </p>
             </div>
 
@@ -427,18 +375,13 @@ export default function CheckoutPage() {
               aria-busy={submitting}
               className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]"
             >
-              <fieldset
-                disabled={submitting}
-                className="min-w-0 space-y-6"
-              >
+              <fieldset disabled={submitting} className="min-w-0 space-y-6">
                 <legend className="sr-only">
                   Customer and production details
                 </legend>
 
                 <section className={sectionClass}>
-                  <h2 className="text-xl font-semibold">
-                    Contact details
-                  </h2>
+                  <h2 className="text-xl font-semibold">Contact details</h2>
 
                   <div className="mt-6 grid gap-5 sm:grid-cols-2">
                     <label className="block text-sm font-medium">
@@ -489,14 +432,10 @@ export default function CheckoutPage() {
                 </section>
 
                 <section className={sectionClass}>
-                  <h2 className="text-xl font-semibold">
-                    Delivery or pickup
-                  </h2>
+                  <h2 className="text-xl font-semibold">Delivery or pickup</h2>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    {(
-                      ["delivery", "pickup"] as const
-                    ).map((method) => (
+                    {(["delivery", "pickup"] as const).map((method) => (
                       <label
                         key={method}
                         className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-4 text-sm font-medium ${
@@ -510,9 +449,7 @@ export default function CheckoutPage() {
                           name="deliveryMethod"
                           value={method}
                           checked={deliveryMethod === method}
-                          onChange={() =>
-                            setDeliveryMethod(method)
-                          }
+                          onChange={() => setDeliveryMethod(method)}
                           className="h-4 w-4 accent-[#F58220]"
                         />
 
@@ -569,23 +506,20 @@ export default function CheckoutPage() {
                       </label>
 
                       <p className="text-xs leading-6 text-[#625D55] sm:col-span-2">
-                        Delivery availability and charges
-                        will be confirmed for your location
-                        and order.
+                        Delivery availability and charges will be confirmed for
+                        your location and order.
                       </p>
                     </div>
                   ) : (
                     <p className="mt-5 text-sm leading-7 text-[#625D55]">
-                      Pickup location and timing will be
-                      confirmed when your order is ready.
+                      Pickup location and timing will be confirmed when your
+                      order is ready.
                     </p>
                   )}
                 </section>
 
                 <section className={sectionClass}>
-                  <h2 className="text-xl font-semibold">
-                    Production brief
-                  </h2>
+                  <h2 className="text-xl font-semibold">Production brief</h2>
 
                   <div className="mt-6 space-y-5">
                     <label className="block text-sm font-medium">
@@ -606,10 +540,9 @@ export default function CheckoutPage() {
                         type="date"
                         className={inputClass}
                       />
-
                       <span className="mt-2 block text-xs font-normal leading-6 text-[#625D55]">
-                        Your preferred date is subject to
-                        production confirmation.
+                        Your preferred date is subject to production
+                        confirmation.
                       </span>
                     </label>
 
@@ -619,7 +552,7 @@ export default function CheckoutPage() {
                         name="instructions"
                         rows={5}
                         maxLength={5000}
-                        placeholder="Describe your artwork, design brief, colours, wording, and finishing requirements."
+                        placeholder="Add delivery notes or, for custom printing, your design brief."
                         className={inputClass}
                       />
                     </label>
@@ -628,15 +561,13 @@ export default function CheckoutPage() {
               </fieldset>
 
               <aside className="min-w-0 rounded-[24px] border border-black/10 bg-white p-6 lg:sticky lg:top-44">
-                <h2 className="text-xl font-bold">
-                  Your order
-                </h2>
+                <h2 className="text-xl font-bold">Your order</h2>
 
                 <ul className="mt-5 space-y-5">
                   {items.map((item) => {
                     const fee =
                       item.artwork?.type === "design-needed"
-                        ? item.artwork.designFee ?? 0
+                        ? (item.artwork.designFee ?? 0)
                         : 0;
 
                     return (
@@ -644,15 +575,10 @@ export default function CheckoutPage() {
                         key={item.cartItemId}
                         className="border-b border-black/10 pb-5"
                       >
-                        <p className="text-sm font-semibold">
-                          {item.name}
-                        </p>
+                        <p className="text-sm font-semibold">{item.name}</p>
 
                         <p className="mt-1 text-xs text-[#625D55]">
-                          {item.quantity}{" "}
-                          {item.quantity === 1
-                            ? "job"
-                            : "jobs"}
+                          {item.quantity} {item.quantity === 1 ? "job" : "jobs"}
                         </p>
 
                         {item.selections.map((selection) => (
@@ -660,36 +586,29 @@ export default function CheckoutPage() {
                             key={selection.optionId}
                             className="mt-1 text-xs leading-6 text-[#625D55]"
                           >
-                            {selection.optionLabel}:{" "}
-                            {selection.choiceLabel}
+                            {selection.optionLabel}: {selection.choiceLabel}
                           </p>
                         ))}
 
                         <div className="mt-3 flex justify-between gap-4 text-xs">
-                          <span className="text-[#625D55]">
-                            Production
-                          </span>
+                          <span className="text-[#625D55]">Production</span>
 
-                          <span>
-                            {currency.format(item.totalPrice)}
-                          </span>
+                          <span>{currency.format(item.totalPrice)}</span>
                         </div>
 
-                        {item.artwork?.type ===
-                        "design-needed" ? (
+                        {item.artwork?.type === "design-needed" ? (
                           <div className="mt-2 flex justify-between gap-4 text-xs">
                             <span className="text-[#625D55]">
                               Design · once
                             </span>
 
-                            <span>
-                              {currency.format(fee)}
-                            </span>
+                            <span>{currency.format(fee)}</span>
                           </div>
                         ) : (
                           <p className="mt-2 text-xs text-[#625D55]">
-                            Customer-supplied artwork · no
-                            design fee
+                            {item.artwork?.type === "not-required"
+                              ? "Ready-designed apparel - no artwork required"
+                              : "Customer-supplied artwork - no design fee"}
                           </p>
                         )}
                       </li>
@@ -699,30 +618,22 @@ export default function CheckoutPage() {
 
                 <dl className="mt-5 space-y-3 text-sm">
                   <div className="flex justify-between gap-4">
-                    <dt className="text-[#625D55]">
-                      Configured jobs
-                    </dt>
+                    <dt className="text-[#625D55]">Configured jobs</dt>
                     <dd>{itemCount}</dd>
                   </div>
 
                   <div className="flex justify-between gap-4">
-                    <dt className="text-[#625D55]">
-                      Production
-                    </dt>
+                    <dt className="text-[#625D55]">Production</dt>
                     <dd>{currency.format(subtotal)}</dd>
                   </div>
 
                   <div className="flex justify-between gap-4">
-                    <dt className="text-[#625D55]">
-                      Design assistance
-                    </dt>
+                    <dt className="text-[#625D55]">Design assistance</dt>
                     <dd>{currency.format(designFee)}</dd>
                   </div>
 
                   <div className="flex justify-between gap-4">
-                    <dt className="text-[#625D55]">
-                      Delivery
-                    </dt>
+                    <dt className="text-[#625D55]">Delivery</dt>
 
                     <dd className="text-right text-xs">
                       {deliveryMethod === "pickup"
@@ -732,9 +643,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
-                    <dt className="font-semibold">
-                      Estimated total
-                    </dt>
+                    <dt className="font-semibold">Estimated total</dt>
 
                     <dd className="text-2xl font-bold">
                       {currency.format(estimatedTotal)}
@@ -743,10 +652,9 @@ export default function CheckoutPage() {
                 </dl>
 
                 <p className="mt-3 text-xs leading-6 text-[#625D55]">
-                  Includes selected design assistance.
-                  Delivery charges are excluded. Production
-                  is subject to specifications and artwork
-                  approval.
+                  Includes selected design assistance. Delivery charges are
+                  excluded. Production is subject to product availability and
+                  any required artwork approval.
                 </p>
 
                 {error && (
@@ -767,12 +675,7 @@ export default function CheckoutPage() {
                     ? "Submitting request…"
                     : "Submit production request"}
 
-                  {!submitting && (
-                    <ArrowRight
-                      size={17}
-                      aria-hidden="true"
-                    />
-                  )}
+                  {!submitting && <ArrowRight size={17} aria-hidden="true" />}
                 </button>
 
                 <p

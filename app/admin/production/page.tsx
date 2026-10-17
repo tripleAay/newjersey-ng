@@ -41,26 +41,32 @@ function date(value: string | null) {
     : dateFormatter.format(parsed);
 }
 
+function statusLabel(value: string) {
+  return value.replaceAll("-", " ");
+}
+
 function selections(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
-  return value.flatMap((entry) => {
+  return value.flatMap((entry: unknown) => {
+    if (typeof entry !== "object" || entry === null) {
+      return [];
+    }
+
+    const selection = entry as Record<string, unknown>;
+
     if (
-      typeof entry !== "object" ||
-      entry === null ||
-      typeof entry.optionLabel !== "string" ||
-      typeof entry.choiceLabel !== "string"
+      typeof selection.optionLabel !== "string" ||
+      typeof selection.choiceLabel !== "string"
     ) {
       return [];
     }
 
-    return [`${entry.optionLabel}: ${entry.choiceLabel}`];
+    return [`${selection.optionLabel}: ${selection.choiceLabel}`];
   });
 }
 
-export default async function ProductionPage({
-  searchParams,
-}: Props) {
+export default async function ProductionPage({ searchParams }: Props) {
   await requireAdmin();
 
   const params = await searchParams;
@@ -71,22 +77,22 @@ export default async function ProductionPage({
       ? params.status
       : "confirmed";
 
-  const rawPage =
-    typeof params.page === "string" ? Number(params.page) : 1;
+  const rawPage = typeof params.page === "string" ? Number(params.page) : 1;
 
   const page =
-    Number.isSafeInteger(rawPage) &&
-    rawPage >= 1 &&
-    rawPage <= 100000
+    Number.isSafeInteger(rawPage) && rawPage >= 1 && rawPage <= 100000
       ? rawPage
       : 1;
 
-  const error =
-    typeof params.error === "string" ? params.error : "";
+  const error = typeof params.error === "string" ? params.error : "";
 
   const supabase = getSupabaseAdmin();
 
-  const { data, error: ordersError, count } = await supabase
+  const {
+    data,
+    error: ordersError,
+    count,
+  } = await supabase
     .from("orders")
     .select(
       `
@@ -100,7 +106,7 @@ export default async function ProductionPage({
         status,
         updated_at
       `,
-      { count: "exact" }
+      { count: "exact" },
     )
     .eq("status", status)
     .order("created_at", { ascending: true })
@@ -119,14 +125,33 @@ export default async function ProductionPage({
     ? await Promise.all([
         supabase
           .from("order_items")
-          .select("id, order_id, product_name, quantity, selections")
+          .select(
+            `
+              id,
+              order_id,
+              product_name,
+              quantity,
+              selections,
+              review_mode,
+              specifications_approved_at,
+              specifications_approved_by
+            `,
+          )
           .in("order_id", orderIds)
           .order("created_at", { ascending: true }),
 
         supabase
           .from("order_production_history")
           .select(
-            "id, order_id, admin_name, previous_status, new_status, notes, created_at"
+            `
+              id,
+              order_id,
+              admin_name,
+              previous_status,
+              new_status,
+              notes,
+              created_at
+            `,
           )
           .in("order_id", orderIds)
           .order("created_at", { ascending: false }),
@@ -153,13 +178,12 @@ export default async function ProductionPage({
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-      <h1 className="text-3xl font-semibold tracking-[-0.04em]">
-        Production.
-      </h1>
+      <h1 className="text-3xl font-semibold tracking-[-0.04em]">Production.</h1>
 
-      <p className="mt-3 max-w-xl text-sm leading-7 text-[#625D55]">
-        Manage confirmed orders from production to readiness.
-        Payment and artwork approval are checked before each update.
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-[#625D55]">
+        Manage confirmed orders through production to readiness. Jersey orders
+        use approved specifications. Print orders use approved artwork. A
+        matching verified payment is required for production updates.
       </p>
 
       {error && (
@@ -188,11 +212,10 @@ export default async function ProductionPage({
           <Link
             key={filter.value}
             href={`/admin/production?status=${filter.value}&page=1`}
-            aria-current={
-              status === filter.value ? "page" : undefined
-            }
+            aria-current={status === filter.value ? "page" : undefined}
             className={[
               "inline-flex min-h-11 items-center rounded-full px-4 text-xs font-medium",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2",
               status === filter.value
                 ? "bg-[#181818] text-white"
                 : "border border-black/10 bg-white text-[#625D55] hover:bg-[#F5F4F0]",
@@ -210,23 +233,28 @@ export default async function ProductionPage({
       <div className="mt-4 space-y-5">
         {orders.length === 0 ? (
           <section className="rounded-2xl border border-black/10 bg-white p-8">
-            <h2 className="text-lg font-semibold">
-              No orders in this view.
-            </h2>
+            <h2 className="text-lg font-semibold">No orders in this view.</h2>
 
             <p className="mt-2 text-sm leading-7 text-[#625D55]">
-              Orders appear under Ready to start after payment
-              has been verified.
+              Orders appear under Ready to start after payment has been
+              verified.
             </p>
           </section>
         ) : (
           orders.map((order) => {
             const orderItems = items.filter(
-              (item) => item.order_id === order.id
+              (item) => item.order_id === order.id,
             );
 
             const orderHistory = history.filter(
-              (entry) => entry.order_id === order.id
+              (entry) => entry.order_id === order.id,
+            );
+
+            const unapprovedJerseys = orderItems.some(
+              (item) =>
+                item.review_mode === "jersey" &&
+                (!item.specifications_approved_at ||
+                  !item.specifications_approved_by),
             );
 
             const nextStatus =
@@ -235,6 +263,9 @@ export default async function ProductionPage({
                 : order.status === "in-production"
                   ? "ready"
                   : null;
+
+            const productionBlocked =
+              orderItems.length === 0 || unapprovedJerseys;
 
             return (
               <article
@@ -257,7 +288,7 @@ export default async function ProductionPage({
                   </div>
 
                   <span className="rounded-full bg-[#F1F1EE] px-3 py-1.5 text-xs font-medium capitalize text-[#625D55]">
-                    {order.status.replaceAll("-", " ")}
+                    {statusLabel(order.status)}
                   </span>
                 </div>
 
@@ -266,15 +297,11 @@ export default async function ProductionPage({
                     <dt className="text-xs text-[#7A7368]">
                       Preferred deadline
                     </dt>
-                    <dd className="mt-2">
-                      {date(order.preferred_deadline)}
-                    </dd>
+                    <dd className="mt-2">{date(order.preferred_deadline)}</dd>
                   </div>
 
                   <div>
-                    <dt className="text-xs text-[#7A7368]">
-                      Fulfillment
-                    </dt>
+                    <dt className="text-xs text-[#7A7368]">Fulfillment</dt>
                     <dd className="mt-2">
                       {order.delivery_method === "pickup"
                         ? "Customer pickup"
@@ -284,33 +311,82 @@ export default async function ProductionPage({
                 </dl>
 
                 <div className="mt-6 space-y-4">
-                  {orderItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-xl bg-[#F7F7F4] p-4"
-                    >
-                      <h3 className="text-sm font-semibold">
-                        {item.product_name}
-                      </h3>
+                  {orderItems.map((item) => {
+                    const isJersey = item.review_mode === "jersey";
 
-                      <p className="mt-1 text-xs leading-6 text-[#625D55]">
-                        {item.quantity}{" "}
-                        {item.quantity === 1
-                          ? "configured job"
-                          : "configured jobs"}
-                      </p>
+                    const specificationsApproved = Boolean(
+                      item.specifications_approved_at &&
+                      item.specifications_approved_by,
+                    );
 
-                      <ul className="mt-2 space-y-1 text-xs leading-6 text-[#625D55]">
-                        {selections(item.selections).map(
-                          (selection, index) => (
-                            <li key={`${item.id}-${index}`}>
-                              {selection}
-                            </li>
-                          )
+                    const itemSelections = selections(item.selections);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-xl bg-[#F7F7F4] p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold">
+                              {item.product_name}
+                            </h3>
+
+                            <p className="mt-1 text-xs leading-6 text-[#625D55]">
+                              Quantity: {item.quantity}{" "}
+                              {isJersey
+                                ? item.quantity === 1
+                                  ? "jersey"
+                                  : "jerseys"
+                                : item.quantity === 1
+                                  ? "unit"
+                                  : "units"}
+                            </p>
+                          </div>
+
+                          {item.review_mode === "retail" && (
+                            <p className="mt-3 text-xs text-[#625D55]">
+                              Ready-designed apparel. No artwork required.
+                            </p>
+                          )}
+                          {isJersey && (
+                            <span
+                              className={[
+                                "rounded-full px-3 py-1.5 text-xs font-medium",
+                                specificationsApproved
+                                  ? "bg-[#EDF3ED] text-[#426247]"
+                                  : "bg-amber-50 text-amber-800",
+                              ].join(" ")}
+                            >
+                              {specificationsApproved
+                                ? "Specifications approved"
+                                : "Specifications need approval"}
+                            </span>
+                          )}
+                        </div>
+
+                        {itemSelections.length > 0 && (
+                          <ul className="mt-3 space-y-1 text-sm leading-6 text-[#494540]">
+                            {itemSelections.map((selection, index) => (
+                              <li
+                                key={`${item.id}-${index}`}
+                                className="whitespace-pre-wrap break-words"
+                              >
+                                {selection}
+                              </li>
+                            ))}
+                          </ul>
                         )}
-                      </ul>
-                    </div>
-                  ))}
+
+                        {isJersey && (
+                          <p className="mt-3 text-xs leading-6 text-[#625D55]">
+                            Print names and numbers exactly as shown. Preserve
+                            capitalisation and leading zeros.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {order.production_instructions && (
@@ -319,7 +395,7 @@ export default async function ProductionPage({
                       Customer instructions
                     </h3>
 
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#625D55]">
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-[#625D55]">
                       {order.production_instructions}
                     </p>
                   </div>
@@ -327,7 +403,7 @@ export default async function ProductionPage({
 
                 <Link
                   href={`/admin/orders/${encodeURIComponent(
-                    order.order_number
+                    order.order_number,
                   )}`}
                   className="mt-4 inline-flex min-h-11 items-center text-xs font-semibold underline underline-offset-4"
                 >
@@ -339,11 +415,7 @@ export default async function ProductionPage({
                     action={updateProduction}
                     className="mt-5 border-t border-black/10 pt-5"
                   >
-                    <input
-                      type="hidden"
-                      name="orderId"
-                      value={order.id}
-                    />
+                    <input type="hidden" name="orderId" value={order.id} />
 
                     <input
                       type="hidden"
@@ -351,31 +423,44 @@ export default async function ProductionPage({
                       value={order.updated_at}
                     />
 
-                    <input
-                      type="hidden"
-                      name="nextStatus"
-                      value={nextStatus}
-                    />
+                    <input type="hidden" name="nextStatus" value={nextStatus} />
 
-                    <label className="block text-sm font-medium">
+                    {productionBlocked && (
+                      <p
+                        role="status"
+                        className="mb-5 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-800"
+                      >
+                        {orderItems.length === 0
+                          ? "This order has no production items. Review the full order before continuing."
+                          : "Jersey specifications need approval. Review the full order before continuing."}
+                      </p>
+                    )}
+
+                    <label
+                      htmlFor={`production-notes-${order.id}`}
+                      className="block text-sm font-medium"
+                    >
                       Internal production note
-                      <textarea
-                        name="notes"
-                        maxLength={2000}
-                        rows={3}
-                        placeholder="Optional handover or production notes"
-                        className="mt-2 block w-full rounded-xl border border-black/15 px-4 py-3 text-base"
-                      />
                     </label>
 
+                    <textarea
+                      id={`production-notes-${order.id}`}
+                      name="notes"
+                      maxLength={2000}
+                      rows={3}
+                      placeholder="Optional handover or production notes"
+                      className="mt-2 block w-full rounded-xl border border-black/15 px-4 py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+                    />
+
                     <p className="mt-2 text-xs leading-6 text-[#7A7368]">
-                      Internal notes stay in the admin history.
-                      The customer receives a status update.
+                      Internal notes stay in the admin history. The customer
+                      receives a status update.
                     </p>
 
                     <button
                       type="submit"
-                      className="mt-5 min-h-12 rounded-full bg-[#181818] px-6 text-sm font-semibold text-white hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
+                      disabled={productionBlocked}
+                      className="mt-5 min-h-12 rounded-full bg-[#181818] px-6 text-sm font-semibold text-white hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {nextStatus === "in-production"
                         ? "Start production"
@@ -384,8 +469,8 @@ export default async function ProductionPage({
                   </form>
                 ) : (
                   <p className="mt-5 border-t border-black/10 pt-5 text-sm leading-7 text-[#625D55]">
-                    Production is complete. This order is ready
-                    for collection or delivery arrangements.
+                    Production is complete. This order is ready for collection
+                    or delivery arrangements.
                   </p>
                 )}
 
@@ -402,9 +487,9 @@ export default async function ProductionPage({
                           className="rounded-xl bg-[#F7F7F4] p-4"
                         >
                           <p className="text-xs font-semibold capitalize">
-                            {entry.previous_status.replaceAll("-", " ")}
+                            {statusLabel(entry.previous_status)}
                             {" → "}
-                            {entry.new_status.replaceAll("-", " ")}
+                            {statusLabel(entry.new_status)}
                           </p>
 
                           <p className="mt-2 text-xs text-[#625D55]">
@@ -412,7 +497,7 @@ export default async function ProductionPage({
                           </p>
 
                           {entry.notes && (
-                            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#625D55]">
+                            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-[#625D55]">
                               {entry.notes}
                             </p>
                           )}

@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -13,7 +8,12 @@ import {
   ArrowUpRight,
   ChevronDown,
   CircleHelp,
+  ClipboardList,
+  LogOut,
+  Mail,
+  MapPin,
   Search,
+  Settings,
   ShoppingCart,
   UserRound,
 } from "lucide-react";
@@ -25,9 +25,21 @@ import CustomerNotifications from "@/app/components/newjersey/CustomerNotificati
 type Panel = "account" | "help" | "notifications";
 
 const customerLinks = [
-  { label: "My account", href: "/shop/account" },
-  { label: "My orders", href: "/shop/order" },
-  { label: "Wishlist", href: "/shop/wish-list" },
+  {
+    label: "My orders",
+    href: "/shop/order",
+    icon: ClipboardList,
+  },
+  {
+    label: "Account settings",
+    href: "/shop/account",
+    icon: Settings,
+  },
+  {
+    label: "Delivery address",
+    href: "/shop/account/address",
+    icon: MapPin,
+  },
 ];
 
 const guestLinks = [
@@ -35,12 +47,11 @@ const guestLinks = [
   { label: "Create an account", href: "/register" },
 ];
 
-const helpLinks = [
-  { label: "How to order", href: "/shop/help/place-order" },
-  { label: "Track an order", href: "/shop/help/track-order" },
-  { label: "Cancellation help", href: "/shop/help/cancel-order" },
-  { label: "Returns & refunds", href: "/shop/help/returns-refunds" },
-];
+const controlClass =
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]";
+
+const linkClass =
+  "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors hover:bg-[#F5F4F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]";
 
 function getDisplayName(user: User | null) {
   if (!user) return "";
@@ -59,7 +70,7 @@ function getInitials(name: string) {
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => Array.from(part)[0])
+    .map((part) => Array.from(part)[0] || "")
     .join("")
     .toUpperCase();
 }
@@ -67,20 +78,20 @@ function getInitials(name: string) {
 export default function MainHeader() {
   const { itemCount, hydrated } = useCart();
 
+  const pathname = usePathname();
+  const panelId = useId();
+
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
-  const [openPanel, setOpenPanel] =
-    useState<Panel | null>(null);
+  const [openPanel, setOpenPanel] = useState<Panel | null>(null);
 
   const controlsRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const helpButtonRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const signOutBusyRef = useRef(false);
-
-  const pathname = usePathname();
-  const panelId = useId();
 
   const name = getDisplayName(user);
   const firstName = name.split(/\s+/)[0];
@@ -89,9 +100,7 @@ export default function MainHeader() {
   const count = hydrated ? itemCount : 0;
 
   const cartLabel =
-    count > 0
-      ? `Cart with ${count} ${count === 1 ? "item" : "items"}`
-      : "Cart";
+    count > 0 ? `Cart with ${count} ${count === 1 ? "item" : "items"}` : "Cart";
 
   useEffect(() => {
     let mounted = true;
@@ -116,13 +125,9 @@ export default function MainHeader() {
 
     async function loadUser() {
       try {
-        const { data, error } =
-          await supabase.auth.getUser();
+        const { data, error } = await supabase.auth.getUser();
 
-        if (
-          !mounted ||
-          authVersion !== versionAtRequest
-        ) {
+        if (!mounted || authVersion !== versionAtRequest) {
           return;
         }
 
@@ -130,9 +135,7 @@ export default function MainHeader() {
           setUser(null);
 
           if (error.name !== "AuthSessionMissingError") {
-            setAuthError(
-              "Unable to check your account. Please reload."
-            );
+            setAuthError("Unable to check your account. Please reload.");
           }
         } else {
           setUser(data.user);
@@ -140,17 +143,12 @@ export default function MainHeader() {
 
         setAuthReady(true);
       } catch {
-        if (
-          !mounted ||
-          authVersion !== versionAtRequest
-        ) {
+        if (!mounted || authVersion !== versionAtRequest) {
           return;
         }
 
         setAuthReady(true);
-        setAuthError(
-          "Unable to check your account. Please reload."
-        );
+        setAuthError("Unable to check your account. Please reload.");
       }
     }
 
@@ -163,6 +161,8 @@ export default function MainHeader() {
   }, []);
 
   useEffect(() => {
+    if (!openPanel) return;
+
     function handlePointerDown(event: PointerEvent) {
       if (
         event.target instanceof Node &&
@@ -173,7 +173,9 @@ export default function MainHeader() {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape" || !openPanel) return;
+      if (event.key !== "Escape") return;
+
+      const focusInside = controlsRef.current?.contains(document.activeElement);
 
       const button =
         openPanel === "account"
@@ -181,28 +183,22 @@ export default function MainHeader() {
           : openPanel === "help"
             ? helpButtonRef.current
             : controlsRef.current?.querySelector<HTMLButtonElement>(
-                "[data-notification-toggle]"
+                "[data-notification-toggle]",
               );
 
       setOpenPanel(null);
-      button?.focus();
+
+      if (focusInside) {
+        button?.focus();
+      }
     }
 
-    document.addEventListener(
-      "pointerdown",
-      handlePointerDown
-    );
+    document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener(
-        "pointerdown",
-        handlePointerDown
-      );
-      document.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [openPanel]);
 
@@ -211,9 +207,7 @@ export default function MainHeader() {
   }, [pathname]);
 
   function togglePanel(panel: Panel) {
-    setOpenPanel((current) =>
-      current === panel ? null : panel
-    );
+    setOpenPanel((current) => (current === panel ? null : panel));
   }
 
   async function handleSignOut() {
@@ -236,9 +230,7 @@ export default function MainHeader() {
       setOpenPanel(null);
       window.location.replace("/shop");
     } catch {
-      setAuthError(
-        "Unable to sign out. Please try again."
-      );
+      setAuthError("Unable to sign out. Please try again.");
     } finally {
       signOutBusyRef.current = false;
       setSigningOut(false);
@@ -247,22 +239,39 @@ export default function MainHeader() {
 
   return (
     <div className="border-b border-black/10 bg-[#F4F1E9] text-[#181818]">
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-4 px-5 py-4 sm:px-8 lg:gap-x-6 lg:px-12">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-2 gap-y-3 px-4 py-3 sm:px-8 sm:py-4 lg:gap-x-6 lg:px-12">
         <Link
           href="/shop"
           aria-label="NewJersey.ng shop home"
-          className="shrink-0 text-xl font-bold tracking-[-0.06em] sm:text-2xl"
+          className="shrink-0 rounded-sm text-xl font-bold tracking-[-0.06em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] sm:text-2xl"
         >
-          <span>newjersey</span>
+          newjersey
           <span className="text-[#F58220]">.ng</span>
         </Link>
 
         <form
-          action="/shop/print"
+          action="/shop/search"
           method="get"
           role="search"
-          aria-label="Search print products"
-          className="order-last flex w-full min-w-0 items-center rounded-full border border-black/15 bg-white lg:order-none lg:w-auto lg:flex-1"
+          aria-label="Search NewJersey products and services"
+          onSubmit={(event) => {
+            const input = searchInputRef.current;
+
+            if (!input) return;
+
+            const query = input.value.trim();
+
+            if (!query) {
+              event.preventDefault();
+              input.value = "";
+              input.focus();
+              return;
+            }
+
+            input.value = query;
+            setOpenPanel(null);
+          }}
+          className="order-last flex w-full min-w-0 items-center rounded-full border border-black/15 bg-white transition-shadow focus-within:border-[#F58220] focus-within:ring-1 focus-within:ring-[#F58220] lg:order-none lg:w-auto lg:flex-1"
         >
           <Search
             size={18}
@@ -271,18 +280,21 @@ export default function MainHeader() {
           />
 
           <input
+            ref={searchInputRef}
             type="search"
             name="q"
-            aria-label="Search print products"
-            placeholder="Search print products"
+            aria-label="Search products and services"
+            placeholder="Search printing, jerseys, apparel…"
             required
             maxLength={120}
-            className="min-h-12 min-w-0 flex-1 rounded-full bg-transparent px-3 text-base placeholder:text-[#625D55] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#F58220]"
+            enterKeyHint="search"
+            autoComplete="off"
+            className="min-h-12 min-w-0 flex-1 rounded-full bg-transparent px-3 text-base text-[#181818] placeholder:text-[#7A7368] focus:outline-none"
           />
 
           <button
             type="submit"
-            className="mr-1 min-h-11 shrink-0 rounded-full bg-[#181818] px-4 text-sm font-semibold text-white hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+            className="mr-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full bg-[#181818] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
           >
             Search
           </button>
@@ -290,7 +302,7 @@ export default function MainHeader() {
 
         <div
           ref={controlsRef}
-          className="relative ml-auto flex shrink-0 items-center gap-1"
+          className="relative ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1"
           onBlur={(event) => {
             const nextTarget = event.relatedTarget;
 
@@ -306,14 +318,12 @@ export default function MainHeader() {
             ref={accountButtonRef}
             type="button"
             aria-label={
-              user
-                ? `Account options for ${name}`
-                : "Account options"
+              user ? `Account options for ${name}` : "Account options"
             }
             aria-expanded={openPanel === "account"}
             aria-controls={`${panelId}-account`}
             onClick={() => togglePanel("account")}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+            className={controlClass}
           >
             {authReady && user ? (
               <span
@@ -333,7 +343,10 @@ export default function MainHeader() {
             <ChevronDown
               size={14}
               aria-hidden="true"
-              className="hidden xl:block"
+              className={[
+                "hidden transition-transform xl:block",
+                openPanel === "account" ? "rotate-180" : "",
+              ].join(" ")}
             />
           </button>
 
@@ -353,25 +366,26 @@ export default function MainHeader() {
             aria-expanded={openPanel === "help"}
             aria-controls={`${panelId}-help`}
             onClick={() => togglePanel("help")}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+            className={controlClass}
           >
             <CircleHelp size={20} aria-hidden="true" />
 
-            <span className="hidden text-sm font-medium xl:inline">
-              Help
-            </span>
+            <span className="hidden text-sm font-medium xl:inline">Help</span>
 
             <ChevronDown
               size={14}
               aria-hidden="true"
-              className="hidden xl:block"
+              className={[
+                "hidden transition-transform xl:block",
+                openPanel === "help" ? "rotate-180" : "",
+              ].join(" ")}
             />
           </button>
 
           <Link
             href="/shop/cart"
             aria-label={cartLabel}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+            className={controlClass}
           >
             <span className="relative">
               <ShoppingCart size={21} aria-hidden="true" />
@@ -379,28 +393,23 @@ export default function MainHeader() {
               {count > 0 && (
                 <span
                   aria-hidden="true"
-                  className="absolute -right-2 -top-2 rounded-full bg-[#181818] px-1.5 text-[10px] font-semibold leading-4 text-white"
+                  className="absolute -right-2 -top-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#181818] px-1 text-[10px] font-semibold tabular-nums leading-4 text-white"
                 >
                   {count > 99 ? "99+" : count}
                 </span>
               )}
             </span>
 
-            <span className="hidden text-sm font-medium xl:inline">
-              Cart
-            </span>
+            <span className="hidden text-sm font-medium xl:inline">Cart</span>
           </Link>
 
           <div
             id={`${panelId}-account`}
             hidden={openPanel !== "account"}
-            className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2.5rem)] rounded-xl border border-black/10 bg-white p-2 shadow-lg"
+            className="absolute right-0 top-full z-50 mt-3 max-h-[65dvh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-black/10 bg-white p-2 shadow-[0_12px_40px_rgba(0,0,0,0.10)]"
           >
             {!authReady ? (
-              <p
-                role="status"
-                className="px-3 py-4 text-sm text-[#625D55]"
-              >
+              <p role="status" className="px-3 py-4 text-sm text-[#625D55]">
                 Checking your account…
               </p>
             ) : (
@@ -411,34 +420,59 @@ export default function MainHeader() {
                   </p>
 
                   <p className="mt-1 break-words text-xs leading-5 text-[#625D55]">
-                    {user
-                      ? user.email
-                      : "Sign in or create your account."}
+                    {user ? user.email : "Sign in to manage your orders."}
                   </p>
                 </div>
 
-                {(user ? customerLinks : guestLinks).map(
-                  (link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setOpenPanel(null)}
-                      className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-                    >
-                      {link.label}
-                    </Link>
-                  )
-                )}
+                {user
+                  ? customerLinks.map((link) => {
+                      const Icon = link.icon;
+
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          onClick={() => setOpenPanel(null)}
+                          className={linkClass}
+                        >
+                          <Icon
+                            size={17}
+                            strokeWidth={1.7}
+                            aria-hidden="true"
+                            className="shrink-0 text-[#625D55]"
+                          />
+                          {link.label}
+                        </Link>
+                      );
+                    })
+                  : guestLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setOpenPanel(null)}
+                        className={linkClass}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
 
                 {user && (
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    disabled={signingOut}
-                    className="mt-2 flex min-h-11 w-full items-center rounded-lg border-t border-black/10 px-3 text-left text-sm font-medium hover:bg-[#F4F1E9] disabled:cursor-wait disabled:opacity-60"
-                  >
-                    {signingOut ? "Signing out…" : "Sign out"}
-                  </button>
+                  <div className="mt-2 border-t border-black/10 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      disabled={signingOut}
+                      className={`${linkClass} w-full text-left disabled:cursor-wait disabled:opacity-60`}
+                    >
+                      <LogOut
+                        size={17}
+                        strokeWidth={1.7}
+                        aria-hidden="true"
+                        className="shrink-0 text-[#625D55]"
+                      />
+                      {signingOut ? "Signing out…" : "Sign out"}
+                    </button>
+                  </div>
                 )}
 
                 {authError && (
@@ -456,36 +490,57 @@ export default function MainHeader() {
           <div
             id={`${panelId}-help`}
             hidden={openPanel !== "help"}
-            className="absolute right-0 top-full z-50 mt-2 w-60 max-w-[calc(100vw-2.5rem)] rounded-xl border border-black/10 bg-white p-2 shadow-lg"
+            className="absolute right-0 top-full z-50 mt-3 max-h-[65dvh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-black/10 bg-white p-2 shadow-[0_12px_40px_rgba(0,0,0,0.10)]"
           >
-            <p className="px-3 py-2 text-xs font-semibold text-[#625D55]">
-              Order support
-            </p>
+            <div className="mb-2 border-b border-black/10 px-3 py-3">
+              <p className="text-sm font-semibold">How can we help?</p>
 
-            {helpLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpenPanel(null)}
-                className="flex min-h-11 items-center rounded-lg px-3 text-sm hover:bg-[#F4F1E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-              >
-                {link.label}
-              </Link>
-            ))}
+              <p className="mt-1 text-xs leading-5 text-[#625D55]">
+                Check your order or speak with us.
+              </p>
+            </div>
+
+            <Link
+              href="/shop/order"
+              onClick={() => setOpenPanel(null)}
+              className={linkClass}
+            >
+              <ClipboardList
+                size={17}
+                strokeWidth={1.7}
+                aria-hidden="true"
+                className="shrink-0 text-[#625D55]"
+              />
+              View my orders
+            </Link>
 
             <a
-              href="https://wa.me/2348089570493"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="mailto:hello@newjersey.ng"
               onClick={() => setOpenPanel(null)}
-              className="mt-2 flex min-h-11 items-center justify-between rounded-lg border-t border-black/10 px-3 text-sm font-semibold hover:bg-[#F4F1E9]"
+              className={linkClass}
             >
-              WhatsApp support
-              <ArrowUpRight size={16} aria-hidden="true" />
-              <span className="sr-only">
-                {" "}— opens in a new tab
-              </span>
+              <Mail
+                size={17}
+                strokeWidth={1.7}
+                aria-hidden="true"
+                className="shrink-0 text-[#625D55]"
+              />
+              Email support
             </a>
+
+            <div className="mt-2 border-t border-black/10 pt-2">
+              <a
+                href="https://wa.me/2348089570493"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpenPanel(null)}
+                className={`${linkClass} justify-between font-semibold`}
+              >
+                WhatsApp support
+                <ArrowUpRight size={16} aria-hidden="true" />
+                <span className="sr-only">Opens in a new tab</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>

@@ -57,7 +57,7 @@ const socialLinks = [
   },
 ];
 
-export default function Footer() {
+export default function Footer({ showQuoteCTA = true }: { showQuoteCTA?: boolean }) {
   return (
     <footer className="relative overflow-hidden bg-[#2E1E0F] text-white">
       {/* Ambient orange glow */}
@@ -69,7 +69,7 @@ export default function Footer() {
         {/* =========================================================
             TOP CTA
         ========================================================= */}
-        <div className="border-b border-white/10 py-14 sm:py-16 lg:py-20">
+        {showQuoteCTA && <div className="border-b border-white/10 py-14 sm:py-16 lg:py-20">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <div className="mb-5 flex items-center gap-2">
@@ -102,6 +102,7 @@ export default function Footer() {
           </div>
         </div>
 
+        }
         {/* =========================================================
             BRAND + CONTACT
         ========================================================= */}

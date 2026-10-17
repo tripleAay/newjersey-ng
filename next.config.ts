@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "flagcdn.com",
       },
+      {
+        protocol: "https",
+        hostname: "kqymeonftowhtgynerny.supabase.co",
+        pathname:
+          "/storage/v1/object/public/newjersey-product-images/**",
+      },
     ],
   },
 };

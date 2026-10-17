@@ -1,25 +1,17 @@
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  Palette,
-  Printer,
-  Shirt,
-  Sparkles,
-} from "lucide-react";
+import { ArrowUpRight, Palette, Printer, Shirt, Sparkles } from "lucide-react";
 
 const departments = [
   {
     label: "Print",
-    description:
-      "Business cards, flyers, banners, stickers and packaging.",
+    description: "Business cards, flyers, banners, stickers and packaging.",
     href: "/shop/print",
     cta: "Explore print",
     icon: Printer,
   },
   {
-    label: "Apparel & Merch",
-    description:
-      "Branded T-shirts, jerseys, caps, uniforms and tote bags.",
+    label: "Apparel",
+    description: "Ready-designed clothing. Choose your size and colour.",
     href: "/shop/apparel",
     cta: "Explore apparel",
     icon: Shirt,
@@ -33,11 +25,10 @@ const departments = [
     icon: Palette,
   },
   {
-    label: "Custom Projects",
-    description:
-      "Have a different idea or a bulk request? Share your requirements.",
+    label: "Custom Printing",
+    description: "Print your artwork on clothing or request design assistance.",
     href: "/shop/custom",
-    cta: "Discuss your project",
+    cta: "Explore custom",
     icon: Sparkles,
   },
 ];

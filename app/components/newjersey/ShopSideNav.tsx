@@ -2,42 +2,74 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   ArrowUpRight,
   ChevronRight,
   ClipboardList,
+  Heart,
   HelpCircle,
+  Palette,
+  Printer,
+  Settings,
+  Shirt,
   ShoppingBag,
   ShoppingCart,
   X,
 } from "lucide-react";
 
-const navigation = [
+const groups = [
   {
     label: "Shop",
-    href: "/shop",
-    icon: ShoppingBag,
+    items: [
+      {
+        label: "Explore shop",
+        href: "/shop",
+        icon: ShoppingBag,
+      },
+      {
+        label: "Printing",
+        href: "/shop/print",
+        icon: Printer,
+      },
+      {
+        label: "Apparel",
+        href: "/shop/apparel",
+        icon: Shirt,
+      },
+      {
+        label: "Jerseys",
+        href: "/shop/jerseys",
+        icon: Shirt,
+      },
+      { label: "Custom printing", href: "/shop/custom", icon: Printer },
+      {
+        label: "Branding",
+        href: "/shop/branding",
+        icon: Palette,
+      },
+    ],
   },
   {
-    label: "My orders",
-    href: "/shop/order",
-    icon: ClipboardList,
-  },
-  {
-    label: "Cart",
-    href: "/shop/cart",
-    icon: ShoppingCart,
-  },
-  {
-    label: "Help",
-    href: "/contact",
-    icon: HelpCircle,
+    label: "Your account",
+    items: [
+      {
+        label: "My orders",
+        href: "/shop/order",
+        icon: ClipboardList,
+      },
+      {
+        label: "Cart",
+        href: "/shop/cart",
+        icon: ShoppingCart,
+      },
+
+      {
+        label: "Settings",
+        href: "/shop/account",
+        icon: Settings,
+      },
+    ],
   },
 ];
 
@@ -49,9 +81,19 @@ export default function ShopSideNav() {
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const closeTimerRef = useRef<
-    ReturnType<typeof setTimeout> | undefined
-  >(undefined);
+
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  const activeHref = groups
+    .flatMap((group) => group.items)
+    .filter((item) =>
+      item.href === "/shop"
+        ? pathname === "/shop"
+        : pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   function clearCloseTimer() {
     if (closeTimerRef.current !== undefined) {
@@ -69,19 +111,13 @@ export default function ShopSideNav() {
     }
   }
 
-  function isActive(href: string) {
-    if (href === "/shop") {
-      return pathname === href;
-    }
-
-    return (
-      pathname === href ||
-      pathname.startsWith(`${href}/`)
-    );
-  }
-
   useEffect(() => {
     setOpen(false);
+
+    if (closeTimerRef.current !== undefined) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = undefined;
+    }
   }, [pathname]);
 
   useEffect(() => {
@@ -107,33 +143,21 @@ export default function ShopSideNav() {
     function handleEscape(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
 
+      const focusInside = rootRef.current?.contains(document.activeElement);
+
       setOpen(false);
 
-      // Return focus only when the keyboard user
-      // was interacting with this navigation.
-      if (
-        document.activeElement &&
-        rootRef.current?.contains(document.activeElement)
-      ) {
+      if (focusInside) {
         triggerRef.current?.focus();
       }
     }
 
-    document.addEventListener(
-      "pointerdown",
-      handleOutsidePointer
-    );
+    document.addEventListener("pointerdown", handleOutsidePointer);
     document.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.removeEventListener(
-        "pointerdown",
-        handleOutsidePointer
-      );
-      document.removeEventListener(
-        "keydown",
-        handleEscape
-      );
+      document.removeEventListener("pointerdown", handleOutsidePointer);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [open]);
 
@@ -146,9 +170,7 @@ export default function ShopSideNav() {
 
         if (
           event.pointerType === "mouse" &&
-          window.matchMedia(
-            "(hover: hover) and (pointer: fine)"
-          ).matches
+          window.matchMedia("(hover: hover) and (pointer: fine)").matches
         ) {
           setOpen(true);
         }
@@ -159,12 +181,7 @@ export default function ShopSideNav() {
         clearCloseTimer();
 
         closeTimerRef.current = setTimeout(() => {
-          // Keep navigation open while a link has focus.
-          if (
-            rootRef.current?.contains(
-              document.activeElement
-            )
-          ) {
+          if (rootRef.current?.contains(document.activeElement)) {
             return;
           }
 
@@ -172,10 +189,11 @@ export default function ShopSideNav() {
         }, 180);
       }}
       onBlur={(event) => {
+        const nextTarget = event.relatedTarget;
+
         if (
-          !event.currentTarget.contains(
-            event.relatedTarget as Node | null
-          )
+          !(nextTarget instanceof Node) ||
+          !event.currentTarget.contains(nextTarget)
         ) {
           closeNavigation();
         }
@@ -184,11 +202,7 @@ export default function ShopSideNav() {
       <button
         ref={triggerRef}
         type="button"
-        aria-label={
-          open
-            ? "Close shop navigation"
-            : "Open shop navigation"
-        }
+        aria-label={open ? "Close shop navigation" : "Open shop navigation"}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => {
@@ -220,13 +234,18 @@ export default function ShopSideNav() {
       <div
         id={panelId}
         hidden={!open}
-        className="absolute left-full top-1/2 w-[232px] max-w-[calc(100vw-3rem)] -translate-y-1/2 pl-2"
+        className="absolute left-full top-1/2 w-[248px] max-w-[calc(100vw-3rem)] -translate-y-1/2 pl-2"
       >
-        <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)]">
-          <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-3">
-            <p className="text-[11px] font-medium text-[#7A7368]">
-              Your NewJersey
-            </p>
+        <div className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.10)]">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-black/5 px-4 py-2">
+            <Link
+              href="/shop"
+              onClick={() => closeNavigation()}
+              className="inline-flex min-h-11 items-center text-sm font-semibold tracking-tight text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+            >
+              newjersey
+              <span className="text-[#F58220]">.ng</span>
+            </Link>
 
             <button
               type="button"
@@ -240,62 +259,75 @@ export default function ShopSideNav() {
 
           <nav
             aria-label="Shop navigation"
-            className="space-y-1 px-2 pb-3"
+            className="min-h-0 overflow-y-auto overscroll-contain px-2 pb-3"
           >
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
+            {groups.map((group, groupIndex) => (
+              <div
+                key={group.label}
+                className={
+                  groupIndex > 0 ? "mt-3 border-t border-black/5 pt-1" : ""
+                }
+              >
+                <p className="px-3 pb-2 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8A8379]">
+                  {group.label}
+                </p>
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={
-                    active ? "page" : undefined
-                  }
-                  onClick={() => closeNavigation()}
-                  className={[
-                    "flex min-h-12 items-center gap-3 rounded-xl px-3",
-                    "text-sm transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]",
-                    active
-                      ? "bg-[#F5F4F0] font-semibold text-[#181818]"
-                      : "text-[#625D55] hover:bg-[#FAF9F6] hover:text-[#181818]",
-                  ].join(" ")}
-                >
-                  <Icon
-                    size={18}
-                    strokeWidth={1.7}
-                    aria-hidden="true"
-                  />
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = activeHref === item.href;
 
-                  <span className="flex-1">
-                    {item.label}
-                  </span>
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => closeNavigation()}
+                        className={[
+                          "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]",
+                          active
+                            ? "bg-[#F5F4F0] font-semibold text-[#181818]"
+                            : "text-[#625D55] hover:bg-[#FAF9F6] hover:text-[#181818]",
+                        ].join(" ")}
+                      >
+                        <Icon
+                          size={17}
+                          strokeWidth={1.7}
+                          aria-hidden="true"
+                          className={
+                            active ? "shrink-0 text-[#F58220]" : "shrink-0"
+                          }
+                        />
 
-                  {active && (
-                    <span
-                      aria-hidden="true"
-                      className="h-1.5 w-1.5 rounded-full bg-[#F58220]"
-                    />
-                  )}
-                </Link>
-              );
-            })}
+                        <span className="flex-1">{item.label}</span>
+
+                        {active && (
+                          <span
+                            aria-hidden="true"
+                            className="h-1.5 w-1.5 rounded-full bg-[#F58220]"
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
-          <div className="border-t border-black/10 px-4 py-3">
-            <Link
-              href="/shop"
+          <div className="shrink-0 border-t border-black/10 px-3 py-2">
+            <a
+              href="mailto:hello@newjersey.ng"
               onClick={() => closeNavigation()}
-              className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-[#625D55] hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+              className="flex min-h-11 items-center gap-3 rounded-xl px-2 text-xs font-medium text-[#625D55] hover:bg-[#FAF9F6] hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
             >
-              newjersey.ng
-              <ArrowUpRight
-                size={13}
-                aria-hidden="true"
-              />
-            </Link>
+              <HelpCircle size={17} strokeWidth={1.7} aria-hidden="true" />
+
+              <span className="flex-1">Need help?</span>
+
+              <ArrowUpRight size={14} aria-hidden="true" />
+            </a>
           </div>
         </div>
       </div>

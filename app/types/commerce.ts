@@ -1,23 +1,11 @@
 export type ProductStatus =
-  | "available"
-  | "made-to-order"
-  | "custom"
-  | "pre-order";
+  "available" | "made-to-order" | "custom" | "pre-order";
 
-export type PricingType =
-  | "fixed"
-  | "starting-from"
-  | "quote";
+export type PricingType = "fixed" | "starting-from" | "quote";
 
-export type ProductCategory =
-  | "print"
-  | "apparel"
-  | "merch";
+export type ProductCategory = "print" | "apparel" | "merch";
 
-export type ServiceCategory =
-  | "branding"
-  | "creative"
-  | "custom";
+export type ServiceCategory = "branding" | "creative" | "custom";
 
 export type ProductOptionChoice = {
   id: string;
@@ -29,10 +17,7 @@ export type ProductOptionChoice = {
 export type ProductOption = {
   id: string;
   label: string;
-  type:
-    | "select"
-    | "radio"
-    | "quantity";
+  type: "select" | "radio" | "quantity";
   required?: boolean;
   choices: ProductOptionChoice[];
 };
@@ -94,9 +79,7 @@ export type SelectedProductOption = {
 };
 
 export type CartItemArtwork = {
-  type:
-    | "customer-supplied"
-    | "design-needed";
+  type: "customer-supplied" | "design-needed" | "not-required";
   designFee?: number;
 };
 
@@ -144,9 +127,7 @@ export type OrderCustomer = {
 };
 
 export type OrderDelivery = {
-  method:
-    | "delivery"
-    | "pickup";
+  method: "delivery" | "pickup";
   state?: string;
   city?: string;
   address?: string;

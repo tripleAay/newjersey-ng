@@ -15,8 +15,7 @@ import { products } from "@/app/data/newjersey/products";
 function findProduct(id: string | number) {
   return products.find(
     (product) =>
-      product.published !== false &&
-      String(product.id) === String(id)
+      product.published !== false && String(product.id) === String(id),
   );
 }
 
@@ -32,7 +31,9 @@ function productHref(id: string | number): string | null {
       return `/shop/print/${slug}`;
 
     case "apparel":
-      return `/shop/apparel/${slug}`;
+      return slug === "custom-jerseys"
+        ? "/shop/jerseys"
+        : `/shop/custom/${slug}`;
 
     default:
       return "/shop/quote";
@@ -40,11 +41,7 @@ function productHref(id: string | number): string | null {
 }
 
 export default function WishlistPage() {
-  const {
-    items,
-    removeFromWishlist,
-    clearWishlist,
-  } = useWishlist();
+  const { items, removeFromWishlist, clearWishlist } = useWishlist();
 
   const [mounted, setMounted] = useState(false);
 
@@ -80,24 +77,20 @@ export default function WishlistPage() {
             </h1>
 
             <p className="mt-3 max-w-xl text-sm leading-7 text-[#625D55]">
-              Keep products here for later. Choose your print options
-              and artwork requirements before adding them to your cart.
+              Keep products here for later. Choose your print options and
+              artwork requirements before adding them to your cart.
             </p>
           </div>
 
           {mounted && items.length > 0 && (
             <p className="text-sm text-[#625D55]">
-              {items.length} saved{" "}
-              {items.length === 1 ? "product" : "products"}
+              {items.length} saved {items.length === 1 ? "product" : "products"}
             </p>
           )}
         </div>
 
         {!mounted ? (
-          <p
-            role="status"
-            className="mt-8 py-8 text-sm text-[#625D55]"
-          >
+          <p role="status" className="mt-8 py-8 text-sm text-[#625D55]">
             Loading your wishlist…
           </p>
         ) : items.length === 0 ? (
@@ -113,8 +106,8 @@ export default function WishlistPage() {
             </h2>
 
             <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[#625D55]">
-              Products you save will appear here so you can return
-              to them when you are ready.
+              Products you save will appear here so you can return to them when
+              you are ready.
             </p>
 
             <Link
@@ -187,10 +180,7 @@ export default function WishlistPage() {
                                 ? "Request a quote"
                                 : "View options"}
 
-                            <ArrowUpRight
-                              size={15}
-                              aria-hidden="true"
-                            />
+                            <ArrowUpRight size={15} aria-hidden="true" />
                           </Link>
 
                           <button
@@ -212,17 +202,15 @@ export default function WishlistPage() {
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
               <p className="max-w-xl text-xs leading-6 text-[#625D55]">
-                Saved items are not reserved. Pricing depends on
-                the options selected on the product page.
+                Saved items are not reserved. Pricing depends on the options
+                selected on the product page.
               </p>
 
               <button
                 type="button"
                 onClick={() => {
                   if (
-                    window.confirm(
-                      "Remove all products from your wishlist?"
-                    )
+                    window.confirm("Remove all products from your wishlist?")
                   ) {
                     clearWishlist();
                   }

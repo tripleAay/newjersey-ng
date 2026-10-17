@@ -1,99 +1,47 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, BadgeCheck } from "lucide-react";
-
 import DashboardHeader from "@/app/components/dashboard components/mainheader";
 import TopNav from "@/app/components/dashboard components/topnav";
 import Footer from "@/app/components/Footer";
-
-import {
-  getProductBySlug,
-} from "@/app/data/newjersey/products";
-
-import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
-
 import ProductGallery from "@/app/components/newjersey/product/ProductGallery";
-import ProductConfigurator from "@/app/components/newjersey/product/ProductConfigurator";
-import ProductInformation from "@/app/components/newjersey/product/ProductInformation";
-
+import ApparelPurchase from "@/app/components/newjersey/product/ApparelPurchase";
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
+import { getProductBySlug } from "@/app/data/newjersey/products";
+import {
+  APPAREL_FIELDS,
+  toApparelProduct,
+  type ApparelRow,
+} from "@/app/lib/newjersey/apparel/catalogue";
 export const dynamic = "force-dynamic";
-
-type ApparelProductPageProps = {
-  params: Promise<{
-    slug: string;
-  }>;
-};
-
 const statusLabels = {
-  available: "Available Now",
-  "made-to-order": "Made to Order",
+  available: "Ready-designed",
+  "made-to-order": "Made to order",
   custom: "Custom",
-  "pre-order": "Pre-Order",
-} as const;
-
-function parseDesignFee(value: unknown): number | undefined {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return undefined;
-  }
-
-  if (
-    typeof value !== "number" &&
-    typeof value !== "string"
-  ) {
-    throw new Error("Invalid product design fee.");
-  }
-
-  const amount = Number(value);
-
-  if (
-    !Number.isFinite(amount) ||
-    amount < 0 ||
-    amount > 9999999999
-  ) {
-    throw new Error("Invalid product design fee.");
-  }
-
-  return Math.round(amount * 100) / 100;
-}
-
+  "pre-order": "Preorder",
+};
 export default async function ApparelProductPage({
   params,
-}: ApparelProductPageProps) {
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
-
-  const catalogueProduct = getProductBySlug(slug);
-
-  if (
-    !catalogueProduct ||
-    catalogueProduct.category !== "apparel" ||
-    catalogueProduct.published === false
-  ) {
-    notFound();
-  }
-
-  const supabase = getSupabaseAdmin();
-
-  const { data: settings, error } = await supabase
+  if (slug === "custom-jerseys") redirect("/shop/jerseys");
+  const { data, error } = await getSupabaseAdmin()
     .from("products")
-    .select("design_fee")
-    .eq("slug", catalogueProduct.slug)
+    .select(APPAREL_FIELDS)
+    .eq("slug", slug)
+    .eq("apparel_enabled", true)
     .eq("publication_status", "published")
     .maybeSingle();
-
-  if (error) {
-    console.error("[Apparel product design fee]", error);
-    throw new Error("Unable to load product pricing.");
+  if (error) throw new Error("Unable to load apparel.");
+  const product = data ? toApparelProduct(data as unknown as ApparelRow) : null;
+  if (!product) {
+    const legacy = getProductBySlug(slug);
+    if (legacy?.category === "apparel")
+      redirect(`/shop/custom/${encodeURIComponent(slug)}`);
+    notFound();
   }
-
-  const product = {
-    ...catalogueProduct,
-    designFee: parseDesignFee(settings?.design_fee),
-  };
-
   const galleryImages = product.images?.length
     ? product.images
     : product.image
@@ -113,10 +61,7 @@ export default async function ApparelProductPage({
       </header>
 
       <main className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
-        <nav
-          aria-label="Breadcrumb"
-          className="py-5 sm:py-7"
-        >
+        <nav aria-label="Breadcrumb" className="py-5 sm:py-7">
           <Link
             href="/shop/apparel"
             className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-semibold text-[#625D55] transition-colors hover:text-[#F58220] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-4 focus-visible:ring-offset-[#F4F1E9]"
@@ -145,10 +90,7 @@ export default async function ApparelProductPage({
                   Apparel
                 </Link>
 
-                <span
-                  aria-hidden="true"
-                  className="text-[#F58220]"
-                >
+                <span aria-hidden="true" className="text-[#F58220]">
                   /
                 </span>
 
@@ -172,19 +114,18 @@ export default async function ApparelProductPage({
               </p>
             </div>
 
-            <ProductConfigurator
-              key={`${product.id}:${product.designFee ?? "unset"}`}
-              product={product}
-            />
+            <ApparelPurchase key={product.id} product={product} />
           </div>
         </section>
 
-        <ProductInformation
-          turnaround={product.turnaround}
-        />
+        <section className="border-t border-black/10 py-8 text-sm leading-7 text-[#625D55]">
+          The product is sold with the design shown. Choose your size and colour
+          before ordering. Delivery charges and availability are confirmed
+          before payment.
+        </section>
       </main>
 
-      <Footer />
+      <Footer showQuoteCTA={false} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 
 import { requireAdmin } from "@/app/lib/newjersey/auth/admin";
 import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
-import { confirmOrderPricing } from "./action";
+import { confirmOrderPricing } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -28,15 +28,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-NG", {
   timeZone: "Africa/Lagos",
 });
 
-const sectionClass =
-  "rounded-xl border border-black/10 bg-white p-5 sm:p-6";
+const sectionClass = "rounded-xl border border-black/10 bg-white p-5 sm:p-6";
 
 function money(value: unknown) {
   const amount = Number(value);
 
-  return Number.isFinite(amount)
-    ? currency.format(amount)
-    : "Unavailable";
+  return Number.isFinite(amount) ? currency.format(amount) : "Unavailable";
 }
 
 function dateLabel(value: string) {
@@ -64,9 +61,7 @@ function selectionsLabel(value: unknown) {
       return [];
     }
 
-    return [
-      `${selection.optionLabel}: ${selection.choiceLabel}`,
-    ];
+    return [`${selection.optionLabel}: ${selection.choiceLabel}`];
   });
 }
 
@@ -84,7 +79,7 @@ export default async function AdminOrderDetailsPage({
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, order_number, customer_id, customer_full_name, customer_email, customer_phone, customer_organization, project_name, preferred_deadline, production_instructions, delivery_method, delivery_state, delivery_city, delivery_address, delivery_landmark, subtotal, design_fee, delivery_fee, final_total, status, created_at, updated_at"
+      "id, order_number, customer_id, customer_full_name, customer_email, customer_phone, customer_organization, project_name, preferred_deadline, production_instructions, delivery_method, delivery_state, delivery_city, delivery_address, delivery_landmark, subtotal, design_fee, delivery_fee, final_total, status, created_at, updated_at",
     )
     .eq("order_number", orderNumber)
     .maybeSingle();
@@ -96,35 +91,30 @@ export default async function AdminOrderDetailsPage({
 
   if (!order) notFound();
 
-  const [itemsResult, artworkResult, historyResult] =
-    await Promise.all([
-      supabase
-        .from("order_items")
-        .select(
-          "id, product_name, quantity, unit_price, total_price, design_fee, selections, artwork_type"
-        )
-        .eq("order_id", order.id)
-        .order("created_at", { ascending: true }),
+  const [itemsResult, artworkResult, historyResult] = await Promise.all([
+    supabase
+      .from("order_items")
+      .select(
+        "id, product_name, quantity, unit_price, total_price, design_fee, selections, artwork_type, review_mode, specifications_approved_at",
+      )
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: true }),
 
-      supabase
-        .from("order_artworks")
-        .select("id, order_item_id, status")
-        .eq("order_id", order.id),
+    supabase
+      .from("order_artworks")
+      .select("id, order_item_id, status")
+      .eq("order_id", order.id),
 
-      supabase
-        .from("order_pricing_history")
-        .select(
-          "id, admin_name, production_total, design_fee, delivery_fee, final_total, notes, created_at"
-        )
-        .eq("order_id", order.id)
-        .order("created_at", { ascending: false }),
-    ]);
+    supabase
+      .from("order_pricing_history")
+      .select(
+        "id, admin_name, production_total, design_fee, delivery_fee, final_total, notes, created_at",
+      )
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  if (
-    itemsResult.error ||
-    artworkResult.error ||
-    historyResult.error
-  ) {
+  if (itemsResult.error || artworkResult.error || historyResult.error) {
     console.error("[Order supporting details]", {
       items: itemsResult.error,
       artwork: artworkResult.error,
@@ -138,41 +128,31 @@ export default async function AdminOrderDetailsPage({
   const artworks = artworkResult.data ?? [];
   const history = historyResult.data ?? [];
 
+  const hasJerseys = items.some((item) => item.review_mode === "jersey");
   const artworkReady =
     items.length > 0 &&
-    items.every((item) =>
-      artworks.some(
-        (artwork) =>
-          artwork.order_item_id === item.id &&
-          artwork.status === "approved"
-      )
-    ) &&
-    artworks.every(
-      (artwork) => artwork.status === "approved"
-    );
+    items
+      .filter((item) => !["jersey", "retail"].includes(item.review_mode))
+      .every((item) =>
+        artworks.some(
+          (artwork) =>
+            artwork.order_item_id === item.id && artwork.status === "approved",
+        ),
+      ) &&
+    artworks.every((artwork) => artwork.status === "approved");
 
-  const canManagePricing = ["owner", "admin"].includes(
-    current.profile.role
-  );
+  const canManagePricing = ["owner", "admin"].includes(current.profile.role);
 
   const pricingOpen =
     order.final_total === null &&
-    ["submitted", "under-review", "awaiting-artwork"].includes(
-      order.status
-    );
+    ["submitted", "under-review", "awaiting-artwork"].includes(order.status);
 
   const totalsMatch =
     Math.round(
-      items.reduce(
-        (sum, item) => sum + Number(item.total_price),
-        0
-      ) * 100
+      items.reduce((sum, item) => sum + Number(item.total_price), 0) * 100,
     ) === Math.round(Number(order.subtotal) * 100) &&
     Math.round(
-      items.reduce(
-        (sum, item) => sum + Number(item.design_fee),
-        0
-      ) * 100
+      items.reduce((sum, item) => sum + Number(item.design_fee), 0) * 100,
     ) === Math.round(Number(order.design_fee) * 100);
 
   const canConfirm =
@@ -183,9 +163,7 @@ export default async function AdminOrderDetailsPage({
     Boolean(order.customer_id);
 
   const errorMessage =
-    typeof query.error === "string"
-      ? query.error.slice(0, 500)
-      : "";
+    typeof query.error === "string" ? query.error.slice(0, 500) : "";
 
   return (
     <main className="min-w-0 p-4 text-[#181818] sm:p-6 lg:p-8">
@@ -228,21 +206,17 @@ export default async function AdminOrderDetailsPage({
             role="status"
             className="mt-5 rounded-xl border border-[#F58220]/25 bg-[#F58220]/10 p-4 text-sm leading-7"
           >
-            Final pricing confirmed. This order is now
-            awaiting payment. No payment has been collected.
+            Final pricing confirmed. This order is now awaiting payment. No
+            payment has been collected.
           </p>
         )}
 
         <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-6">
             <section className={sectionClass}>
-              <h2 className="text-lg font-semibold">
-                Customer
-              </h2>
+              <h2 className="text-lg font-semibold">Customer</h2>
 
-              <p className="mt-4 font-medium">
-                {order.customer_full_name}
-              </p>
+              <p className="mt-4 font-medium">{order.customer_full_name}</p>
               <p className="mt-2 break-all text-sm text-neutral-600">
                 {order.customer_email}
               </p>
@@ -258,13 +232,9 @@ export default async function AdminOrderDetailsPage({
             </section>
 
             <section className={sectionClass}>
-              <h2 className="text-lg font-semibold">
-                Production brief
-              </h2>
+              <h2 className="text-lg font-semibold">Production brief</h2>
 
-              <p className="mt-4 font-medium">
-                {order.project_name}
-              </p>
+              <p className="mt-4 font-medium">{order.project_name}</p>
 
               {order.preferred_deadline && (
                 <p className="mt-2 text-sm text-neutral-600">
@@ -273,21 +243,17 @@ export default async function AdminOrderDetailsPage({
               )}
 
               <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-neutral-600">
-                {order.production_instructions ||
-                  "No additional instructions."}
+                {order.production_instructions || "No additional instructions."}
               </p>
             </section>
 
             <section className={sectionClass}>
-              <h2 className="text-lg font-semibold">
-                Configured products
-              </h2>
+              <h2 className="text-lg font-semibold">Configured products</h2>
 
               <div className="mt-5 divide-y divide-black/10">
                 {items.map((item) => {
                   const itemArtworks = artworks.filter(
-                    (artwork) =>
-                      artwork.order_item_id === item.id
+                    (artwork) => artwork.order_item_id === item.id,
                   );
 
                   return (
@@ -295,9 +261,7 @@ export default async function AdminOrderDetailsPage({
                       key={item.id}
                       className="py-5 first:pt-0 last:pb-0"
                     >
-                      <h3 className="font-semibold">
-                        {item.product_name}
-                      </h3>
+                      <h3 className="font-semibold">{item.product_name}</h3>
 
                       <p className="mt-2 text-sm text-neutral-600">
                         {item.quantity} identical{" "}
@@ -313,14 +277,12 @@ export default async function AdminOrderDetailsPage({
                           >
                             {selection}
                           </p>
-                        )
+                        ),
                       )}
 
                       <dl className="mt-3 space-y-2 text-sm">
                         <div className="flex justify-between gap-4">
-                          <dt className="text-neutral-600">
-                            Production
-                          </dt>
+                          <dt className="text-neutral-600">Production</dt>
                           <dd>{money(item.total_price)}</dd>
                         </div>
                         <div className="flex justify-between gap-4">
@@ -333,13 +295,17 @@ export default async function AdminOrderDetailsPage({
 
                       <p className="mt-3 text-xs capitalize text-neutral-600">
                         Artwork:{" "}
-                        {itemArtworks.length > 0
-                          ? itemArtworks
-                              .map((artwork) =>
-                                label(artwork.status)
-                              )
-                              .join(", ")
-                          : "No artwork record available"}
+                        {item.review_mode === "retail"
+                          ? "Not required - ready-designed apparel"
+                          : item.review_mode === "jersey"
+                            ? item.specifications_approved_at
+                              ? "Jersey specifications approved"
+                              : "Jersey specifications awaiting admin approval"
+                            : itemArtworks.length > 0
+                              ? itemArtworks
+                                  .map((artwork) => label(artwork.status))
+                                  .join(", ")
+                              : "No artwork record available"}
                       </p>
                     </article>
                   );
@@ -356,9 +322,7 @@ export default async function AdminOrderDetailsPage({
             </section>
 
             <section className={sectionClass}>
-              <h2 className="text-lg font-semibold">
-                Delivery
-              </h2>
+              <h2 className="text-lg font-semibold">Delivery</h2>
 
               <p className="mt-4 text-sm font-medium capitalize">
                 {order.delivery_method}
@@ -382,9 +346,7 @@ export default async function AdminOrderDetailsPage({
             </section>
 
             <section className={sectionClass}>
-              <h2 className="text-lg font-semibold">
-                Pricing record
-              </h2>
+              <h2 className="text-lg font-semibold">Pricing record</h2>
 
               {history.length === 0 ? (
                 <p className="mt-3 text-sm leading-7 text-neutral-500">
@@ -393,16 +355,12 @@ export default async function AdminOrderDetailsPage({
               ) : (
                 <ol className="mt-4 space-y-4">
                   {history.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="rounded-xl bg-[#F6F6F3] p-4"
-                    >
+                    <li key={entry.id} className="rounded-xl bg-[#F6F6F3] p-4">
                       <p className="text-sm font-semibold">
                         {money(entry.final_total)} confirmed
                       </p>
                       <p className="mt-2 text-xs leading-6 text-neutral-500">
-                        {entry.admin_name} ·{" "}
-                        {dateLabel(entry.created_at)}
+                        {entry.admin_name} · {dateLabel(entry.created_at)}
                       </p>
                       <p className="mt-2 text-xs leading-6 text-neutral-600">
                         Production {money(entry.production_total)}
@@ -422,25 +380,17 @@ export default async function AdminOrderDetailsPage({
           </div>
 
           <aside className={`${sectionClass} xl:sticky xl:top-24`}>
-            <h2 className="text-lg font-semibold">
-              Final pricing
-            </h2>
+            <h2 className="text-lg font-semibold">Final pricing</h2>
 
             <dl className="mt-5 space-y-4 text-sm">
               <div className="flex justify-between gap-4">
                 <dt className="text-neutral-600">Production</dt>
-                <dd className="font-medium">
-                  {money(order.subtotal)}
-                </dd>
+                <dd className="font-medium">{money(order.subtotal)}</dd>
               </div>
 
               <div className="flex justify-between gap-4">
-                <dt className="text-neutral-600">
-                  Design assistance
-                </dt>
-                <dd className="font-medium">
-                  {money(order.design_fee)}
-                </dd>
+                <dt className="text-neutral-600">Design assistance</dt>
+                <dd className="font-medium">{money(order.design_fee)}</dd>
               </div>
 
               {order.final_total !== null && (
@@ -451,9 +401,7 @@ export default async function AdminOrderDetailsPage({
                   </div>
 
                   <div className="flex justify-between gap-4 border-t border-black/10 pt-4">
-                    <dt className="font-semibold">
-                      Confirmed total
-                    </dt>
+                    <dt className="font-semibold">Confirmed total</dt>
                     <dd className="text-xl font-semibold">
                       {money(order.final_total)}
                     </dd>
@@ -466,14 +414,16 @@ export default async function AdminOrderDetailsPage({
               <>
                 <p className="mt-5 rounded-xl bg-[#F6F6F3] p-4 text-sm leading-7">
                   {artworkReady
-                    ? "All required artwork is approved."
+                    ? hasJerseys
+                      ? "Review the jersey specifications below before confirming pricing."
+                      : "All required artwork is approved."
                     : "Every item needs approved artwork before pricing can be confirmed."}
                 </p>
 
                 {!totalsMatch && (
                   <p className="mt-3 text-sm leading-7 text-red-700">
-                    Order totals differ from the saved item totals.
-                    Resolve this before confirming.
+                    Order totals differ from the saved item totals. Resolve this
+                    before confirming.
                   </p>
                 )}
 
@@ -484,21 +434,27 @@ export default async function AdminOrderDetailsPage({
                 )}
 
                 {canManagePricing ? (
-                  <form
-                    action={confirmOrderPricing}
-                    className="mt-5 space-y-4"
-                  >
-                    <input
-                      type="hidden"
-                      name="orderId"
-                      value={order.id}
-                    />
+                  <form action={confirmOrderPricing} className="mt-5 space-y-4">
+                    <input type="hidden" name="orderId" value={order.id} />
                     <input
                       type="hidden"
                       name="expectedUpdatedAt"
                       value={order.updated_at}
                     />
 
+                    {hasJerseys && (
+                      <label className="flex items-start gap-3 rounded-xl bg-[#F6F6F3] p-4 text-xs leading-6">
+                        <input
+                          type="checkbox"
+                          name="approveJerseys"
+                          required
+                          className="mt-1 h-4 w-4 shrink-0"
+                        />
+                        I confirm availability and have checked every jersey's
+                        team, season, kit, size, quantity, exact printed name
+                        and number.
+                      </label>
+                    )}
                     <label className="block text-sm font-medium">
                       Delivery fee in NGN
                       <input
@@ -529,9 +485,9 @@ export default async function AdminOrderDetailsPage({
                     </label>
 
                     <p className="text-xs leading-6 text-neutral-500">
-                      Confirmation adds the delivery fee to
-                      production and design charges, then changes
-                      the order to awaiting payment.
+                      Confirmation adds the delivery fee to production and
+                      design charges, then changes the order to awaiting
+                      payment.
                     </p>
 
                     <button
@@ -539,7 +495,9 @@ export default async function AdminOrderDetailsPage({
                       disabled={!canConfirm}
                       className="flex min-h-12 w-full items-center justify-center rounded-xl bg-[#F58220] px-5 text-sm font-semibold transition-colors hover:bg-[#D96B0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Confirm final pricing
+                      {hasJerseys
+                        ? "Approve details and confirm pricing"
+                        : "Confirm final pricing"}
                     </button>
                   </form>
                 ) : (
@@ -552,8 +510,8 @@ export default async function AdminOrderDetailsPage({
 
             {!pricingOpen && (
               <p className="mt-5 text-sm leading-7 text-neutral-500">
-                Final-pricing confirmation is closed for this
-                order. Payment verification is a separate step.
+                Final-pricing confirmation is closed for this order. Payment
+                verification is a separate step.
               </p>
             )}
           </aside>

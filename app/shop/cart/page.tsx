@@ -30,14 +30,8 @@ const focus =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2";
 
 export default function CartPage() {
-  const {
-    items,
-    itemCount,
-    hydrated,
-    removeItem,
-    updateQuantity,
-    clearCart,
-  } = useCart();
+  const { items, itemCount, hydrated, removeItem, updateQuantity, clearCart } =
+    useCart();
 
   return (
     <div className="min-h-screen bg-[#F4F1E9] text-[#181818]">
@@ -72,8 +66,8 @@ export default function CartPage() {
               </h1>
 
               <p className="mt-4 text-sm leading-7 text-[#625D55]">
-                Choose a product, select your specifications,
-                and add it to your order.
+                Choose a product, select your specifications, and add it to your
+                order.
               </p>
 
               <Link
@@ -127,12 +121,9 @@ export default function CartPage() {
                 className="min-w-0 space-y-4"
               >
                 {items.map((item) => {
-                  const needsDesign =
-                    item.artwork?.type === "design-needed";
+                  const needsDesign = item.artwork?.type === "design-needed";
 
-                  const fee = needsDesign
-                    ? item.artwork?.designFee ?? 0
-                    : 0;
+                  const fee = needsDesign ? (item.artwork?.designFee ?? 0) : 0;
 
                   const lineTotal =
                     Math.round((item.totalPrice + fee) * 100) / 100;
@@ -209,7 +200,9 @@ export default function CartPage() {
                               <p className="text-sm font-medium">
                                 {needsDesign
                                   ? "Design assistance"
-                                  : "Customer-supplied artwork"}
+                                  : item.artwork?.type === "not-required"
+                                    ? "No artwork required"
+                                    : "Customer-supplied artwork"}
                               </p>
 
                               <p className="mt-1 text-xs leading-6 text-[#625D55]">
@@ -233,7 +226,7 @@ export default function CartPage() {
                                   onClick={() =>
                                     updateQuantity(
                                       item.cartItemId,
-                                      item.quantity - 1
+                                      item.quantity - 1,
                                     )
                                   }
                                   aria-label={`Decrease jobs for ${item.name}`}
@@ -252,7 +245,7 @@ export default function CartPage() {
                                   onClick={() =>
                                     updateQuantity(
                                       item.cartItemId,
-                                      item.quantity + 1
+                                      item.quantity + 1,
                                     )
                                   }
                                   aria-label={`Increase jobs for ${item.name}`}
@@ -284,7 +277,8 @@ export default function CartPage() {
                           </div>
 
                           <p className="mt-3 text-xs leading-6 text-[#625D55]">
-                            {currency.format(item.unitPrice)} production per job.
+                            {currency.format(item.unitPrice)} production per
+                            job.
                           </p>
                         </div>
                       </div>
@@ -294,8 +288,8 @@ export default function CartPage() {
 
                 <p className="px-1 text-xs leading-6 text-[#625D55]">
                   Increasing identical jobs repeats your selected
-                  specifications. Design assistance is charged once
-                  per configuration.
+                  specifications. Design assistance is charged once per
+                  configuration.
                 </p>
               </section>
 

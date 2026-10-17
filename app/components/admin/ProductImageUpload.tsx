@@ -7,8 +7,8 @@ const MAX_IMAGES = 4;
 const MAX_SIZE = 4 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-export default function ProductImageUpload() {
-  const [images, setImages] = useState<string[]>([]);
+export default function ProductImageUpload({ initialImages = [] }: { initialImages?: string[] }) {
+  const [images, setImages] = useState<string[]>(() => [...new Set(initialImages)].slice(0, MAX_IMAGES));
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");

@@ -25,8 +25,7 @@ type Props = {
 
 type MoneyValue = number | string | null | undefined;
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const currency = new Intl.NumberFormat("en-NG", {
   style: "currency",
@@ -67,23 +66,16 @@ function parseMoney(value: MoneyValue): number | null {
 
   const parsed = Number(value);
 
-  return Number.isFinite(parsed) && parsed >= 0
-    ? parsed
-    : null;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function money(value: MoneyValue) {
   const parsed = parseMoney(value);
 
-  return parsed === null
-    ? "Unavailable"
-    : currency.format(parsed);
+  return parsed === null ? "Unavailable" : currency.format(parsed);
 }
 
-function date(
-  value: string | null | undefined,
-  includeTime = false
-) {
+function date(value: string | null | undefined, includeTime = false) {
   if (!value) return "Not provided";
 
   const parsed = new Date(value);
@@ -106,8 +98,7 @@ function getOrderState(status: string, pickup: boolean) {
     case "submitted":
       return {
         title: "We have your order.",
-        description:
-          "We’ll check the details and confirm what happens next.",
+        description: "We’ll check the details and confirm what happens next.",
         stage: 0,
       };
 
@@ -138,8 +129,7 @@ function getOrderState(status: string, pickup: boolean) {
     case "confirmed":
       return {
         title: "Your order is confirmed.",
-        description:
-          "Everything is being prepared for production.",
+        description: "Everything is being prepared for production.",
         stage: 1,
       };
 
@@ -181,16 +171,14 @@ function getOrderState(status: string, pickup: boolean) {
     case "cancelled":
       return {
         title: "This order is cancelled.",
-        description:
-          "Contact us with your order reference if you need help.",
+        description: "Contact us with your order reference if you need help.",
         stage: -1,
       };
 
     default:
       return {
         title: "Your order update.",
-        description:
-          "You’ll find the latest order details here.",
+        description: "You’ll find the latest order details here.",
         stage: -1,
       };
   }
@@ -225,13 +213,9 @@ function Section({
   return (
     <section className="border-t border-black/10 py-8 sm:py-10">
       <div className="mb-6 flex items-center gap-3">
-        <span className="text-xs font-medium text-[#948D82]">
-          {number}
-        </span>
+        <span className="text-xs font-medium text-[#948D82]">{number}</span>
 
-        <h2 className="text-lg font-semibold tracking-tight">
-          {title}
-        </h2>
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
       </div>
 
       {children}
@@ -239,13 +223,7 @@ function Section({
   );
 }
 
-function Detail({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function Detail({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs text-[#7A7368]">{title}</dt>
@@ -257,13 +235,7 @@ function Detail({
   );
 }
 
-function PriceRow({
-  title,
-  value,
-}: {
-  title: string;
-  value: string;
-}) {
+function PriceRow({ title, value }: { title: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-5 text-sm">
       <dt className="text-[#625D55]">{title}</dt>
@@ -272,9 +244,7 @@ function PriceRow({
   );
 }
 
-export default async function OrderDetailsPage({
-  params,
-}: Props) {
+export default async function OrderDetailsPage({ params }: Props) {
   const { Id: id } = await params;
 
   if (typeof id !== "string" || !UUID.test(id)) {
@@ -289,16 +259,15 @@ export default async function OrderDetailsPage({
   } = await auth.auth.getUser();
 
   if (authError || !user) {
-    redirect(
-      `/login?next=${encodeURIComponent(`/shop/order/${id}`)}`
-    );
+    redirect(`/login?next=${encodeURIComponent(`/shop/order/${id}`)}`);
   }
 
   const supabase = getSupabaseAdmin();
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select(`
+    .select(
+      `
       id,
       order_number,
       project_name,
@@ -325,7 +294,8 @@ export default async function OrderDetailsPage({
       final_total,
       created_at,
       updated_at
-    `)
+    `,
+    )
     .eq("id", id)
     .eq("customer_id", user.id)
     .maybeSingle();
@@ -340,7 +310,8 @@ export default async function OrderDetailsPage({
   const [itemsResult, artworksResult] = await Promise.all([
     supabase
       .from("order_items")
-      .select(`
+      .select(
+        `
         id,
         product_name,
         quantity,
@@ -348,22 +319,27 @@ export default async function OrderDetailsPage({
         total_price,
         design_fee,
         artwork_type,
+        review_mode,
+        specifications_approved_at,
         selections
-      `)
+      `,
+      )
       .eq("order_id", order.id)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true }),
 
     supabase
       .from("order_artworks")
-      .select(`
+      .select(
+        `
         id,
         order_item_id,
         status,
         file_name,
         notes,
         updated_at
-      `)
+      `,
+      )
       .eq("order_id", order.id)
       .order("created_at", { ascending: true })
       .order("id", { ascending: true }),
@@ -394,21 +370,18 @@ export default async function OrderDetailsPage({
       : null;
 
   const hasCustomerArtwork = items.some(
-    (item) => item.artwork_type === "customer-supplied"
+    (item) => item.artwork_type === "customer-supplied",
   );
 
   const hasTrackingDetails =
     !pickup &&
     Boolean(
       order.delivery_carrier ||
-        order.delivery_tracking_reference ||
-        order.dispatched_at
+      order.delivery_tracking_reference ||
+      order.dispatched_at,
     );
 
-  const location = [
-    order.delivery_city,
-    order.delivery_state,
-  ]
+  const location = [order.delivery_city, order.delivery_state]
     .filter(Boolean)
     .join(", ");
 
@@ -442,9 +415,7 @@ export default async function OrderDetailsPage({
 
         <div className="pb-9 pt-7 sm:pb-12 sm:pt-10">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#625D55]">
-            <p className="break-all font-medium">
-              {order.order_number}
-            </p>
+            <p className="break-all font-medium">{order.order_number}</p>
 
             <span
               aria-hidden="true"
@@ -481,16 +452,15 @@ export default async function OrderDetailsPage({
                 {state.description}
               </p>
 
-              {order.status === "awaiting-artwork" &&
-                hasCustomerArtwork && (
-                  <Link
-                    href={`/shop/artwork/${order.id}`}
-                    className={`${buttonClass} mt-5`}
-                  >
-                    Open your artwork
-                    <ArrowUpRight size={16} aria-hidden="true" />
-                  </Link>
-                )}
+              {order.status === "awaiting-artwork" && hasCustomerArtwork && (
+                <Link
+                  href={`/shop/artwork/${order.id}`}
+                  className={`${buttonClass} mt-5`}
+                >
+                  Open your artwork
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </Link>
+              )}
 
               {state.stage >= 0 && (
                 <ol className="mt-8 grid grid-cols-4 gap-2 sm:gap-4">
@@ -499,10 +469,7 @@ export default async function OrderDetailsPage({
                     const active = state.stage === index;
 
                     return (
-                      <li
-                        key={step}
-                        aria-current={active ? "step" : undefined}
-                      >
+                      <li key={step} aria-current={active ? "step" : undefined}>
                         <div
                           className={[
                             "h-1 rounded-full",
@@ -541,8 +508,8 @@ export default async function OrderDetailsPage({
             <Section number="01" title="What you ordered">
               {items.length === 0 ? (
                 <p className="text-sm leading-7 text-[#625D55]">
-                  Product details are unavailable. Contact us
-                  with your order reference.
+                  Product details are unavailable. Contact us with your order
+                  reference.
                 </p>
               ) : (
                 <div className="space-y-8">
@@ -550,17 +517,14 @@ export default async function OrderDetailsPage({
                     const options = selections(item.selections);
 
                     const itemArtworks = artworks.filter(
-                      (artwork) =>
-                        artwork.order_item_id === item.id
+                      (artwork) => artwork.order_item_id === item.id,
                     );
 
                     return (
                       <article
                         key={item.id}
                         className={
-                          index > 0
-                            ? "border-t border-black/10 pt-8"
-                            : ""
+                          index > 0 ? "border-t border-black/10 pt-8" : ""
                         }
                       >
                         <div className="flex items-start gap-4">
@@ -607,14 +571,27 @@ export default async function OrderDetailsPage({
                               {money(item.unit_price)} per job
                             </p>
 
-                            {item.artwork_type && (
+                            {item.review_mode === "retail" ? (
                               <p className="mt-1 text-xs leading-6 text-[#625D55]">
-                                {item.artwork_type === "customer-supplied"
-                                  ? "Your own artwork"
-                                  : "Design assistance"}
-                                {" · "}
-                                {money(item.design_fee)} design fee
+                                Ready-designed apparel. No artwork upload
+                                required.
                               </p>
+                            ) : item.review_mode === "jersey" ? (
+                              <p className="mt-1 text-xs leading-6 text-[#625D55]">
+                                {item.specifications_approved_at
+                                  ? "Jersey specifications approved"
+                                  : "Jersey specifications awaiting review"}
+                              </p>
+                            ) : (
+                              item.artwork_type && (
+                                <p className="mt-1 text-xs leading-6 text-[#625D55]">
+                                  {item.artwork_type === "customer-supplied"
+                                    ? "Your own artwork"
+                                    : "Design assistance"}
+                                  {" · "}
+                                  {money(item.design_fee)} design fee
+                                </p>
+                              )
                             )}
                           </div>
                         </div>
@@ -660,8 +637,7 @@ export default async function OrderDetailsPage({
                                 {artwork.notes && (
                                   <div className="mt-4 border-t border-black/10 pt-4">
                                     <p className="text-xs font-semibold">
-                                      {artwork.status ===
-                                      "revision-required"
+                                      {artwork.status === "revision-required"
                                         ? "What needs changing"
                                         : "Feedback from our team"}
                                     </p>
@@ -711,9 +687,8 @@ export default async function OrderDetailsPage({
                     </div>
                   ) : (
                     <p className="max-w-xl text-sm leading-7 text-[#625D55]">
-                      You selected pickup. We’ll confirm where
-                      and when to collect your order once it
-                      is ready.
+                      You selected pickup. We’ll confirm where and when to
+                      collect your order once it is ready.
                     </p>
                   )}
                 </>
@@ -788,17 +763,11 @@ export default async function OrderDetailsPage({
 
             <Section number="03" title="Your details">
               <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
-                <Detail title="Full name">
-                  {order.customer_full_name}
-                </Detail>
+                <Detail title="Full name">{order.customer_full_name}</Detail>
 
-                <Detail title="Phone">
-                  {order.customer_phone}
-                </Detail>
+                <Detail title="Phone">{order.customer_phone}</Detail>
 
-                <Detail title="Email">
-                  {order.customer_email}
-                </Detail>
+                <Detail title="Email">{order.customer_email}</Detail>
 
                 {order.customer_organization && (
                   <Detail title="Organization">
@@ -838,15 +807,11 @@ export default async function OrderDetailsPage({
               </p>
 
               <p className="mt-6 text-xs text-[#625D55]">
-                {pricingConfirmed
-                  ? "Confirmed total"
-                  : "Total before delivery"}
+                {pricingConfirmed ? "Confirmed total" : "Total before delivery"}
               </p>
 
               <p className="mt-2 break-words text-4xl font-semibold tracking-[-0.05em]">
-                {pricingConfirmed
-                  ? money(order.final_total)
-                  : money(estimate)}
+                {pricingConfirmed ? money(order.final_total) : money(estimate)}
               </p>
 
               <p className="mt-3 text-xs leading-6 text-[#7A7368]">
@@ -856,10 +821,7 @@ export default async function OrderDetailsPage({
               </p>
 
               <dl className="mt-7 space-y-4 border-t border-black/10 pt-6">
-                <PriceRow
-                  title="Production"
-                  value={money(order.subtotal)}
-                />
+                <PriceRow title="Production" value={money(order.subtotal)} />
 
                 <PriceRow
                   title="Design assistance"
@@ -883,27 +845,24 @@ export default async function OrderDetailsPage({
                 />
               </dl>
 
-              {order.status === "awaiting-payment" &&
-                pricingConfirmed && (
-                  <div className="mt-6 border-t border-black/10 pt-5">
-                    <p className="text-sm font-semibold">
-                      Payment details
-                    </p>
+              {order.status === "awaiting-payment" && pricingConfirmed && (
+                <div className="mt-6 border-t border-black/10 pt-5">
+                  <p className="text-sm font-semibold">Payment details</p>
 
-                    <p className="mt-2 text-xs leading-6 text-[#625D55]">
-                      Get bank transfer instructions, submit
-                      your receipt, or check verification progress.
-                    </p>
+                  <p className="mt-2 text-xs leading-6 text-[#625D55]">
+                    Get bank transfer instructions, submit your receipt, or
+                    check verification progress.
+                  </p>
 
-                    <Link
-                      href={`/shop/order/${order.id}/payment`}
-                      className={`${buttonClass} mt-5 w-full`}
-                    >
-                      Open payment
-                      <ArrowUpRight size={16} aria-hidden="true" />
-                    </Link>
-                  </div>
-                )}
+                  <Link
+                    href={`/shop/order/${order.id}/payment`}
+                    className={`${buttonClass} mt-5 w-full`}
+                  >
+                    Open payment
+                    <ArrowUpRight size={16} aria-hidden="true" />
+                  </Link>
+                </div>
+              )}
 
               <Link
                 href={`/shop/order/${order.id}/payment`}
@@ -913,16 +872,15 @@ export default async function OrderDetailsPage({
                 <ArrowUpRight size={14} aria-hidden="true" />
               </Link>
 
-              {hasCustomerArtwork &&
-                order.status === "awaiting-artwork" && (
-                  <Link
-                    href={`/shop/artwork/${order.id}`}
-                    className={`${buttonClass} mt-4 w-full`}
-                  >
-                    Manage artwork
-                    <ArrowUpRight size={16} aria-hidden="true" />
-                  </Link>
-                )}
+              {hasCustomerArtwork && order.status === "awaiting-artwork" && (
+                <Link
+                  href={`/shop/artwork/${order.id}`}
+                  className={`${buttonClass} mt-4 w-full`}
+                >
+                  Manage artwork
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </Link>
+              )}
 
               {!pricingConfirmed && !pickup && (
                 <p className="mt-5 text-xs leading-6 text-[#7A7368]">
@@ -938,7 +896,7 @@ export default async function OrderDetailsPage({
 
               <a
                 href={`mailto:hello@newjersey.ng?subject=${encodeURIComponent(
-                  `Order ${order.order_number}`
+                  `Order ${order.order_number}`,
                 )}`}
                 className={`${textLinkClass} mt-2 text-[#625D55]`}
               >

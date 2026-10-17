@@ -1,0 +1,3298 @@
+﻿===== FILE: app\types\commerce.ts =====
+export type ProductStatus =
+  | "available"
+  | "made-to-order"
+  | "custom"
+  | "pre-order";
+
+export type PricingType =
+  | "fixed"
+  | "starting-from"
+  | "quote";
+
+export type ProductCategory =
+  | "print"
+  | "apparel"
+  | "merch";
+
+export type ServiceCategory =
+  | "branding"
+  | "creative"
+  | "custom";
+
+export type ProductOptionChoice = {
+  id: string;
+  label: string;
+  priceModifier?: number;
+  description?: string;
+};
+
+export type ProductOption = {
+  id: string;
+  label: string;
+  type:
+    | "select"
+    | "radio"
+    | "quantity";
+  required?: boolean;
+  choices: ProductOptionChoice[];
+};
+
+export type ProductPricing = {
+  type: PricingType;
+  basePrice?: number;
+  oldPrice?: number;
+  baseQuantity?: number;
+  unit?: string;
+};
+
+export type NewJerseyProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string;
+  description: string;
+  shortDescription?: string;
+  category: ProductCategory;
+  status: ProductStatus;
+  image: string;
+  images: string[];
+  pricing: ProductPricing;
+
+  /*
+   * Artwork creation fee when the customer needs design help.
+   * undefined = fee has not been configured.
+   * 0 = design is included at no extra charge.
+   */
+  designFee?: number;
+
+  options?: ProductOption[];
+  turnaround?: string;
+  featured?: boolean;
+  popular?: boolean;
+  published?: boolean;
+};
+
+export type NewJerseyService = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: ServiceCategory;
+  image?: string;
+  startingPrice?: number;
+  quoteRequired: boolean;
+  featured?: boolean;
+  published?: boolean;
+};
+
+export type SelectedProductOption = {
+  optionId: string;
+  optionLabel: string;
+  choiceId: string;
+  choiceLabel: string;
+  priceModifier: number;
+};
+
+export type CartItemArtwork = {
+  type:
+    | "customer-supplied"
+    | "design-needed";
+  designFee?: number;
+};
+
+export type CartItem = {
+  cartItemId: string;
+  productId: string;
+  slug: string;
+  name: string;
+  image: string;
+
+  /*
+   * Number of identical configured jobs.
+   * Print quantity such as 100/500 copies
+   * remains part of selections.
+   */
+  quantity: number;
+
+  basePrice: number;
+  optionsTotal: number;
+  unitPrice: number;
+  totalPrice: number;
+
+  selections: SelectedProductOption[];
+
+  artwork?: CartItemArtwork;
+};
+
+export type OrderStatus =
+  | "submitted"
+  | "under-review"
+  | "awaiting-artwork"
+  | "awaiting-payment"
+  | "confirmed"
+  | "in-production"
+  | "ready"
+  | "dispatched"
+  | "completed"
+  | "cancelled";
+
+export type OrderCustomer = {
+  fullName: string;
+  phone: string;
+  email: string;
+  organization?: string;
+};
+
+export type OrderDelivery = {
+  method:
+    | "delivery"
+    | "pickup";
+  state?: string;
+  city?: string;
+  address?: string;
+  landmark?: string;
+};
+
+export type OrderProductionBrief = {
+  projectName: string;
+  deadline?: string;
+  instructions?: string;
+};
+
+export type NewJerseyOrder = {
+  id: string;
+  orderNumber: string;
+
+  customer: OrderCustomer;
+  delivery: OrderDelivery;
+  brief: OrderProductionBrief;
+
+  items: CartItem[];
+
+  itemCount: number;
+
+  subtotal: number;
+  designFee: number;
+  deliveryFee: number;
+
+  finalTotal: number | null;
+
+  status: OrderStatus;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateOrderPayload = {
+  customer: OrderCustomer;
+  delivery: OrderDelivery;
+  brief: OrderProductionBrief;
+
+  items: CartItem[];
+
+  /*
+   * Client subtotal is informational.
+   * Server recalculates its own subtotal.
+   */
+  subtotal: number;
+};
+
+export type CreateOrderResult = {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  subtotal: number;
+  designFee: number;
+  estimatedTotal: number;
+  createdAt: string;
+};
+
+===== FILE: app\components\newjersey\product\ProductConfigurator.tsx =====
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import {
+  Check,
+  FileCheck2,
+  Palette,
+  ShoppingBag,
+} from "lucide-react";
+
+import { useCart } from "@/app/contexts/cartContext";
+
+import type {
+  NewJerseyProduct,
+  SelectedProductOption,
+} from "@/app/types/commerce";
+
+type ProductConfiguratorProps = {
+  product: NewJerseyProduct;
+  quoteRequestHref?: string;
+};
+
+type ArtworkType =
+  | "customer-supplied"
+  | "design-needed";
+
+const currency = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 2,
+});
+
+const focus =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2";
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function isMoney(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= Number.MAX_SAFE_INTEGER / 100
+  );
+}
+
+function createCartItemId(
+  productId: string,
+  selections: SelectedProductOption[],
+  artworkType: ArtworkType
+) {
+  const signature = selections
+    .map(
+      (selection) =>
+        `${encodeURIComponent(selection.optionId)}:${encodeURIComponent(
+          selection.choiceId
+        )}`
+    )
+    .sort()
+    .join("|");
+
+  return `${encodeURIComponent(productId)}__${signature}__${artworkType}`;
+}
+
+export default function ProductConfigurator(
+  props: ProductConfiguratorProps
+) {
+  return (
+    <ConfiguratorContent
+      key={`${props.product.id}:${props.product.designFee ?? "unset"}`}
+      {...props}
+    />
+  );
+}
+
+function ConfiguratorContent({
+  product,
+  quoteRequestHref,
+}: ProductConfiguratorProps) {
+  const { addItem, hydrated } = useCart();
+
+  const [selections, setSelections] = useState<
+    Record<string, string>
+  >(() => {
+    const initial: Record<string, string> = {};
+
+    for (const option of product.options ?? []) {
+      if (option.required && option.choices[0]) {
+        initial[option.id] = option.choices[0].id;
+      }
+    }
+
+    return initial;
+  });
+
+  const [artworkType, setArtworkType] =
+    useState<ArtworkType>("customer-supplied");
+
+  const [added, setAdded] = useState(false);
+  const [error, setError] = useState("");
+
+  const selectedOptions = useMemo<
+    SelectedProductOption[]
+  >(() => {
+    const result: SelectedProductOption[] = [];
+
+    for (const option of product.options ?? []) {
+      const choice = option.choices.find(
+        (candidate) =>
+          candidate.id === selections[option.id]
+      );
+
+      if (!choice) continue;
+
+      result.push({
+        optionId: option.id,
+        optionLabel: option.label,
+        choiceId: choice.id,
+        choiceLabel: choice.label,
+        priceModifier: choice.priceModifier ?? 0,
+      });
+    }
+
+    return result;
+  }, [product.options, selections]);
+
+  const basePrice = product.pricing.basePrice ?? 0;
+
+  const optionsTotal = roundMoney(
+    selectedOptions.reduce(
+      (sum, option) => sum + option.priceModifier,
+      0
+    )
+  );
+
+  // Production cost for one configured job.
+  const unitPrice = roundMoney(basePrice + optionsTotal);
+
+  const designAvailable = isMoney(product.designFee);
+
+  const designFee =
+    artworkType === "design-needed" && designAvailable
+      ? roundMoney(product.designFee!)
+      : 0;
+
+  const estimatedTotal = roundMoney(
+    unitPrice + designFee
+  );
+
+  const pricingValid =
+    isMoney(product.pricing.basePrice) &&
+    selectedOptions.every((option) =>
+      isMoney(option.priceModifier)
+    ) &&
+    isMoney(optionsTotal) &&
+    isMoney(unitPrice) &&
+    isMoney(estimatedTotal);
+
+  const artworkValid =
+    artworkType === "customer-supplied" ||
+    designAvailable;
+
+  function resetFeedback() {
+    setAdded(false);
+    setError("");
+  }
+
+  function chooseOption(
+    optionId: string,
+    choiceId?: string
+  ) {
+    setSelections((current) => {
+      const next = { ...current };
+
+      if (choiceId === undefined) {
+        delete next[optionId];
+      } else {
+        next[optionId] = choiceId;
+      }
+
+      return next;
+    });
+
+    resetFeedback();
+  }
+
+  function chooseArtwork(type: ArtworkType) {
+    setArtworkType(type);
+    resetFeedback();
+  }
+
+  function handleAddToOrder() {
+    resetFeedback();
+
+    if (!hydrated) {
+      setError("Your order is still loading.");
+      return;
+    }
+
+    if (
+      product.published === false ||
+      product.pricing.type === "quote"
+    ) {
+      setError("This product is unavailable for purchase.");
+      return;
+    }
+
+    const missing = (product.options ?? []).find(
+      (option) =>
+        option.required &&
+        !option.choices.some(
+          (choice) =>
+            choice.id === selections[option.id]
+        )
+    );
+
+    if (missing) {
+      setError(`Choose an option for ${missing.label}.`);
+      return;
+    }
+
+    if (!pricingValid || !artworkValid) {
+      setError(
+        "Pricing is unavailable for these selections."
+      );
+      return;
+    }
+
+    try {
+      addItem({
+        cartItemId: createCartItemId(
+          product.id,
+          selectedOptions,
+          artworkType
+        ),
+        productId: product.id,
+        slug: product.slug,
+        name: product.name,
+        image: product.image || product.images?.[0] || "",
+        quantity: 1,
+        basePrice: roundMoney(basePrice),
+        optionsTotal,
+
+        // Keep production totals separate from artwork.
+        unitPrice,
+        totalPrice: unitPrice,
+
+        selections: selectedOptions,
+        artwork: {
+          type: artworkType,
+          designFee,
+        },
+      });
+
+      setAdded(true);
+    } catch {
+      setError(
+        "Unable to add this item. Please try again."
+      );
+    }
+  }
+
+  if (product.pricing.type === "quote") {
+    return (
+      <div className="rounded-2xl border border-black/10 bg-white p-5 sm:p-7">
+        <h2 className="text-xl font-semibold tracking-tight">
+          Custom production
+        </h2>
+
+        <p className="mt-3 text-sm leading-7 text-[#625D55]">
+          This product requires pricing based on your
+          specifications.
+        </p>
+
+        {quoteRequestHref ? (
+          <Link
+            href={quoteRequestHref}
+            className={`mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#F58220] px-5 text-sm font-semibold text-[#181818] transition-colors hover:bg-[#D96B0D] ${focus}`}
+          >
+            Request a quote
+          </Link>
+        ) : (
+          <p className="mt-4 text-sm text-[#625D55]">
+            Online purchasing is currently unavailable
+            for this product.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+      <div className="p-5 sm:p-7">
+        <div className="border-b border-black/10 pb-6">
+          <p className="text-xs font-medium text-[#625D55]">
+            {product.pricing.type === "starting-from"
+              ? "Starting from"
+              : "Production price"}
+          </p>
+
+          <div className="mt-2 flex flex-wrap items-baseline gap-3">
+            <p className="text-3xl font-bold tracking-tight sm:text-4xl">
+              {isMoney(product.pricing.basePrice)
+                ? currency.format(basePrice)
+                : "Price unavailable"}
+            </p>
+
+            {isMoney(product.pricing.oldPrice) &&
+              isMoney(product.pricing.basePrice) &&
+              product.pricing.oldPrice > basePrice && (
+                <span className="text-sm text-[#625D55] line-through">
+                  {currency.format(product.pricing.oldPrice)}
+                </span>
+              )}
+          </div>
+
+          {product.pricing.baseQuantity != null && (
+            <p className="mt-2 text-xs leading-6 text-[#625D55]">
+              For{" "}
+              <strong className="font-semibold text-[#181818]">
+                {product.pricing.baseQuantity.toLocaleString(
+                  "en-NG"
+                )}{" "}
+                {product.pricing.unit || "pieces"}
+              </strong>
+            </p>
+          )}
+        </div>
+
+        {(product.options ?? []).map((option) => (
+          <fieldset
+            key={option.id}
+            className="min-w-0 border-b border-black/10 pb-6"
+          >
+            <legend className="w-full pt-6">
+              <span className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">
+                  {option.label}
+                </span>
+
+                <span className="text-[10px] font-medium uppercase tracking-wide text-[#625D55]">
+                  {option.required ? "Required" : "Optional"}
+                </span>
+              </span>
+            </legend>
+
+            <div className="flex flex-wrap gap-2">
+              {!option.required && (
+                <button
+                  type="button"
+                  aria-pressed={!selections[option.id]}
+                  onClick={() => chooseOption(option.id)}
+                  className={`min-h-11 rounded-xl border px-4 py-3 text-xs font-semibold transition-colors ${focus} ${
+                    !selections[option.id]
+                      ? "border-[#F58220] bg-[#F58220]/10"
+                      : "border-black/15 hover:border-[#F58220]"
+                  }`}
+                >
+                  None
+                </button>
+              )}
+
+              {option.choices.map((choice) => {
+                const selected =
+                  selections[option.id] === choice.id;
+
+                const modifier = choice.priceModifier ?? 0;
+                const available = isMoney(modifier);
+
+                return (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    aria-pressed={selected}
+                    disabled={!available}
+                    onClick={() =>
+                      chooseOption(option.id, choice.id)
+                    }
+                    className={`min-h-11 rounded-xl border px-4 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${focus} ${
+                      selected
+                        ? "border-[#F58220] bg-[#F58220]/10"
+                        : "border-black/15 hover:border-[#F58220]"
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold">
+                      {choice.label}
+                    </span>
+
+                    {available && modifier > 0 && (
+                      <span className="mt-1 block text-xs text-[#625D55]">
+                        +{currency.format(modifier)}
+                      </span>
+                    )}
+
+                    {!available && (
+                      <span className="mt-1 block text-xs text-[#625D55]">
+                        Unavailable
+                      </span>
+                    )}
+
+                    {choice.description && (
+                      <span className="mt-1 block max-w-48 text-xs leading-5 text-[#625D55]">
+                        {choice.description}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        ))}
+
+        <fieldset className="min-w-0">
+          <legend className="pt-6 text-sm font-semibold">
+            Artwork
+          </legend>
+
+          <p className="mt-1 text-xs leading-6 text-[#625D55]">
+            Supply your finished design or add design
+            assistance.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                {
+                  type: "customer-supplied",
+                  label: "I have my artwork",
+                  description:
+                    "Provide your production-ready design.",
+                  Icon: FileCheck2,
+                },
+                {
+                  type: "design-needed",
+                  label: "I need design help",
+                  description:
+                    "Weâ€™ll create artwork from your brief.",
+                  Icon: Palette,
+                },
+              ] as const
+            ).map(({ type, label, description, Icon }) => {
+              const selected = artworkType === type;
+
+              const unavailable =
+                type === "design-needed" &&
+                !designAvailable;
+
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={unavailable}
+                  onClick={() => chooseArtwork(type)}
+                  className={`rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${focus} ${
+                    selected
+                      ? "border-[#F58220] bg-[#F58220]/10"
+                      : "border-black/15 hover:border-[#F58220]"
+                  }`}
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <Icon
+                      size={20}
+                      aria-hidden="true"
+                      className="text-[#F58220]"
+                    />
+
+                    {selected && (
+                      <Check
+                        size={17}
+                        aria-hidden="true"
+                        className="text-[#181818]"
+                      />
+                    )}
+                  </span>
+
+                  <span className="mt-4 block text-sm font-semibold">
+                    {label}
+                  </span>
+
+                  <span className="mt-1 block text-xs leading-6 text-[#625D55]">
+                    {description}
+                  </span>
+
+                  <span className="mt-3 block text-sm font-semibold">
+                    {type === "customer-supplied"
+                      ? "No design fee"
+                      : designAvailable
+                        ? product.designFee === 0
+                          ? "Design included"
+                          : `+${currency.format(product.designFee!)}`
+                        : "Currently unavailable"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {artworkType === "design-needed" && (
+            <p className="mt-3 text-xs leading-6 text-[#625D55]">
+              One design fee applies to this configured
+              design in your order. Adding identical jobs
+              does not multiply the design fee.
+            </p>
+          )}
+        </fieldset>
+      </div>
+
+      <div className="border-t border-black/10 bg-[#F4F1E9]/60 p-5 sm:p-7">
+        {pricingValid && (
+          <dl className="space-y-3 border-b border-black/10 pb-5 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-[#625D55]">
+                Base production
+              </dt>
+              <dd className="font-medium">
+                {currency.format(basePrice)}
+              </dd>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <dt className="text-[#625D55]">
+                Product options
+              </dt>
+              <dd className="font-medium">
+                {currency.format(optionsTotal)}
+              </dd>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <dt className="text-[#625D55]">
+                {artworkType === "design-needed"
+                  ? "Design assistance Â· once"
+                  : "Customer-supplied artwork"}
+              </dt>
+              <dd className="font-medium">
+                {currency.format(designFee)}
+              </dd>
+            </div>
+          </dl>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs text-[#625D55]">
+              {product.pricing.type === "starting-from"
+                ? "Estimated total for one job"
+                : "Total for one job"}
+            </p>
+
+            <p className="mt-1 text-3xl font-bold tracking-tight">
+              {pricingValid && artworkValid
+                ? currency.format(estimatedTotal)
+                : "Unavailable"}
+            </p>
+          </div>
+
+          <span className="rounded-full bg-white px-3 py-1.5 text-xs text-[#625D55]">
+            Before delivery
+          </span>
+        </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 text-sm text-red-700"
+          >
+            {error}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleAddToOrder}
+          disabled={
+            !hydrated ||
+            !pricingValid ||
+            !artworkValid ||
+            product.published === false
+          }
+          className={`mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F58220] px-5 py-4 text-sm font-semibold text-[#181818] transition-colors hover:bg-[#D96B0D] disabled:cursor-not-allowed disabled:opacity-50 ${focus}`}
+        >
+          {added ? (
+            <Check size={18} aria-hidden="true" />
+          ) : (
+            <ShoppingBag size={18} aria-hidden="true" />
+          )}
+
+          {!hydrated
+            ? "Loading your orderâ€¦"
+            : added
+              ? "Add another identical job"
+              : "Add to order"}
+        </button>
+
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-3 text-center text-xs leading-6"
+        >
+          {added && (
+            <>
+              Added to your order.{" "}
+              <Link
+                href="/shop/cart"
+                className={`rounded-sm font-semibold underline decoration-[#F58220] underline-offset-4 ${focus}`}
+              >
+                View cart
+              </Link>
+            </>
+          )}
+        </div>
+
+        <p className="mt-4 text-center text-xs leading-6 text-[#625D55]">
+          {product.pricing.type === "starting-from"
+            ? "Your selected specifications determine the production estimate. Delivery is calculated separately."
+            : "Production and selected design assistance are shown above. Delivery is calculated separately."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+===== FILE: app\shop\checkout\page.tsx =====
+"use client";
+
+import Link from "next/link";
+import { useRef, useState, type FormEvent } from "react";
+import { ArrowLeft, ArrowRight, Upload } from "lucide-react";
+
+import DashboardHeader from "@/app/components/dashboard components/mainheader";
+import TopNav from "@/app/components/dashboard components/topnav";
+import Footer from "@/app/components/Footer";
+
+import { useCart } from "@/app/contexts/cartContext";
+
+import type {
+  CreateOrderPayload,
+  CreateOrderResult,
+} from "@/app/types/commerce";
+
+const currency = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 2,
+});
+
+const inputClass =
+  "mt-2 block min-h-12 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base text-[#181818] outline-none transition focus:border-[#F58220] focus:ring-2 focus:ring-[#F58220]/20";
+
+const sectionClass =
+  "rounded-2xl border border-black/10 bg-white p-5 sm:p-7";
+
+const buttonClass =
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F58220] px-6 py-3.5 text-sm font-semibold text-[#181818] transition-colors hover:bg-[#D96B0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+
+const secondaryButtonClass =
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-black/15 bg-white px-6 py-3.5 text-sm font-semibold text-[#181818] transition-colors hover:border-[#F58220] hover:bg-[#F58220]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2";
+
+const statuses = new Set([
+  "submitted",
+  "under-review",
+  "awaiting-artwork",
+  "awaiting-payment",
+  "confirmed",
+  "in-production",
+  "ready",
+  "dispatched",
+  "completed",
+  "cancelled",
+]);
+
+function isRecord(
+  value: unknown
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function isMoney(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= Number.MAX_SAFE_INTEGER / 100
+  );
+}
+
+function isOrderResult(
+  value: unknown
+): value is CreateOrderResult {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    typeof value.orderNumber === "string" &&
+    value.orderNumber.length > 0 &&
+    typeof value.status === "string" &&
+    statuses.has(value.status) &&
+    isMoney(value.subtotal) &&
+    isMoney(value.designFee) &&
+    isMoney(value.estimatedTotal) &&
+    Math.round(value.estimatedTotal * 100) ===
+      Math.round((value.subtotal + value.designFee) * 100) &&
+    typeof value.createdAt === "string" &&
+    Number.isFinite(Date.parse(value.createdAt))
+  );
+}
+
+function readText(form: FormData, name: string) {
+  const value = form.get(name);
+
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export default function CheckoutPage() {
+  const {
+    items,
+    itemCount,
+    subtotal,
+    designFee,
+    estimatedTotal,
+    hydrated,
+    clearCart,
+  } = useCart();
+
+  const [deliveryMethod, setDeliveryMethod] =
+    useState<"delivery" | "pickup">("delivery");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const [createdOrder, setCreatedOrder] =
+    useState<CreateOrderResult | null>(null);
+
+  const submittingRef = useRef(false);
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (submittingRef.current || createdOrder) return;
+
+    setError("");
+
+    if (!hydrated || items.length === 0) {
+      setError("Add products before submitting your order.");
+      return;
+    }
+
+    const form = new FormData(event.currentTarget);
+
+    const customer = {
+      fullName: readText(form, "fullName"),
+      phone: readText(form, "phone"),
+      email: readText(form, "email").toLowerCase(),
+      organization:
+        readText(form, "organization") || undefined,
+    };
+
+    const projectName = readText(form, "projectName");
+
+    if (
+      !customer.fullName ||
+      !customer.phone ||
+      !customer.email ||
+      !projectName
+    ) {
+      setError("Complete all required fields.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
+      setError("Enter a valid email address.");
+      return;
+    }
+
+    const state = readText(form, "state");
+    const city = readText(form, "city");
+    const address = readText(form, "address");
+
+    if (
+      deliveryMethod === "delivery" &&
+      (!state || !city || !address)
+    ) {
+      setError("Complete your delivery address.");
+      return;
+    }
+
+    const payload: CreateOrderPayload = {
+      customer,
+      delivery:
+        deliveryMethod === "delivery"
+          ? {
+              method: "delivery",
+              state,
+              city,
+              address,
+              landmark:
+                readText(form, "landmark") || undefined,
+            }
+          : {
+              method: "pickup",
+            },
+      brief: {
+        projectName,
+        deadline:
+          readText(form, "deadline") || undefined,
+        instructions:
+          readText(form, "instructions") || undefined,
+      },
+      items,
+
+      // Production only. The API verifies design fees
+      // separately against the saved product settings.
+      subtotal,
+    };
+
+    submittingRef.current = true;
+    setSubmitting(true);
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let result: unknown;
+
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error(
+          "The response could not be read. Check whether your order was created before submitting again."
+        );
+      }
+
+      if (
+        !response.ok ||
+        !isRecord(result) ||
+        result.success !== true
+      ) {
+        throw new Error(
+          isRecord(result) &&
+          typeof result.message === "string"
+            ? result.message
+            : "Unable to confirm your order. Check whether it was created before trying again."
+        );
+      }
+
+      if (!isOrderResult(result.order)) {
+        throw new Error(
+          "The order confirmation was incomplete. Check whether your order was created before submitting again."
+        );
+      }
+
+      setCreatedOrder(result.order);
+      clearCart();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Unable to confirm your order. Check whether it was created before trying again."
+      );
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F4F1E9] text-[#181818]">
+      <header className="sticky top-0 z-[100] w-full">
+        <div className="relative z-[110]">
+          <TopNav />
+        </div>
+
+        <div className="relative z-[100] bg-[#F4F1E9]/95 shadow-[0_2px_12px_rgba(0,0,0,0.08)] backdrop-blur-md">
+          <DashboardHeader />
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[1440px] px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
+        {createdOrder ? (
+          <section
+            className={`${sectionClass} mx-auto max-w-2xl`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#625D55]">
+              Request received
+            </p>
+
+            <h1 className="mt-4 text-3xl font-bold tracking-[-0.04em]">
+              Your production request is in.
+            </h1>
+
+            <p className="mt-4 text-sm leading-7 text-[#625D55]">
+              Keep your order reference. Weâ€™ll review your
+              specifications and artwork before confirming
+              production and any delivery charges.
+            </p>
+
+            <dl className="mt-6 space-y-4 rounded-xl bg-[#F4F1E9] p-5">
+              <div>
+                <dt className="text-xs text-[#625D55]">
+                  Order reference
+                </dt>
+
+                <dd className="mt-1 break-all text-lg font-semibold">
+                  {createdOrder.orderNumber}
+                </dd>
+              </div>
+
+              <div className="flex justify-between gap-4 text-sm">
+                <dt className="text-[#625D55]">
+                  Production
+                </dt>
+
+                <dd>
+                  {currency.format(createdOrder.subtotal)}
+                </dd>
+              </div>
+
+              <div className="flex justify-between gap-4 text-sm">
+                <dt className="text-[#625D55]">
+                  Design assistance
+                </dt>
+
+                <dd>
+                  {currency.format(createdOrder.designFee)}
+                </dd>
+              </div>
+
+              <div className="flex flex-wrap justify-between gap-4 border-t border-black/10 pt-4">
+                <dt className="font-semibold">
+                  Total before delivery
+                </dt>
+
+                <dd className="text-xl font-bold">
+                  {currency.format(
+                    createdOrder.estimatedTotal
+                  )}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs text-[#625D55]">
+                  Status
+                </dt>
+
+                <dd className="mt-1 font-medium capitalize">
+                  {createdOrder.status.replaceAll("-", " ")}
+                </dd>
+              </div>
+            </dl>
+
+            {createdOrder.status === "awaiting-artwork" && (
+              <div className="mt-6 rounded-xl border border-[#F58220]/25 bg-[#F58220]/5 p-5">
+                <h2 className="text-sm font-semibold">
+                  Next: send your artwork
+                </h2>
+
+                <p className="mt-2 text-sm leading-7 text-[#625D55]">
+                  Upload the production-ready files for
+                  your customer-supplied items. Weâ€™ll
+                  review them before production begins.
+                </p>
+
+                <Link
+                  href={`/shop/artwork/${createdOrder.id}`}
+                  className={`${buttonClass} mt-4 w-full sm:w-auto`}
+                >
+                  <Upload size={17} aria-hidden="true" />
+                  Upload your artwork
+                  <ArrowRight size={17} aria-hidden="true" />
+                </Link>
+              </div>
+            )}
+
+            <Link
+              href="/shop"
+              className={`${secondaryButtonClass} mt-6 w-full sm:w-auto`}
+            >
+              Back to shop
+              <ArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </section>
+        ) : !hydrated ? (
+          <p
+            role="status"
+            className="py-12 text-sm text-[#625D55]"
+          >
+            Loading your orderâ€¦
+          </p>
+        ) : items.length === 0 ? (
+          <section
+            className={`${sectionClass} text-center`}
+          >
+            <h1 className="text-2xl font-bold">
+              Your order is empty.
+            </h1>
+
+            <p className="mt-3 text-sm text-[#625D55]">
+              Add products before continuing to checkout.
+            </p>
+
+            <Link
+              href="/shop"
+              className={`${buttonClass} mt-6`}
+            >
+              Explore the shop
+            </Link>
+          </section>
+        ) : (
+          <>
+            <Link
+              href="/shop/cart"
+              className="mb-6 inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-semibold text-[#625D55] hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+            >
+              <ArrowLeft size={15} aria-hidden="true" />
+              Back to your order
+            </Link>
+
+            <div className="mb-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#625D55]">
+                NewJersey.ng
+                <span className="px-2 text-[#F58220]">
+                  /
+                </span>
+                Checkout
+              </p>
+
+              <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] sm:text-4xl">
+                Let&apos;s get the details right.
+              </h1>
+
+              <p className="mt-3 max-w-xl text-sm leading-7 text-[#625D55]">
+                Add your contact details, delivery
+                preference, and production brief.
+              </p>
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              aria-busy={submitting}
+              className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]"
+            >
+              <fieldset
+                disabled={submitting}
+                className="min-w-0 space-y-6"
+              >
+                <legend className="sr-only">
+                  Customer and production details
+                </legend>
+
+                <section className={sectionClass}>
+                  <h2 className="text-xl font-semibold">
+                    Contact details
+                  </h2>
+
+                  <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                    <label className="block text-sm font-medium">
+                      Full name *
+                      <input
+                        name="fullName"
+                        autoComplete="name"
+                        required
+                        maxLength={150}
+                        className={inputClass}
+                      />
+                    </label>
+
+                    <label className="block text-sm font-medium">
+                      Phone number *
+                      <input
+                        name="phone"
+                        type="tel"
+                        autoComplete="tel"
+                        required
+                        maxLength={40}
+                        className={inputClass}
+                      />
+                    </label>
+
+                    <label className="block text-sm font-medium">
+                      Email address *
+                      <input
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        maxLength={254}
+                        className={inputClass}
+                      />
+                    </label>
+
+                    <label className="block text-sm font-medium">
+                      Organization
+                      <input
+                        name="organization"
+                        autoComplete="organization"
+                        maxLength={200}
+                        className={inputClass}
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section className={sectionClass}>
+                  <h2 className="text-xl font-semibold">
+                    Delivery or pickup
+                  </h2>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {(
+                      ["delivery", "pickup"] as const
+                    ).map((method) => (
+                      <label
+                        key={method}
+                        className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-4 text-sm font-medium ${
+                          deliveryMethod === method
+                            ? "border-[#F58220] bg-[#F58220]/10"
+                            : "border-black/15"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="deliveryMethod"
+                          value={method}
+                          checked={deliveryMethod === method}
+                          onChange={() =>
+                            setDeliveryMethod(method)
+                          }
+                          className="h-4 w-4 accent-[#F58220]"
+                        />
+
+                        {method === "delivery"
+                          ? "Deliver to me"
+                          : "I'll arrange pickup"}
+                      </label>
+                    ))}
+                  </div>
+
+                  {deliveryMethod === "delivery" ? (
+                    <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                      <label className="block text-sm font-medium">
+                        State *
+                        <input
+                          name="state"
+                          autoComplete="address-level1"
+                          required
+                          maxLength={100}
+                          className={inputClass}
+                        />
+                      </label>
+
+                      <label className="block text-sm font-medium">
+                        City / town *
+                        <input
+                          name="city"
+                          autoComplete="address-level2"
+                          required
+                          maxLength={100}
+                          className={inputClass}
+                        />
+                      </label>
+
+                      <label className="block text-sm font-medium sm:col-span-2">
+                        Delivery address *
+                        <textarea
+                          name="address"
+                          autoComplete="street-address"
+                          required
+                          rows={3}
+                          maxLength={500}
+                          className={inputClass}
+                        />
+                      </label>
+
+                      <label className="block text-sm font-medium sm:col-span-2">
+                        Landmark
+                        <input
+                          name="landmark"
+                          maxLength={200}
+                          className={inputClass}
+                        />
+                      </label>
+
+                      <p className="text-xs leading-6 text-[#625D55] sm:col-span-2">
+                        Delivery availability and charges
+                        will be confirmed for your location
+                        and order.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-5 text-sm leading-7 text-[#625D55]">
+                      Pickup location and timing will be
+                      confirmed when your order is ready.
+                    </p>
+                  )}
+                </section>
+
+                <section className={sectionClass}>
+                  <h2 className="text-xl font-semibold">
+                    Production brief
+                  </h2>
+
+                  <div className="mt-6 space-y-5">
+                    <label className="block text-sm font-medium">
+                      Project name *
+                      <input
+                        name="projectName"
+                        required
+                        maxLength={200}
+                        placeholder="For example: Team apparel"
+                        className={inputClass}
+                      />
+                    </label>
+
+                    <label className="block text-sm font-medium">
+                      Preferred deadline
+                      <input
+                        name="deadline"
+                        type="date"
+                        className={inputClass}
+                      />
+
+                      <span className="mt-2 block text-xs font-normal leading-6 text-[#625D55]">
+                        Your preferred date is subject to
+                        production confirmation.
+                      </span>
+                    </label>
+
+                    <label className="block text-sm font-medium">
+                      Instructions
+                      <textarea
+                        name="instructions"
+                        rows={5}
+                        maxLength={5000}
+                        placeholder="Describe your artwork, design brief, colours, wording, and finishing requirements."
+                        className={inputClass}
+                      />
+                    </label>
+                  </div>
+                </section>
+              </fieldset>
+
+              <aside className="min-w-0 rounded-[24px] border border-black/10 bg-white p-6 lg:sticky lg:top-44">
+                <h2 className="text-xl font-bold">
+                  Your order
+                </h2>
+
+                <ul className="mt-5 space-y-5">
+                  {items.map((item) => {
+                    const fee =
+                      item.artwork?.type === "design-needed"
+                        ? item.artwork.designFee ?? 0
+                        : 0;
+
+                    return (
+                      <li
+                        key={item.cartItemId}
+                        className="border-b border-black/10 pb-5"
+                      >
+                        <p className="text-sm font-semibold">
+                          {item.name}
+                        </p>
+
+                        <p className="mt-1 text-xs text-[#625D55]">
+                          {item.quantity}{" "}
+                          {item.quantity === 1
+                            ? "job"
+                            : "jobs"}
+                        </p>
+
+                        {item.selections.map((selection) => (
+                          <p
+                            key={selection.optionId}
+                            className="mt-1 text-xs leading-6 text-[#625D55]"
+                          >
+                            {selection.optionLabel}:{" "}
+                            {selection.choiceLabel}
+                          </p>
+                        ))}
+
+                        <div className="mt-3 flex justify-between gap-4 text-xs">
+                          <span className="text-[#625D55]">
+                            Production
+                          </span>
+
+                          <span>
+                            {currency.format(item.totalPrice)}
+                          </span>
+                        </div>
+
+                        {item.artwork?.type ===
+                        "design-needed" ? (
+                          <div className="mt-2 flex justify-between gap-4 text-xs">
+                            <span className="text-[#625D55]">
+                              Design Â· once
+                            </span>
+
+                            <span>
+                              {currency.format(fee)}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-xs text-[#625D55]">
+                            Customer-supplied artwork Â· no
+                            design fee
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <dl className="mt-5 space-y-3 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#625D55]">
+                      Configured jobs
+                    </dt>
+                    <dd>{itemCount}</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#625D55]">
+                      Production
+                    </dt>
+                    <dd>{currency.format(subtotal)}</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#625D55]">
+                      Design assistance
+                    </dt>
+                    <dd>{currency.format(designFee)}</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[#625D55]">
+                      Delivery
+                    </dt>
+
+                    <dd className="text-right text-xs">
+                      {deliveryMethod === "pickup"
+                        ? "Pickup selected"
+                        : "Confirmed separately"}
+                    </dd>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
+                    <dt className="font-semibold">
+                      Estimated total
+                    </dt>
+
+                    <dd className="text-2xl font-bold">
+                      {currency.format(estimatedTotal)}
+                    </dd>
+                  </div>
+                </dl>
+
+                <p className="mt-3 text-xs leading-6 text-[#625D55]">
+                  Includes selected design assistance.
+                  Delivery charges are excluded. Production
+                  is subject to specifications and artwork
+                  approval.
+                </p>
+
+                {error && (
+                  <p
+                    role="alert"
+                    className="mt-5 rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-700"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={`${buttonClass} mt-6 w-full`}
+                >
+                  {submitting
+                    ? "Submitting requestâ€¦"
+                    : "Submit production request"}
+
+                  {!submitting && (
+                    <ArrowRight
+                      size={17}
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="mt-3 text-center text-xs leading-6 text-[#625D55]"
+                >
+                  {submitting
+                    ? "Please wait while your request is saved."
+                    : "This submits your order request. No payment is taken."}
+                </p>
+              </aside>
+            </form>
+          </>
+        )}
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+===== FILE: app\api\orders\route.ts =====
+import { randomUUID } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
+import {
+  createClient as createSupabaseServerClient,
+} from "@/app/lib/newjersey/supabase/server";
+
+import { getProductById } from "@/app/data/newjersey/products";
+
+import type {
+  OrderStatus,
+  SelectedProductOption,
+} from "@/app/types/commerce";
+
+export const runtime = "nodejs";
+
+const MAX_ITEMS = 100;
+const MAX_JOBS_PER_ITEM = 1000;
+const MAX_MONEY = Number.MAX_SAFE_INTEGER / 100;
+
+class RequestError extends Error {
+  constructor(
+    message: string,
+    public status = 400
+  ) {
+    super(message);
+    this.name = "RequestError";
+  }
+}
+
+function isRecord(
+  value: unknown
+): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function requireRecord(
+  value: unknown,
+  message: string
+): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new RequestError(message);
+  }
+
+  return value;
+}
+
+function readText(
+  value: unknown,
+  label: string,
+  maxLength: number,
+  required = false
+): string | null {
+  if (value === undefined || value === null) {
+    if (required) {
+      throw new RequestError(`${label} is required.`);
+    }
+
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new RequestError(`${label} must be text.`);
+  }
+
+  const text = value.trim();
+
+  if (!text) {
+    if (required) {
+      throw new RequestError(`${label} is required.`);
+    }
+
+    return null;
+  }
+
+  if (text.length > maxLength) {
+    throw new RequestError(`${label} is too long.`);
+  }
+
+  return text;
+}
+
+function requiredText(
+  value: unknown,
+  label: string,
+  maxLength: number
+): string {
+  return readText(value, label, maxLength, true)!;
+}
+
+function isMoney(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= MAX_MONEY
+  );
+}
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function sameMoney(left: number, right: number) {
+  return (
+    Math.round(left * 100) ===
+    Math.round(right * 100)
+  );
+}
+
+function parseDatabaseMoney(value: unknown): number {
+  if (
+    (
+      typeof value !== "number" &&
+      typeof value !== "string"
+    ) ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    throw new Error("Invalid database amount.");
+  }
+
+  const amount = Number(value);
+
+  if (!isMoney(amount)) {
+    throw new Error("Invalid database amount.");
+  }
+
+  return roundMoney(amount);
+}
+
+function readDeadline(value: unknown): string | null {
+  const deadline = readText(
+    value,
+    "Preferred deadline",
+    10
+  );
+
+  if (!deadline) return null;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
+    throw new RequestError("Enter a valid deadline.");
+  }
+
+  const parsed = new Date(`${deadline}T00:00:00.000Z`);
+
+  if (
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== deadline ||
+    deadline < "0001-01-01"
+  ) {
+    throw new RequestError("Enter a valid deadline.");
+  }
+
+  return deadline;
+}
+
+function generateOrderNumber() {
+  const date = new Date()
+    .toISOString()
+    .slice(2, 10)
+    .replaceAll("-", "");
+
+  const reference = randomUUID()
+    .replaceAll("-", "")
+    .slice(0, 16)
+    .toUpperCase();
+
+  return `NJ-${date}-${reference}`;
+}
+
+function createCartItemId(
+  productId: string,
+  selections: SelectedProductOption[],
+  artworkType: string
+) {
+  const signature = selections
+    .map(
+      (selection) =>
+        `${encodeURIComponent(selection.optionId)}:${encodeURIComponent(
+          selection.choiceId
+        )}`
+    )
+    .sort()
+    .join("|");
+
+  return `${encodeURIComponent(productId)}__${signature}__${artworkType}`;
+}
+
+function rebuildItem(value: unknown) {
+  const item = requireRecord(
+    value,
+    "One or more order items are invalid."
+  );
+
+  const productId = requiredText(
+    item.productId,
+    "Product ID",
+    200
+  );
+
+  const product = getProductById(productId);
+
+  if (!product || product.published === false) {
+    throw new RequestError(
+      "An item in your order is no longer available."
+    );
+  }
+
+  if (product.pricing.type === "quote") {
+    throw new RequestError(
+      `${product.name} requires a separate quote request.`
+    );
+  }
+
+  const quantity = item.quantity;
+
+  if (
+    typeof quantity !== "number" ||
+    !Number.isSafeInteger(quantity) ||
+    quantity < 1 ||
+    quantity > MAX_JOBS_PER_ITEM
+  ) {
+    throw new RequestError(
+      `Choose between 1 and ${MAX_JOBS_PER_ITEM} jobs for ${product.name}.`
+    );
+  }
+
+  if (!Array.isArray(item.selections)) {
+    throw new RequestError(
+      `Invalid selections for ${product.name}.`
+    );
+  }
+
+  const productOptions = product.options ?? [];
+
+  if (item.selections.length > productOptions.length) {
+    throw new RequestError(
+      `Too many selections for ${product.name}.`
+    );
+  }
+
+  const requestedChoices = new Map<string, string>();
+
+  for (const rawSelection of item.selections) {
+    const selection = requireRecord(
+      rawSelection,
+      `Invalid selections for ${product.name}.`
+    );
+
+    const optionId = requiredText(
+      selection.optionId,
+      "Option ID",
+      200
+    );
+
+    const choiceId = requiredText(
+      selection.choiceId,
+      "Choice ID",
+      200
+    );
+
+    if (requestedChoices.has(optionId)) {
+      throw new RequestError(
+        `Duplicate option selected for ${product.name}.`
+      );
+    }
+
+    const option = productOptions.find(
+      (candidate) => candidate.id === optionId
+    );
+
+    if (
+      !option ||
+      !option.choices.some(
+        (choice) => choice.id === choiceId
+      )
+    ) {
+      throw new RequestError(
+        `A selected option is unavailable for ${product.name}.`
+      );
+    }
+
+    requestedChoices.set(optionId, choiceId);
+  }
+
+  const selections: SelectedProductOption[] = [];
+
+  for (const option of productOptions) {
+    const choiceId = requestedChoices.get(option.id);
+
+    if (!choiceId) {
+      if (option.required) {
+        throw new RequestError(
+          `Select ${option.label} for ${product.name}.`
+        );
+      }
+
+      continue;
+    }
+
+    const choice = option.choices.find(
+      (candidate) => candidate.id === choiceId
+    );
+
+    if (!choice) {
+      throw new RequestError(
+        `A selected option is unavailable for ${product.name}.`
+      );
+    }
+
+    const modifier = choice.priceModifier ?? 0;
+
+    if (!isMoney(modifier)) {
+      throw new Error(
+        `Invalid catalogue modifier: ${product.id}/${option.id}`
+      );
+    }
+
+    selections.push({
+      optionId: option.id,
+      optionLabel: option.label,
+      choiceId: choice.id,
+      choiceLabel: choice.label,
+      priceModifier: roundMoney(modifier),
+    });
+  }
+
+  const artwork = requireRecord(
+    item.artwork,
+    `Select an artwork option for ${product.name}.`
+  );
+
+  const artworkType = artwork.type;
+
+  if (
+    artworkType !== "customer-supplied" &&
+    artworkType !== "design-needed"
+  ) {
+    throw new RequestError(
+      `Select a valid artwork option for ${product.name}.`
+    );
+  }
+
+  if (!isMoney(product.pricing.basePrice)) {
+    throw new Error(
+      `Invalid catalogue base price: ${product.id}`
+    );
+  }
+
+  const basePrice = roundMoney(
+    product.pricing.basePrice
+  );
+
+  const optionsTotal = roundMoney(
+    selections.reduce(
+      (sum, selection) =>
+        sum + selection.priceModifier,
+      0
+    )
+  );
+
+  const unitPrice = roundMoney(
+    basePrice + optionsTotal
+  );
+
+  const totalPrice = roundMoney(
+    unitPrice * quantity
+  );
+
+  if (
+    !isMoney(optionsTotal) ||
+    !isMoney(unitPrice) ||
+    !isMoney(totalPrice)
+  ) {
+    throw new RequestError(
+      "The order amount is too large."
+    );
+  }
+
+  return {
+    cart_item_id: createCartItemId(
+      product.id,
+      selections,
+      artworkType
+    ),
+    product_id: product.id,
+    product_slug: product.slug,
+    product_name: product.name,
+    product_image:
+      product.image || product.images?.[0] || null,
+    quantity,
+    base_price: basePrice,
+    options_total: optionsTotal,
+    unit_price: unitPrice,
+    total_price: totalPrice,
+    selections,
+    artwork_type: artworkType,
+    design_fee: 0,
+  };
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const authClient =
+      await createSupabaseServerClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await authClient.auth.getUser();
+
+    if (authError || !user) {
+      throw new RequestError(
+        "Please sign in before submitting your order.",
+        401
+      );
+    }
+
+    let rawPayload: unknown;
+
+    try {
+      rawPayload = await request.json();
+    } catch {
+      throw new RequestError("Invalid JSON request.");
+    }
+
+    const payload = requireRecord(
+      rawPayload,
+      "Invalid order request."
+    );
+
+    const customer = requireRecord(
+      payload.customer,
+      "Customer details are required."
+    );
+
+    const delivery = requireRecord(
+      payload.delivery,
+      "Delivery details are required."
+    );
+
+    const brief = requireRecord(
+      payload.brief,
+      "A production brief is required."
+    );
+
+    const fullName = requiredText(
+      customer.fullName,
+      "Customer name",
+      150
+    );
+
+    const phone = requiredText(
+      customer.phone,
+      "Phone number",
+      40
+    );
+
+    const email = requiredText(
+      customer.email,
+      "Email address",
+      254
+    ).toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new RequestError(
+        "Enter a valid email address."
+      );
+    }
+
+    const method = delivery.method;
+
+    if (method !== "delivery" && method !== "pickup") {
+      throw new RequestError(
+        "Select a delivery method."
+      );
+    }
+
+    const isDelivery = method === "delivery";
+
+    const state = isDelivery
+      ? requiredText(
+          delivery.state,
+          "Delivery state",
+          100
+        )
+      : null;
+
+    const city = isDelivery
+      ? requiredText(
+          delivery.city,
+          "Delivery city",
+          100
+        )
+      : null;
+
+    const address = isDelivery
+      ? requiredText(
+          delivery.address,
+          "Delivery address",
+          500
+        )
+      : null;
+
+    const landmark = isDelivery
+      ? readText(
+          delivery.landmark,
+          "Landmark",
+          200
+        )
+      : null;
+
+    const organization = readText(
+      customer.organization,
+      "Organization",
+      200
+    );
+
+    const projectName = requiredText(
+      brief.projectName,
+      "Project name",
+      200
+    );
+
+    const deadline = readDeadline(brief.deadline);
+
+    const instructions = readText(
+      brief.instructions,
+      "Production instructions",
+      5000
+    );
+
+    if (
+      !Array.isArray(payload.items) ||
+      payload.items.length < 1 ||
+      payload.items.length > MAX_ITEMS
+    ) {
+      throw new RequestError(
+        `Your order must contain between 1 and ${MAX_ITEMS} configurations.`
+      );
+    }
+
+    const rawItems: unknown[] = payload.items;
+    const items = rawItems.map(rebuildItem);
+    const signatures = new Set<string>();
+
+    for (const item of items) {
+      if (signatures.has(item.cart_item_id)) {
+        throw new RequestError(
+          "Combine identical configurations in your cart."
+        );
+      }
+
+      signatures.add(item.cart_item_id);
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    const designSlugs = [
+      ...new Set(
+        items
+          .filter(
+            (item) =>
+              item.artwork_type === "design-needed"
+          )
+          .map((item) => item.product_slug)
+      ),
+    ];
+
+    const feesBySlug = new Map<string, number>();
+
+    if (designSlugs.length > 0) {
+      const { data: settings, error: settingsError } =
+        await supabase
+          .from("products")
+          .select("slug, design_fee")
+          .eq("publication_status", "published")
+          .in("slug", designSlugs);
+
+      if (settingsError) {
+        console.error(
+          "[NewJersey] design pricing lookup failed",
+          settingsError
+        );
+
+        throw new Error(
+          "Unable to verify design pricing."
+        );
+      }
+
+      for (const setting of settings ?? []) {
+        if (
+          typeof setting.slug !== "string" ||
+          setting.design_fee === null ||
+          setting.design_fee === undefined
+        ) {
+          continue;
+        }
+
+        const fee = parseDatabaseMoney(
+          setting.design_fee
+        );
+
+        if (fee > 9999999999) {
+          throw new Error(
+            "Invalid configured design fee."
+          );
+        }
+
+        feesBySlug.set(setting.slug, fee);
+      }
+    }
+
+    for (const [index, item] of items.entries()) {
+      if (item.artwork_type !== "design-needed") {
+        continue;
+      }
+
+      const fee = feesBySlug.get(item.product_slug);
+
+      if (fee === undefined) {
+        throw new RequestError(
+          `Design assistance is currently unavailable for ${item.product_name}. Reopen the product and update your cart.`,
+          409
+        );
+      }
+
+      const rawItem = requireRecord(
+        rawItems[index],
+        "Invalid order item."
+      );
+
+      const rawArtwork = requireRecord(
+        rawItem.artwork,
+        "Invalid artwork selection."
+      );
+
+      if (
+        !isMoney(rawArtwork.designFee) ||
+        !sameMoney(rawArtwork.designFee, fee)
+      ) {
+        throw new RequestError(
+          `The design fee for ${item.product_name} has changed. Remove and re-add this product to review its current price.`,
+          409
+        );
+      }
+
+      // One fee for this configuration, regardless of quantity.
+      item.design_fee = fee;
+    }
+
+    const subtotal = roundMoney(
+      items.reduce(
+        (sum, item) => sum + item.total_price,
+        0
+      )
+    );
+
+    const designFee = roundMoney(
+      items.reduce(
+        (sum, item) => sum + item.design_fee,
+        0
+      )
+    );
+
+    const estimatedTotal = roundMoney(
+      subtotal + designFee
+    );
+
+    if (
+      !isMoney(subtotal) ||
+      !isMoney(designFee) ||
+      !isMoney(estimatedTotal)
+    ) {
+      throw new RequestError(
+        "The order amount is too large."
+      );
+    }
+
+    if (!isMoney(payload.subtotal)) {
+      throw new RequestError(
+        "Invalid production estimate."
+      );
+    }
+
+    if (!sameMoney(payload.subtotal, subtotal)) {
+      throw new RequestError(
+        "Production pricing has changed. Reconfigure the affected products before submitting.",
+        409
+      );
+    }
+
+    const status: OrderStatus = items.some(
+      (item) =>
+        item.artwork_type === "customer-supplied"
+    )
+      ? "awaiting-artwork"
+      : "under-review";
+
+    const { data, error } = await supabase.rpc(
+      "create_newjersey_order",
+      {
+        p_order: {
+          customer_id: user.id,
+          order_number: generateOrderNumber(),
+          customer_full_name: fullName,
+          customer_phone: phone,
+          customer_email: email,
+          customer_organization: organization,
+          delivery_method: method,
+          delivery_state: state,
+          delivery_city: city,
+          delivery_address: address,
+          delivery_landmark: landmark,
+          project_name: projectName,
+          preferred_deadline: deadline,
+          production_instructions: instructions,
+          item_count: items.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          ),
+          subtotal,
+          design_fee: designFee,
+          status,
+        },
+        p_items: items,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "[NewJersey] atomic order creation failed",
+        error
+      );
+
+      throw new Error(
+        "Unable to save production request."
+      );
+    }
+
+    // The RPC has completed. Avoid encouraging duplicate
+    // submissions if its confirmation is unexpected.
+    try {
+      if (
+        !isRecord(data) ||
+        !isText(data.id) ||
+        !isText(data.orderNumber) ||
+        !isText(data.createdAt) ||
+        data.status !== status
+      ) {
+        throw new Error("Invalid confirmation.");
+      }
+
+      const savedSubtotal =
+        parseDatabaseMoney(data.subtotal);
+
+      const savedDesignFee =
+        parseDatabaseMoney(data.designFee);
+
+      const savedEstimatedTotal =
+        parseDatabaseMoney(data.estimatedTotal);
+
+      if (
+        !sameMoney(savedSubtotal, subtotal) ||
+        !sameMoney(savedDesignFee, designFee) ||
+        !sameMoney(savedEstimatedTotal, estimatedTotal)
+      ) {
+        throw new Error(
+          "Unexpected saved order totals."
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Production request created.",
+          order: {
+            id: data.id,
+            orderNumber: data.orderNumber,
+            status,
+            subtotal: savedSubtotal,
+            designFee: savedDesignFee,
+            estimatedTotal: savedEstimatedTotal,
+            createdAt: data.createdAt,
+          },
+        },
+        { status: 201 }
+      );
+    } catch (confirmationError) {
+      console.error(
+        "[NewJersey] unexpected order confirmation",
+        confirmationError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Unable to confirm the saved order. Check whether it was created before submitting again.",
+        },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    if (error instanceof RequestError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: error.message,
+        },
+        { status: error.status }
+      );
+    }
+
+    console.error(
+      "[NewJersey] create order error",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Unable to create the production request.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+function isText(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0
+  );
+}
+
+===== FILE: app\admin\products\new\page.tsx =====
+import Link from "next/link";
+
+import ProductImageUpload from "@/app/components/admin/ProductImageUpload";
+import { requireStoreAdmin } from "@/app/lib/newjersey/auth/admin";
+import { saveProduct } from "../actions";
+
+type Props = {
+  searchParams: Promise<{
+    error?: string | string[];
+  }>;
+};
+
+const field =
+  "mt-2 block min-h-12 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base text-[#181818] outline-none transition focus:border-[#F58220] focus:ring-2 focus:ring-[#F58220]/20";
+
+const designFeeGuide = [
+  ["T-shirts", 10000],
+  ["Polo shirts", 10000],
+  ["Jerseys", 15000],
+  ["Hoodies", 20000],
+  ["Business cards", 30000],
+  ["Flyers", 15000],
+  ["Posters", 20000],
+  ["Banners", 10000],
+  ["Brochures", 50000],
+  ["Stickers", 5000],
+  ["Labels", 20000],
+  ["Letterheads", 25000],
+  ["Booklets", 20000],
+  ["Receipt books", 5000],
+] as const;
+
+const currency = new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0,
+});
+
+export default async function NewProductPage({
+  searchParams,
+}: Props) {
+  await requireStoreAdmin();
+
+  const params = await searchParams;
+  const error =
+    typeof params.error === "string" ? params.error : "";
+
+  return (
+    <main className="mx-auto max-w-3xl px-5 py-8 text-[#181818] sm:px-8 sm:py-12">
+      <Link
+        href="/admin/products"
+        className="inline-flex min-h-11 items-center text-sm text-[#625D55] hover:underline"
+      >
+        â† Products
+      </Link>
+
+      <h1 className="mt-5 text-3xl font-bold tracking-[-0.04em]">
+        Add a product
+      </h1>
+
+      <p className="mt-3 text-sm leading-6 text-[#625D55]">
+        Upload images, set your production price and design
+        fee, then save a draft or publish.
+      </p>
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-6 rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-800"
+        >
+          {error}
+        </p>
+      )}
+
+      <form action={saveProduct} className="mt-8 space-y-7">
+        <ProductImageUpload />
+
+        <label className="block text-sm font-medium">
+          Product name
+          <input
+            name="name"
+            required
+            maxLength={160}
+            className={field}
+            placeholder="Name your product"
+          />
+        </label>
+
+        <label className="block text-sm font-medium">
+          URL name
+          <input
+            name="slug"
+            required
+            maxLength={160}
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            autoCapitalize="none"
+            spellCheck={false}
+            className={field}
+            placeholder="your-product-name"
+          />
+          <span className="mt-2 block text-xs leading-5 text-[#625D55]">
+            Use lowercase letters, numbers and hyphens.
+            Each product needs a unique URL name.
+          </span>
+        </label>
+
+        <label className="block text-sm font-medium">
+          Description
+          <textarea
+            name="description"
+            rows={5}
+            maxLength={10000}
+            className={field}
+            placeholder="Describe the product, materials and what is included."
+          />
+        </label>
+
+        <label className="block text-sm font-medium">
+          Category
+          <input
+            name="category"
+            maxLength={100}
+            className={field}
+            placeholder="Jerseys, Art, Accessories..."
+          />
+        </label>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <label className="block text-sm font-medium">
+            Pricing type
+            <select
+              name="sale_mode"
+              className={field}
+              defaultValue="fixed"
+            >
+              <option value="fixed">Fixed price</option>
+              <option value="starting_from">
+                Starting price
+              </option>
+              <option value="quote">Request a quote</option>
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium">
+            Production price (â‚¦)
+            <input
+              name="price"
+              type="number"
+              min="0"
+              max="9999999999"
+              step="0.01"
+              className={field}
+              placeholder="18000"
+            />
+            <span className="mt-2 block text-xs leading-5 text-[#625D55]">
+              Required for fixed and starting prices.
+              Exclude the separate design fee.
+            </span>
+          </label>
+        </div>
+
+        <section
+          aria-labelledby="design-fee-heading"
+          className="rounded-2xl border border-black/10 bg-[#F4F1E9] p-5 sm:p-6"
+        >
+          <h2
+            id="design-fee-heading"
+            className="text-lg font-semibold tracking-tight"
+          >
+            Artwork design
+          </h2>
+
+          <label className="mt-4 block text-sm font-medium">
+            Design fee (â‚¦)
+            <input
+              name="design_fee"
+              type="number"
+              min="0"
+              max="9999999999"
+              step="0.01"
+              className={field}
+              placeholder="10000"
+              aria-describedby="design-fee-help"
+            />
+          </label>
+
+          <p
+            id="design-fee-help"
+            className="mt-3 text-xs leading-6 text-[#625D55]"
+          >
+            Applies only when the customer requests design
+            help. Charge once per configured design in the
+            order, regardless of identical-piece quantity.
+            Enter 0 if design is included. Leave blank if
+            the fee has not been configured.
+          </p>
+
+          <details className="mt-5 border-t border-black/10 pt-4">
+            <summary className="cursor-pointer text-sm font-semibold">
+              Your design fee reference
+            </summary>
+
+            <p className="mt-3 text-xs leading-5 text-[#625D55]">
+              Reference only. Enter the applicable amount
+              in the field above.
+            </p>
+
+            <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              {designFeeGuide.map(([name, fee]) => (
+                <div
+                  key={name}
+                  className="flex justify-between gap-3 text-xs"
+                >
+                  <dt className="text-[#625D55]">{name}</dt>
+                  <dd className="font-semibold">
+                    {currency.format(fee)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </section>
+
+        <label className="block text-sm font-medium">
+          Fulfillment
+          <select
+            name="fulfillment_type"
+            className={field}
+            defaultValue="made_to_order"
+          >
+            <option value="made_to_order">Made to order</option>
+            <option value="in_stock">In stock</option>
+            <option value="preorder">Preorder</option>
+            <option value="digital">Digital</option>
+            <option value="service">Service</option>
+          </select>
+        </label>
+
+        <label className="flex min-h-11 items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            name="featured"
+            className="h-5 w-5 accent-[#F58220]"
+          />
+          Feature this product in the shop
+        </label>
+
+        <label className="block text-sm font-medium">
+          Publication
+          <select
+            name="publication_status"
+            className={field}
+            defaultValue="draft"
+          >
+            <option value="draft">
+              Draft â€” hidden from customers
+            </option>
+            <option value="published">
+              Published â€” visible to customers
+            </option>
+          </select>
+
+          <span className="mt-2 block text-xs leading-5 text-[#625D55]">
+            Published products require at least one image.
+          </span>
+        </label>
+
+        <div className="flex flex-wrap items-center gap-5 border-t border-black/10 pt-6">
+          <button
+            type="submit"
+            className="min-h-12 rounded-full bg-[#F58220] px-6 text-sm font-semibold text-[#181818] transition-colors hover:bg-[#D96B0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
+          >
+            Save product
+          </button>
+
+          <Link
+            href="/admin/products"
+            className="inline-flex min-h-11 items-center text-sm hover:underline"
+          >
+            Cancel
+          </Link>
+        </div>
+      </form>
+    </main>
+  );
+}
+
+===== FILE: app\admin\products\[id]\page.tsx =====
+import Link from "next/link";
+import Image from "next/image";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ExternalLink } from "lucide-react";
+
+import { requireStoreAdmin } from "@/app/lib/newjersey/auth/admin";
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
+import { updateProductDesignFee } from "../design-fee-actions";
+
+export const dynamic = "force-dynamic";
+
+type ProductPageProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    error?: string | string[];
+    saved?: string | string[];
+  }>;
+};
+
+function formatMoney(
+  value: number | string | null,
+  currency = "NGN"
+) {
+  if (
+    value === null ||
+    (typeof value === "string" && value.trim() === "")
+  ) {
+    return "Not set";
+  }
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) return "Not set";
+
+  try {
+    return new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toLocaleString("en-NG")}`;
+  }
+}
+
+function formatPrice(product: {
+  price: number | string | null;
+  currency: string | null;
+  sale_mode: string | null;
+}) {
+  if (product.sale_mode === "quote") {
+    return "Price on request";
+  }
+
+  const formatted = formatMoney(
+    product.price,
+    product.currency || "NGN"
+  );
+
+  if (formatted === "Not set") return "Price not set";
+
+  return product.sale_mode === "starting_from"
+    ? `From ${formatted}`
+    : formatted;
+}
+
+function label(value: string | null) {
+  return (value || "Not set").replace(/[-_]/g, " ");
+}
+
+function getProductImages(
+  mainImage: unknown,
+  galleryImages: unknown
+): string[] {
+  const candidates = [
+    mainImage,
+    ...(Array.isArray(galleryImages) ? galleryImages : []),
+  ];
+
+  const images: string[] = [];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+
+    const value = candidate.trim();
+    if (!value) continue;
+
+    try {
+      const url = new URL(value);
+
+      if (
+        url.protocol === "https:" &&
+        !url.username &&
+        !url.password
+      ) {
+        images.push(value);
+      }
+    } catch {
+      // Ignore invalid image URLs.
+    }
+  }
+
+  return [...new Set(images)];
+}
+
+export default async function ProductPage({
+  params,
+  searchParams,
+}: ProductPageProps) {
+  await requireStoreAdmin();
+
+  const { id } = await params;
+  const query = await searchParams;
+
+  if (
+    !/^[1-9]\d*$/.test(id) ||
+    id.length > 19 ||
+    BigInt(id) > 9223372036854775807n
+  ) {
+    notFound();
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  const { data: product, error } = await supabase
+    .from("products")
+    .select(`
+      id,
+      name,
+      slug,
+      description,
+      category,
+      price,
+      design_fee,
+      currency,
+      sale_mode,
+      fulfillment_type,
+      publication_status,
+      featured,
+      image_url,
+      image_urls
+    `)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[NewJersey Product Details]", error);
+    throw new Error("Unable to load this product.");
+  }
+
+  if (!product) notFound();
+
+  const images = getProductImages(
+    product.image_url,
+    product.image_urls
+  );
+
+  const errorMessage =
+    typeof query.error === "string" ? query.error : "";
+
+  const feeSaved = query.saved === "design-fee";
+
+  const details = [
+    {
+      name: "Category",
+      value: product.category || "Uncategorized",
+    },
+    {
+      name: "Production price",
+      value: formatPrice(product),
+    },
+    {
+      name: "Publication status",
+      value: label(product.publication_status),
+    },
+    {
+      name: "Sale mode",
+      value: label(product.sale_mode),
+    },
+    {
+      name: "Fulfillment",
+      value: label(product.fulfillment_type),
+    },
+    {
+      name: "Featured",
+      value: product.featured ? "Yes" : "No",
+    },
+    {
+      name: "Currency",
+      value: product.currency || "NGN",
+    },
+  ];
+
+  return (
+    <main className="min-w-0 p-4 text-[#181818] sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-6xl">
+        <Link
+          href="/admin/products"
+          className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[#625D55] transition-colors hover:text-[#181818]"
+        >
+          <ArrowLeft size={17} aria-hidden="true" />
+          Back to products
+        </Link>
+
+        <div className="mt-4">
+          <p className="text-sm text-[#625D55]">
+            Product details
+          </p>
+
+          <h1 className="mt-2 break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+            {product.name}
+          </h1>
+        </div>
+
+        {errorMessage && (
+          <p
+            role="alert"
+            className="mt-6 rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-800"
+          >
+            {errorMessage}
+          </p>
+        )}
+
+        {feeSaved && !errorMessage && (
+          <p
+            role="status"
+            className="mt-6 rounded-xl border border-[#F58220]/30 bg-[#F58220]/10 p-4 text-sm"
+          >
+            Design fee saved.
+          </p>
+        )}
+
+        <div className="mt-6 grid min-w-0 items-start gap-6 xl:grid-cols-2">
+          <section
+            aria-labelledby="product-images-heading"
+            className="min-w-0 rounded-xl border border-black/10 bg-white p-5 sm:p-6"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2
+                id="product-images-heading"
+                className="text-base font-semibold"
+              >
+                Product images
+              </h2>
+
+              <span className="text-xs text-[#625D55]">
+                {images.length}{" "}
+                {images.length === 1 ? "image" : "images"}
+              </span>
+            </div>
+
+            {images.length === 0 ? (
+              <div className="mt-5 flex min-h-[260px] items-center justify-center rounded-lg bg-[#F4F1E9] px-6 text-center">
+                <p className="text-sm text-[#625D55]">
+                  No images are saved for this product.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-4">
+                <a
+                  href={images[0]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open main image of ${product.name} in a new tab`}
+                  className="relative block aspect-square overflow-hidden rounded-lg border border-black/10 bg-[#F4F1E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+                >
+                  <Image
+                    src={images[0]}
+                    alt={`${product.name} â€” main image`}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 1279px) 100vw, 50vw"
+                    className="object-contain p-3"
+                  />
+                </a>
+
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium text-[#625D55]">
+                    Main image
+                  </p>
+
+                  <a
+                    href={images[0]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-[#625D55] hover:text-[#181818]"
+                  >
+                    Open full size
+                    <ExternalLink size={14} aria-hidden="true" />
+                  </a>
+                </div>
+
+                {images.length > 1 && (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {images.slice(1).map((url, index) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open image ${index + 2} of ${product.name} in a new tab`}
+                        className="relative block aspect-square overflow-hidden rounded-lg border border-black/10 bg-[#F4F1E9] transition-colors hover:border-[#F58220] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+                      >
+                        <Image
+                          src={url}
+                          alt={`${product.name} â€” image ${index + 2}`}
+                          fill
+                          unoptimized
+                          sizes="(max-width: 640px) 50vw, 200px"
+                          className="object-contain p-2"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <div className="min-w-0 space-y-6">
+            <section
+              aria-labelledby="design-fee-heading"
+              className="rounded-xl border border-black/10 bg-white p-5 sm:p-6"
+            >
+              <h2
+                id="design-fee-heading"
+                className="text-base font-semibold"
+              >
+                Artwork design fee
+              </h2>
+
+              <p className="mt-3 text-2xl font-bold tracking-tight">
+                {product.design_fee === null
+                  ? "Not configured"
+                  : formatMoney(product.design_fee)}
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-[#625D55]">
+                Set the fee for this product when a customer
+                needs design help. It is separate from the
+                production price.
+              </p>
+
+              <form
+                action={updateProductDesignFee}
+                className="mt-5"
+              >
+                <input
+                  type="hidden"
+                  name="product_id"
+                  value={id}
+                />
+
+                <label
+                  htmlFor="design-fee"
+                  className="block text-sm font-medium"
+                >
+                  Design fee (â‚¦)
+                </label>
+
+                <input
+                  id="design-fee"
+                  name="design_fee"
+                  type="number"
+                  min="0"
+                  max="9999999999"
+                  step="0.01"
+                  defaultValue={
+                    product.design_fee === null
+                      ? ""
+                      : String(product.design_fee)
+                  }
+                  aria-describedby="design-fee-help"
+                  placeholder="10000"
+                  className="mt-2 min-h-12 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-base outline-none focus:border-[#F58220] focus:ring-2 focus:ring-[#F58220]/20"
+                />
+
+                <p
+                  id="design-fee-help"
+                  className="mt-3 text-xs leading-6 text-[#625D55]"
+                >
+                  Enter 0 if design is included. Leave blank
+                  to mark the fee as unconfigured. The intended
+                  charge is once per configured design in an
+                  order, not per identical piece.
+                </p>
+
+                <button
+                  type="submit"
+                  className="mt-5 min-h-12 rounded-full bg-[#F58220] px-6 text-sm font-semibold text-[#181818] transition hover:bg-[#D96B0D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
+                >
+                  Save design fee
+                </button>
+              </form>
+            </section>
+
+            <section
+              aria-labelledby="product-information-heading"
+              className="min-w-0 overflow-hidden rounded-xl border border-black/10 bg-white"
+            >
+              <div className="border-b border-black/10 p-5 sm:p-6">
+                <h2
+                  id="product-information-heading"
+                  className="text-base font-semibold"
+                >
+                  Product information
+                </h2>
+              </div>
+
+              <dl className="grid sm:grid-cols-2">
+                {details.map((detail) => (
+                  <div
+                    key={detail.name}
+                    className="min-w-0 border-b border-black/10 p-5 sm:p-6"
+                  >
+                    <dt className="text-sm text-[#625D55]">
+                      {detail.name}
+                    </dt>
+
+                    <dd className="mt-2 break-words text-sm font-semibold capitalize">
+                      {detail.value}
+                    </dd>
+                  </div>
+                ))}
+
+                <div className="min-w-0 border-b border-black/10 p-5 sm:p-6">
+                  <dt className="text-sm text-[#625D55]">
+                    Product ID
+                  </dt>
+                  <dd className="mt-2 break-all font-mono text-xs text-[#625D55]">
+                    {product.id}
+                  </dd>
+                </div>
+
+                <div className="min-w-0 border-b border-black/10 p-5 sm:col-span-2 sm:p-6">
+                  <dt className="text-sm text-[#625D55]">
+                    URL name
+                  </dt>
+                  <dd className="mt-2 break-all text-sm font-medium">
+                    {product.slug || "Not set"}
+                  </dd>
+                </div>
+
+                <div className="min-w-0 p-5 sm:col-span-2 sm:p-6">
+                  <dt className="text-sm text-[#625D55]">
+                    Description
+                  </dt>
+                  <dd className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#625D55]">
+                    {product.description || "No description added."}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+===== FILE: app\shop\order\[Id]\payment\actions.ts =====
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { createClient } from "@/app/lib/newjersey/supabase/server";
+import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
+
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function startBankTransfer(
+  formData: FormData
+): Promise<void> {
+  const orderId = formData.get("orderId");
+
+  if (
+    typeof orderId !== "string" ||
+    !UUID.test(orderId)
+  ) {
+    redirect("/shop/order");
+  }
+
+  const path = `/shop/order/${orderId}/payment`;
+
+  const auth = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await auth.auth.getUser();
+
+  if (authError || !user) {
+    redirect(`/login?next=${encodeURIComponent(path)}`);
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  const { error } = await supabase.rpc(
+    "start_bank_transfer",
+    {
+      p_order_id: orderId,
+      p_customer_id: user.id,
+    }
+  );
+
+  if (error) {
+    console.error("[Start bank transfer]", error);
+
+    const knownMessages = [
+      "Order not found.",
+      "This order is not available for payment.",
+      "Bank transfer is currently unavailable.",
+    ];
+
+    const message = knownMessages.includes(error.message)
+      ? error.message
+      : "Payment instructions could not be created. Refresh the page before trying again.";
+
+    redirect(
+      `${path}?error=${encodeURIComponent(message)}`
+    );
+  }
+
+  revalidatePath(path);
+
+  redirect(path);
+}
+

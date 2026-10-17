@@ -2,16 +2,18 @@ import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
+import { createClient as createSupabaseServerClient } from "@/app/lib/newjersey/supabase/server";
+
 import {
-  createClient as createSupabaseServerClient,
-} from "@/app/lib/newjersey/supabase/server";
+  APPAREL_FIELDS,
+  toApparelProduct,
+  type ApparelRow,
+} from "@/app/lib/newjersey/apparel/catalogue";
+import type { NewJerseyProduct } from "@/app/types/commerce";
 
 import { getProductById } from "@/app/data/newjersey/products";
 
-import type {
-  OrderStatus,
-  SelectedProductOption,
-} from "@/app/types/commerce";
+import type { OrderStatus, SelectedProductOption } from "@/app/types/commerce";
 
 export const runtime = "nodejs";
 
@@ -22,26 +24,20 @@ const MAX_MONEY = Number.MAX_SAFE_INTEGER / 100;
 class RequestError extends Error {
   constructor(
     message: string,
-    public status = 400
+    public status = 400,
   ) {
     super(message);
     this.name = "RequestError";
   }
 }
 
-function isRecord(
-  value: unknown
-): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value)
-  );
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function requireRecord(
   value: unknown,
-  message: string
+  message: string,
 ): Record<string, unknown> {
   if (!isRecord(value)) {
     throw new RequestError(message);
@@ -54,7 +50,7 @@ function readText(
   value: unknown,
   label: string,
   maxLength: number,
-  required = false
+  required = false,
 ): string | null {
   if (value === undefined || value === null) {
     if (required) {
@@ -88,7 +84,7 @@ function readText(
 function requiredText(
   value: unknown,
   label: string,
-  maxLength: number
+  maxLength: number,
 ): string {
   return readText(value, label, maxLength, true)!;
 }
@@ -107,18 +103,12 @@ function roundMoney(value: number) {
 }
 
 function sameMoney(left: number, right: number) {
-  return (
-    Math.round(left * 100) ===
-    Math.round(right * 100)
-  );
+  return Math.round(left * 100) === Math.round(right * 100);
 }
 
 function parseDatabaseMoney(value: unknown): number {
   if (
-    (
-      typeof value !== "number" &&
-      typeof value !== "string"
-    ) ||
+    (typeof value !== "number" && typeof value !== "string") ||
     (typeof value === "string" && !value.trim())
   ) {
     throw new Error("Invalid database amount.");
@@ -134,11 +124,7 @@ function parseDatabaseMoney(value: unknown): number {
 }
 
 function readDeadline(value: unknown): string | null {
-  const deadline = readText(
-    value,
-    "Preferred deadline",
-    10
-  );
+  const deadline = readText(value, "Preferred deadline", 10);
 
   if (!deadline) return null;
 
@@ -160,15 +146,9 @@ function readDeadline(value: unknown): string | null {
 }
 
 function generateOrderNumber() {
-  const date = new Date()
-    .toISOString()
-    .slice(2, 10)
-    .replaceAll("-", "");
+  const date = new Date().toISOString().slice(2, 10).replaceAll("-", "");
 
-  const reference = randomUUID()
-    .replaceAll("-", "")
-    .slice(0, 16)
-    .toUpperCase();
+  const reference = randomUUID().replaceAll("-", "").slice(0, 16).toUpperCase();
 
   return `NJ-${date}-${reference}`;
 }
@@ -176,14 +156,14 @@ function generateOrderNumber() {
 function createCartItemId(
   productId: string,
   selections: SelectedProductOption[],
-  artworkType: string
+  artworkType: string,
 ) {
   const signature = selections
     .map(
       (selection) =>
         `${encodeURIComponent(selection.optionId)}:${encodeURIComponent(
-          selection.choiceId
-        )}`
+          selection.choiceId,
+        )}`,
     )
     .sort()
     .join("|");
@@ -191,29 +171,26 @@ function createCartItemId(
   return `${encodeURIComponent(productId)}__${signature}__${artworkType}`;
 }
 
-function rebuildItem(value: unknown) {
-  const item = requireRecord(
-    value,
-    "One or more order items are invalid."
-  );
+function rebuildItem(
+  value: unknown,
+  retailProducts: Map<string, NewJerseyProduct>,
+) {
+  const item = requireRecord(value, "One or more order items are invalid.");
 
-  const productId = requiredText(
-    item.productId,
-    "Product ID",
-    200
-  );
+  const productId = requiredText(item.productId, "Product ID", 200);
 
-  const product = getProductById(productId);
+  const retail = productId.startsWith("retail-");
+  const product = retail
+    ? retailProducts.get(productId)
+    : getProductById(productId);
 
   if (!product || product.published === false) {
-    throw new RequestError(
-      "An item in your order is no longer available."
-    );
+    throw new RequestError("An item in your order is no longer available.");
   }
 
   if (product.pricing.type === "quote") {
     throw new RequestError(
-      `${product.name} requires a separate quote request.`
+      `${product.name} requires a separate quote request.`,
     );
   }
 
@@ -226,22 +203,18 @@ function rebuildItem(value: unknown) {
     quantity > MAX_JOBS_PER_ITEM
   ) {
     throw new RequestError(
-      `Choose between 1 and ${MAX_JOBS_PER_ITEM} jobs for ${product.name}.`
+      `Choose between 1 and ${MAX_JOBS_PER_ITEM} jobs for ${product.name}.`,
     );
   }
 
   if (!Array.isArray(item.selections)) {
-    throw new RequestError(
-      `Invalid selections for ${product.name}.`
-    );
+    throw new RequestError(`Invalid selections for ${product.name}.`);
   }
 
   const productOptions = product.options ?? [];
 
   if (item.selections.length > productOptions.length) {
-    throw new RequestError(
-      `Too many selections for ${product.name}.`
-    );
+    throw new RequestError(`Too many selections for ${product.name}.`);
   }
 
   const requestedChoices = new Map<string, string>();
@@ -249,39 +222,24 @@ function rebuildItem(value: unknown) {
   for (const rawSelection of item.selections) {
     const selection = requireRecord(
       rawSelection,
-      `Invalid selections for ${product.name}.`
+      `Invalid selections for ${product.name}.`,
     );
 
-    const optionId = requiredText(
-      selection.optionId,
-      "Option ID",
-      200
-    );
+    const optionId = requiredText(selection.optionId, "Option ID", 200);
 
-    const choiceId = requiredText(
-      selection.choiceId,
-      "Choice ID",
-      200
-    );
+    const choiceId = requiredText(selection.choiceId, "Choice ID", 200);
 
     if (requestedChoices.has(optionId)) {
-      throw new RequestError(
-        `Duplicate option selected for ${product.name}.`
-      );
+      throw new RequestError(`Duplicate option selected for ${product.name}.`);
     }
 
     const option = productOptions.find(
-      (candidate) => candidate.id === optionId
+      (candidate) => candidate.id === optionId,
     );
 
-    if (
-      !option ||
-      !option.choices.some(
-        (choice) => choice.id === choiceId
-      )
-    ) {
+    if (!option || !option.choices.some((choice) => choice.id === choiceId)) {
       throw new RequestError(
-        `A selected option is unavailable for ${product.name}.`
+        `A selected option is unavailable for ${product.name}.`,
       );
     }
 
@@ -295,30 +253,26 @@ function rebuildItem(value: unknown) {
 
     if (!choiceId) {
       if (option.required) {
-        throw new RequestError(
-          `Select ${option.label} for ${product.name}.`
-        );
+        throw new RequestError(`Select ${option.label} for ${product.name}.`);
       }
 
       continue;
     }
 
     const choice = option.choices.find(
-      (candidate) => candidate.id === choiceId
+      (candidate) => candidate.id === choiceId,
     );
 
     if (!choice) {
       throw new RequestError(
-        `A selected option is unavailable for ${product.name}.`
+        `A selected option is unavailable for ${product.name}.`,
       );
     }
 
     const modifier = choice.priceModifier ?? 0;
 
     if (!isMoney(modifier)) {
-      throw new Error(
-        `Invalid catalogue modifier: ${product.id}/${option.id}`
-      );
+      throw new Error(`Invalid catalogue modifier: ${product.id}/${option.id}`);
     }
 
     selections.push({
@@ -330,75 +284,56 @@ function rebuildItem(value: unknown) {
     });
   }
 
-  const artwork = requireRecord(
-    item.artwork,
-    `Select an artwork option for ${product.name}.`
-  );
+  const artwork = retail
+    ? { type: "not-required" }
+    : requireRecord(
+        item.artwork,
+        `Select an artwork option for ${product.name}.`,
+      );
 
   const artworkType = artwork.type;
 
   if (
     artworkType !== "customer-supplied" &&
-    artworkType !== "design-needed"
+    artworkType !== "design-needed" &&
+    !(retail && artworkType === "not-required")
   ) {
     throw new RequestError(
-      `Select a valid artwork option for ${product.name}.`
+      `Select a valid artwork option for ${product.name}.`,
     );
   }
 
   if (!isMoney(product.pricing.basePrice)) {
-    throw new Error(
-      `Invalid catalogue base price: ${product.id}`
-    );
+    throw new Error(`Invalid catalogue base price: ${product.id}`);
   }
 
-  const basePrice = roundMoney(
-    product.pricing.basePrice
-  );
+  const basePrice = roundMoney(product.pricing.basePrice);
 
   const optionsTotal = roundMoney(
-    selections.reduce(
-      (sum, selection) =>
-        sum + selection.priceModifier,
-      0
-    )
+    selections.reduce((sum, selection) => sum + selection.priceModifier, 0),
   );
 
-  const unitPrice = roundMoney(
-    basePrice + optionsTotal
-  );
+  const unitPrice = roundMoney(basePrice + optionsTotal);
 
-  const totalPrice = roundMoney(
-    unitPrice * quantity
-  );
+  const totalPrice = roundMoney(unitPrice * quantity);
 
-  if (
-    !isMoney(optionsTotal) ||
-    !isMoney(unitPrice) ||
-    !isMoney(totalPrice)
-  ) {
-    throw new RequestError(
-      "The order amount is too large."
-    );
+  if (!isMoney(optionsTotal) || !isMoney(unitPrice) || !isMoney(totalPrice)) {
+    throw new RequestError("The order amount is too large.");
   }
 
   return {
-    cart_item_id: createCartItemId(
-      product.id,
-      selections,
-      artworkType
-    ),
+    cart_item_id: createCartItemId(product.id, selections, artworkType),
     product_id: product.id,
     product_slug: product.slug,
     product_name: product.name,
-    product_image:
-      product.image || product.images?.[0] || null,
+    product_image: product.image || product.images?.[0] || null,
     quantity,
     base_price: basePrice,
     options_total: optionsTotal,
     unit_price: unitPrice,
     total_price: totalPrice,
     selections,
+    review_mode: retail ? "retail" : "artwork",
     artwork_type: artworkType,
     design_fee: 0,
   };
@@ -406,8 +341,7 @@ function rebuildItem(value: unknown) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authClient =
-      await createSupabaseServerClient();
+    const authClient = await createSupabaseServerClient();
 
     const {
       data: { user },
@@ -417,7 +351,7 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       throw new RequestError(
         "Please sign in before submitting your order.",
-        401
+        401,
       );
     }
 
@@ -429,110 +363,71 @@ export async function POST(request: NextRequest) {
       throw new RequestError("Invalid JSON request.");
     }
 
-    const payload = requireRecord(
-      rawPayload,
-      "Invalid order request."
-    );
+    const payload = requireRecord(rawPayload, "Invalid order request.");
 
     const customer = requireRecord(
       payload.customer,
-      "Customer details are required."
+      "Customer details are required.",
     );
 
     const delivery = requireRecord(
       payload.delivery,
-      "Delivery details are required."
+      "Delivery details are required.",
     );
 
     const brief = requireRecord(
       payload.brief,
-      "A production brief is required."
+      "A production brief is required.",
     );
 
-    const fullName = requiredText(
-      customer.fullName,
-      "Customer name",
-      150
-    );
+    const fullName = requiredText(customer.fullName, "Customer name", 150);
 
-    const phone = requiredText(
-      customer.phone,
-      "Phone number",
-      40
-    );
+    const phone = requiredText(customer.phone, "Phone number", 40);
 
     const email = requiredText(
       customer.email,
       "Email address",
-      254
+      254,
     ).toLowerCase();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new RequestError(
-        "Enter a valid email address."
-      );
+      throw new RequestError("Enter a valid email address.");
     }
 
     const method = delivery.method;
 
     if (method !== "delivery" && method !== "pickup") {
-      throw new RequestError(
-        "Select a delivery method."
-      );
+      throw new RequestError("Select a delivery method.");
     }
 
     const isDelivery = method === "delivery";
 
     const state = isDelivery
-      ? requiredText(
-          delivery.state,
-          "Delivery state",
-          100
-        )
+      ? requiredText(delivery.state, "Delivery state", 100)
       : null;
 
     const city = isDelivery
-      ? requiredText(
-          delivery.city,
-          "Delivery city",
-          100
-        )
+      ? requiredText(delivery.city, "Delivery city", 100)
       : null;
 
     const address = isDelivery
-      ? requiredText(
-          delivery.address,
-          "Delivery address",
-          500
-        )
+      ? requiredText(delivery.address, "Delivery address", 500)
       : null;
 
     const landmark = isDelivery
-      ? readText(
-          delivery.landmark,
-          "Landmark",
-          200
-        )
+      ? readText(delivery.landmark, "Landmark", 200)
       : null;
 
-    const organization = readText(
-      customer.organization,
-      "Organization",
-      200
-    );
+    const organization = readText(customer.organization, "Organization", 200);
 
-    const projectName = requiredText(
-      brief.projectName,
-      "Project name",
-      200
-    );
+    const projectName = requiredText(brief.projectName, "Project name", 200);
 
     const deadline = readDeadline(brief.deadline);
 
     const instructions = readText(
       brief.instructions,
       "Production instructions",
-      5000
+      5000,
     );
 
     if (
@@ -541,18 +436,43 @@ export async function POST(request: NextRequest) {
       payload.items.length > MAX_ITEMS
     ) {
       throw new RequestError(
-        `Your order must contain between 1 and ${MAX_ITEMS} configurations.`
+        `Your order must contain between 1 and ${MAX_ITEMS} configurations.`,
       );
     }
 
     const rawItems: unknown[] = payload.items;
-    const items = rawItems.map(rebuildItem);
+    const retailProducts = new Map<string, NewJerseyProduct>();
+    const retailIds = [
+      ...new Set(
+        rawItems.flatMap((value) =>
+          isRecord(value) &&
+          typeof value.productId === "string" &&
+          value.productId.startsWith("retail-")
+            ? [value.productId.slice(7)]
+            : [],
+        ),
+      ),
+    ];
+    if (retailIds.some((id) => !/^[1-9]\d{0,18}$/.test(id)))
+      throw new RequestError("Invalid apparel product.");
+    if (retailIds.length) {
+      const { data: rows, error } = await getSupabaseAdmin()
+        .from("products")
+        .select(APPAREL_FIELDS)
+        .in("id", retailIds);
+      if (error) throw new Error("Unable to check apparel availability.");
+      for (const row of (rows ?? []) as unknown as ApparelRow[]) {
+        const product = toApparelProduct(row);
+        if (product) retailProducts.set(product.id, product);
+      }
+    }
+    const items = rawItems.map((item) => rebuildItem(item, retailProducts));
     const signatures = new Set<string>();
 
     for (const item of items) {
       if (signatures.has(item.cart_item_id)) {
         throw new RequestError(
-          "Combine identical configurations in your cart."
+          "Combine identical configurations in your cart.",
         );
       }
 
@@ -564,33 +484,27 @@ export async function POST(request: NextRequest) {
     const designSlugs = [
       ...new Set(
         items
-          .filter(
-            (item) =>
-              item.artwork_type === "design-needed"
-          )
-          .map((item) => item.product_slug)
+          .filter((item) => item.artwork_type === "design-needed")
+          .map((item) => item.product_slug),
       ),
     ];
 
     const feesBySlug = new Map<string, number>();
 
     if (designSlugs.length > 0) {
-      const { data: settings, error: settingsError } =
-        await supabase
-          .from("products")
-          .select("slug, design_fee")
-          .eq("publication_status", "published")
-          .in("slug", designSlugs);
+      const { data: settings, error: settingsError } = await supabase
+        .from("products")
+        .select("slug, design_fee")
+        .eq("publication_status", "published")
+        .in("slug", designSlugs);
 
       if (settingsError) {
         console.error(
           "[NewJersey] design pricing lookup failed",
-          settingsError
+          settingsError,
         );
 
-        throw new Error(
-          "Unable to verify design pricing."
-        );
+        throw new Error("Unable to verify design pricing.");
       }
 
       for (const setting of settings ?? []) {
@@ -602,14 +516,10 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const fee = parseDatabaseMoney(
-          setting.design_fee
-        );
+        const fee = parseDatabaseMoney(setting.design_fee);
 
         if (fee > 9999999999) {
-          throw new Error(
-            "Invalid configured design fee."
-          );
+          throw new Error("Invalid configured design fee.");
         }
 
         feesBySlug.set(setting.slug, fee);
@@ -626,18 +536,15 @@ export async function POST(request: NextRequest) {
       if (fee === undefined) {
         throw new RequestError(
           `Design assistance is currently unavailable for ${item.product_name}. Reopen the product and update your cart.`,
-          409
+          409,
         );
       }
 
-      const rawItem = requireRecord(
-        rawItems[index],
-        "Invalid order item."
-      );
+      const rawItem = requireRecord(rawItems[index], "Invalid order item.");
 
       const rawArtwork = requireRecord(
         rawItem.artwork,
-        "Invalid artwork selection."
+        "Invalid artwork selection.",
       );
 
       if (
@@ -646,7 +553,7 @@ export async function POST(request: NextRequest) {
       ) {
         throw new RequestError(
           `The design fee for ${item.product_name} has changed. Remove and re-add this product to review its current price.`,
-          409
+          409,
         );
       }
 
@@ -655,92 +562,64 @@ export async function POST(request: NextRequest) {
     }
 
     const subtotal = roundMoney(
-      items.reduce(
-        (sum, item) => sum + item.total_price,
-        0
-      )
+      items.reduce((sum, item) => sum + item.total_price, 0),
     );
 
     const designFee = roundMoney(
-      items.reduce(
-        (sum, item) => sum + item.design_fee,
-        0
-      )
+      items.reduce((sum, item) => sum + item.design_fee, 0),
     );
 
-    const estimatedTotal = roundMoney(
-      subtotal + designFee
-    );
+    const estimatedTotal = roundMoney(subtotal + designFee);
 
-    if (
-      !isMoney(subtotal) ||
-      !isMoney(designFee) ||
-      !isMoney(estimatedTotal)
-    ) {
-      throw new RequestError(
-        "The order amount is too large."
-      );
+    if (!isMoney(subtotal) || !isMoney(designFee) || !isMoney(estimatedTotal)) {
+      throw new RequestError("The order amount is too large.");
     }
 
     if (!isMoney(payload.subtotal)) {
-      throw new RequestError(
-        "Invalid production estimate."
-      );
+      throw new RequestError("Invalid production estimate.");
     }
 
     if (!sameMoney(payload.subtotal, subtotal)) {
       throw new RequestError(
         "Production pricing has changed. Reconfigure the affected products before submitting.",
-        409
+        409,
       );
     }
 
     const status: OrderStatus = items.some(
-      (item) =>
-        item.artwork_type === "customer-supplied"
+      (item) => item.artwork_type === "customer-supplied",
     )
       ? "awaiting-artwork"
       : "under-review";
 
-    const { data, error } = await supabase.rpc(
-      "create_newjersey_order",
-      {
-        p_order: {
-          customer_id: user.id,
-          order_number: generateOrderNumber(),
-          customer_full_name: fullName,
-          customer_phone: phone,
-          customer_email: email,
-          customer_organization: organization,
-          delivery_method: method,
-          delivery_state: state,
-          delivery_city: city,
-          delivery_address: address,
-          delivery_landmark: landmark,
-          project_name: projectName,
-          preferred_deadline: deadline,
-          production_instructions: instructions,
-          item_count: items.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          ),
-          subtotal,
-          design_fee: designFee,
-          status,
-        },
-        p_items: items,
-      }
-    );
+    const { data, error } = await supabase.rpc("create_catalogue_order", {
+      p_order: {
+        customer_id: user.id,
+        order_number: generateOrderNumber(),
+        customer_full_name: fullName,
+        customer_phone: phone,
+        customer_email: email,
+        customer_organization: organization,
+        delivery_method: method,
+        delivery_state: state,
+        delivery_city: city,
+        delivery_address: address,
+        delivery_landmark: landmark,
+        project_name: projectName,
+        preferred_deadline: deadline,
+        production_instructions: instructions,
+        item_count: items.reduce((sum, item) => sum + item.quantity, 0),
+        subtotal,
+        design_fee: designFee,
+        status,
+      },
+      p_items: items,
+    });
 
     if (error) {
-      console.error(
-        "[NewJersey] atomic order creation failed",
-        error
-      );
+      console.error("[NewJersey] atomic order creation failed", error);
 
-      throw new Error(
-        "Unable to save production request."
-      );
+      throw new Error("Unable to save production request.");
     }
 
     // The RPC has completed. Avoid encouraging duplicate
@@ -756,23 +635,18 @@ export async function POST(request: NextRequest) {
         throw new Error("Invalid confirmation.");
       }
 
-      const savedSubtotal =
-        parseDatabaseMoney(data.subtotal);
+      const savedSubtotal = parseDatabaseMoney(data.subtotal);
 
-      const savedDesignFee =
-        parseDatabaseMoney(data.designFee);
+      const savedDesignFee = parseDatabaseMoney(data.designFee);
 
-      const savedEstimatedTotal =
-        parseDatabaseMoney(data.estimatedTotal);
+      const savedEstimatedTotal = parseDatabaseMoney(data.estimatedTotal);
 
       if (
         !sameMoney(savedSubtotal, subtotal) ||
         !sameMoney(savedDesignFee, designFee) ||
         !sameMoney(savedEstimatedTotal, estimatedTotal)
       ) {
-        throw new Error(
-          "Unexpected saved order totals."
-        );
+        throw new Error("Unexpected saved order totals.");
       }
 
       return NextResponse.json(
@@ -789,12 +663,12 @@ export async function POST(request: NextRequest) {
             createdAt: data.createdAt,
           },
         },
-        { status: 201 }
+        { status: 201 },
       );
     } catch (confirmationError) {
       console.error(
         "[NewJersey] unexpected order confirmation",
-        confirmationError
+        confirmationError,
       );
 
       return NextResponse.json(
@@ -803,7 +677,7 @@ export async function POST(request: NextRequest) {
           message:
             "Unable to confirm the saved order. Check whether it was created before submitting again.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
@@ -813,29 +687,22 @@ export async function POST(request: NextRequest) {
           success: false,
           message: error.message,
         },
-        { status: error.status }
+        { status: error.status },
       );
     }
 
-    console.error(
-      "[NewJersey] create order error",
-      error
-    );
+    console.error("[NewJersey] create order error", error);
 
     return NextResponse.json(
       {
         success: false,
-        message:
-          "Unable to create the production request.",
+        message: "Unable to create the production request.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 function isText(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.trim().length > 0
-  );
+  return typeof value === "string" && value.trim().length > 0;
 }

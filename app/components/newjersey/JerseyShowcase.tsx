@@ -20,8 +20,8 @@ export default function JerseyShowcase() {
         product.category === "apparel" &&
         product.published !== false &&
         /\bjerseys?\b/i.test(
-          `${product.name} ${product.slug.replaceAll("-", " ")}`
-        )
+          `${product.name} ${product.slug.replaceAll("-", " ")}`,
+        ),
     )
     .slice(0, 4);
 
@@ -52,8 +52,7 @@ export default function JerseyShowcase() {
             </h2>
 
             <p className="mt-3 max-w-lg text-sm leading-6 text-[#625D55]">
-              Choose your jersey. Explore the options.
-              Make it your own.
+              Choose your jersey. Explore the options. Make it your own.
             </p>
           </div>
 
@@ -69,13 +68,12 @@ export default function JerseyShowcase() {
         {/* Four-column jersey display */}
         <div className="mt-7 grid grid-cols-2 gap-x-4 gap-y-8 sm:mt-9 sm:gap-x-6 lg:grid-cols-4">
           {jerseys.map((product) => {
-            const href = `/shop/apparel/${product.slug}`;
+            const href = "/shop/jerseys";
 
-            const image =
-              product.image || product.images?.[0];
+            const image = product.image || product.images?.[0];
 
             const secondImage = product.images?.find(
-              (candidate) => candidate && candidate !== image
+              (candidate) => candidate && candidate !== image,
             );
 
             const price = product.pricing.basePrice;
@@ -91,10 +89,7 @@ export default function JerseyShowcase() {
             const quantity = product.pricing.baseQuantity;
 
             return (
-              <article
-                key={product.id}
-                className="group flex min-w-0 flex-col"
-              >
+              <article key={product.id} className="group flex min-w-0 flex-col">
                 <Link
                   href={href}
                   aria-label={`View ${product.name}`}
@@ -125,9 +120,7 @@ export default function JerseyShowcase() {
                       <div className="flex h-full items-center justify-center px-5 text-center">
                         <span className="text-xs leading-6 text-[#7A7368]">
                           {product.name}
-                          <span className="mt-1 block">
-                            Image coming soon
-                          </span>
+                          <span className="mt-1 block">Image coming soon</span>
                         </span>
                       </div>
                     )}
@@ -160,8 +153,7 @@ export default function JerseyShowcase() {
                     <p className="text-sm font-semibold tracking-tight sm:text-lg">
                       {formattedPrice ? (
                         <>
-                          {product.pricing.type ===
-                            "starting-from" && (
+                          {product.pricing.type === "starting-from" && (
                             <span className="mr-1 text-[11px] font-normal text-[#625D55]">
                               From
                             </span>
@@ -175,9 +167,7 @@ export default function JerseyShowcase() {
 
                     <p className="mt-1 min-h-5 text-[10px] leading-5 text-[#7A7368] sm:text-xs">
                       {formattedPrice && quantity != null
-                        ? `For ${quantity} ${
-                            product.pricing.unit || "pieces"
-                          }`
+                        ? `For ${quantity} ${product.pricing.unit || "pieces"}`
                         : "Pricing confirmed for your requirements"}
                     </p>
                   </div>
@@ -209,8 +199,8 @@ export default function JerseyShowcase() {
             </p>
 
             <p className="mt-1 text-xs leading-6 text-[#625D55]">
-              Share your quantity, sizes and artwork requirements
-              for a team quote.
+              Share your quantity, sizes and artwork requirements for a team
+              quote.
             </p>
           </div>
 
@@ -224,8 +214,8 @@ export default function JerseyShowcase() {
         </div>
 
         <p className="mt-3 text-[10px] leading-5 text-[#7A7368] sm:text-[11px]">
-          Prices depend on selected specifications and quantity.
-          Check each product for available options.
+          Prices depend on selected specifications and quantity. Check each
+          product for available options.
         </p>
       </div>
     </section>

@@ -38,7 +38,7 @@ const merchRoutes: MerchRoute[] = [
     description:
       "Everyday apparel for businesses, teams, campaigns and personal projects.",
     href: "/apparel/t-shirts",
-    image: "/images/products/tshirts.jpg",
+    image: "/images/product-placeholder.svg",
     eyebrow: "Wear your brand",
     action: "Explore apparel",
   },
@@ -56,7 +56,7 @@ const merchRoutes: MerchRoute[] = [
     description:
       "Custom jerseys for teams, communities, schools, events and organisations.",
     href: "/apparel/jerseys",
-    image: "/images/products/jerseys.jpg",
+    image: "/images/product-placeholder.svg",
     eyebrow: "Built for groups",
     action: "Build your jersey",
   },

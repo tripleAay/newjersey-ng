@@ -16,7 +16,7 @@ const products: FeaturedProduct[] = [
   {
     id: "business-cards",
     name: "Business Cards",
-    image: "/images/products/business-cards.jpg",
+    image: "/images/card.png",
     href: "/print/business-cards",
     startingPrice: 15000,
     priceBasis: "100 copies",
@@ -25,7 +25,7 @@ const products: FeaturedProduct[] = [
   {
     id: "flyers",
     name: "Flyers",
-    image: "/images/products/flyers.jpg",
+    image: "/images/product-placeholder.svg",
     href: "/print/flyers",
     startingPrice: 12000,
     priceBasis: "100 copies",
@@ -34,7 +34,7 @@ const products: FeaturedProduct[] = [
   {
     id: "t-shirts",
     name: "Branded T-Shirts",
-    image: "/images/products/tshirts.jpg",
+    image: "/images/product-placeholder.svg",
     href: "/apparel/t-shirts",
     startingPrice: 8500,
     priceBasis: "1 piece",
@@ -43,7 +43,7 @@ const products: FeaturedProduct[] = [
   {
     id: "jerseys",
     name: "Branded Jerseys",
-    image: "/images/products/jerseys.jpg",
+    image: "/images/product-placeholder.svg",
     href: "/apparel/jerseys",
     startingPrice: 18000,
     priceBasis: "1 piece",

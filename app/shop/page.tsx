@@ -4,6 +4,7 @@ import HeroSlider from "@/app/components/dashboard components/mainheroe";
 import TopProducts from "@/app/components/dashboard components/popularPick";
 import ShopDepartments from "@/app/components/dashboard components/shopDepartments";
 import ShopProcess from "@/app/components/dashboard components/shopProcess";
+import JerseyBanner from "@/app/components/newjersey/JerseyBanner";
 import Footer from "@/app/components/Footer";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default function ShopPage() {
 
       <main>
         <HeroSlider />
+        <JerseyBanner />
         <TopProducts />
         <ShopDepartments />
         <ShopProcess />

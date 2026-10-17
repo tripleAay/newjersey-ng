@@ -92,7 +92,7 @@ export default function Footer() {
             </div>
 
             <Link
-              href="/quote"
+              href="/shop/quote"
               className="group inline-flex w-fit shrink-0 items-center gap-3 rounded-full bg-[#FF6B00] px-6 py-3.5 text-sm font-black text-white transition duration-300 hover:bg-white hover:text-black"
             >
               Request a quote

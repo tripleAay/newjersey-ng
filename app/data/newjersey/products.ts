@@ -357,8 +357,8 @@ export const products: NewJerseyProduct[] = [
       "Custom stickers for products, packaging and promotions.",
     category: "print",
     status: "made-to-order",
-    image: "/images/products/print/stickers.webp",
-    images: ["/images/products/print/stickers.webp"],
+    image: "/images/product-placeholder.svg",
+    images: ["/images/product-placeholder.svg"],
     pricing: {
       type: "starting-from",
       basePrice: 8000,

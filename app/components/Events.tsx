@@ -148,7 +148,7 @@ export default function EventsSection() {
             </div>
 
             <Link
-              href="/quote"
+              href="/shop/quote"
               className="
         group
         inline-flex

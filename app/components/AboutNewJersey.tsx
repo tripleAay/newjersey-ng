@@ -38,7 +38,7 @@ export default function AboutNewJersey() {
             </div>
 
             <Link
-              href="/quote"
+              href="/shop/quote"
               className="
                 mt-10
                 inline-flex

@@ -35,7 +35,7 @@ function productHref(id: string | number): string | null {
       return `/shop/apparel/${slug}`;
 
     default:
-      return "/quote";
+      return "/shop/quote";
   }
 }
 

@@ -188,7 +188,7 @@ export default function ProductsGrid() {
                     </button>
 
                     <Link
-                      href="/quote"
+                      href="/shop/quote"
                       className="rounded-xl border border-black/10 py-2.5 text-center text-xs font-bold text-black transition hover:border-[#ff6b00] hover:text-[#ff6b00]"
                     >
                       Get Quote

@@ -364,7 +364,7 @@ export default function PrintProductsSection() {
           </div>
 
           <Link
-            href="/quote"
+            href="/shop/quote"
             className="text-[9px] font-black uppercase tracking-[0.12em] text-white/60 transition hover:text-[#FF6B00]"
           >
             Request bulk pricing →

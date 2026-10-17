@@ -201,7 +201,7 @@ export default function ApparelPage() {
 
               <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3">
                 <Link
-                  href="/quote"
+                  href="/shop/quote"
                   className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm font-semibold text-[#181818] underline decoration-[#F58220] underline-offset-4 hover:decoration-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-4 focus-visible:ring-offset-[#F4F1E9]"
                 >
                   Request a quote

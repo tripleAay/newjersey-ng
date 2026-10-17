@@ -23,7 +23,7 @@ function productHref(product: NewJerseyProduct): string {
       return `/shop/apparel/${slug}`;
 
     default:
-      return "/quote";
+      return "/shop/quote";
   }
 }
 

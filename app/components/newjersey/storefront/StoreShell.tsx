@@ -4,7 +4,7 @@ import TopNav from "@/app/components/dashboard components/topnav";
 import Footer from "@/app/components/Footer";
 export default function StoreShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
+    <div className="w-full min-w-0 min-h-screen bg-[#FCFBF8] text-[#181818]">
       <header className="sticky top-0 z-[100] w-full">
         <div className="relative z-[110]">
           <TopNav />

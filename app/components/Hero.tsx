@@ -151,17 +151,25 @@ export default function Hero() {
         <div className="grid w-full grid-cols-1 items-center gap-14 lg:grid-cols-[1fr_0.9fr]">
           {/* LEFT */}
           <div className="relative z-20 max-w-2xl">
-            <div key={`eyebrow-${active}`} className="animate-[fadeUp_.6s_ease-out]">
+            <div
+              key={`eyebrow-${active}`}
+              className="animate-[fadeUp_.6s_ease-out]"
+            >
               <span className="inline-flex items-center gap-2 rounded-full border border-[#FF6B00]/30 bg-white/60 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#FF6B00] backdrop-blur-md">
                 <span className="h-2 w-2 rounded-full bg-[#FF6B00] shadow-[0_0_12px_rgba(255,107,0,.6)]" />
                 {slide.eyebrow}
               </span>
             </div>
 
-            <div key={`heading-${active}`} className="mt-7 animate-[fadeUp_.7s_ease-out]">
+            <div
+              key={`heading-${active}`}
+              className="mt-7 animate-[fadeUp_.7s_ease-out]"
+            >
               <h1 className="text-5xl font-black leading-[0.92] tracking-[-0.04em] text-[#1A1A1A] sm:text-6xl lg:text-7xl">
                 {slide.title}
-                <span className="mt-2 block text-[#FF6B00]">{slide.highlight}</span>
+                <span className="mt-2 block text-[#FF6B00]">
+                  {slide.highlight}
+                </span>
               </h1>
             </div>
 
@@ -172,7 +180,10 @@ export default function Hero() {
               {slide.description}
             </p>
 
-            <div key={`search-${active}`} className="mt-9 max-w-2xl animate-[fadeUp_.9s_ease-out]">
+            <div
+              key={`search-${active}`}
+              className="mt-9 max-w-2xl animate-[fadeUp_.9s_ease-out]"
+            >
               <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-[#1A1A1A]">
                 What would you like to print today?
               </p>
@@ -181,7 +192,7 @@ export default function Hero() {
                 <input
                   type="text"
                   placeholder="Search business cards, jerseys, mugs..."
-                  className="h-full w-full bg-transparent px-4 text-[15px] text-gray-800 outline-none placeholder:text-gray-400"
+                  className="h-full min-w-0 flex-1 bg-transparent px-4 text-[15px] text-gray-800 outline-none placeholder:text-gray-400"
                 />
                 <button
                   type="button"
@@ -193,15 +204,17 @@ export default function Hero() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              {["Apparel", "Jerseys", "Business Cards", "Mugs", "Caps"].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className="rounded-full border border-[#1A1A1A]/10 bg-white/70 px-4 py-2 text-xs font-bold text-[#1A1A1A] backdrop-blur-sm transition hover:-translate-y-1 hover:border-[#FF6B00] hover:bg-[#FF6B00] hover:text-white"
-                >
-                  {item}
-                </button>
-              ))}
+              {["Apparel", "Jerseys", "Business Cards", "Mugs", "Caps"].map(
+                (item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className="rounded-full border border-[#1A1A1A]/10 bg-white/70 px-4 py-2 text-xs font-bold text-[#1A1A1A] backdrop-blur-sm transition hover:-translate-y-1 hover:border-[#FF6B00] hover:bg-[#FF6B00] hover:text-white"
+                  >
+                    {item}
+                  </button>
+                ),
+              )}
             </div>
           </div>
 
@@ -214,7 +227,9 @@ export default function Hero() {
           >
             <div
               className="absolute right-0 top-1/2 h-[430px] w-[430px] -translate-y-1/2 rounded-full bg-[#FF6B00]/25 blur-[100px] transition-transform duration-300 ease-out"
-              style={{ transform: `translate(${parallax.x * 0.4}px, calc(-50% + ${parallax.y * 0.4}px))` }}
+              style={{
+                transform: `translate(${parallax.x * 0.4}px, calc(-50% + ${parallax.y * 0.4}px))`,
+              }}
             />
 
             <div className="absolute right-8 top-1/2 h-[430px] w-[430px] -translate-y-1/2 rounded-full border border-[#1A1A1A]/10 animate-[spin_40s_linear_infinite]" />
@@ -226,9 +241,13 @@ export default function Hero() {
             <div
               key={`image-${active}`}
               className={`absolute inset-0 z-10 transition-transform duration-300 ease-out ${
-                direction === "next" ? "animate-[imageInNext_.7s_ease-out]" : "animate-[imageInPrev_.7s_ease-out]"
+                direction === "next"
+                  ? "animate-[imageInNext_.7s_ease-out]"
+                  : "animate-[imageInPrev_.7s_ease-out]"
               }`}
-              style={{ transform: `translate(${parallax.x}px, ${parallax.y}px)` }}
+              style={{
+                transform: `translate(${parallax.x}px, ${parallax.y}px)`,
+              }}
             >
               <Image
                 src={slide.image}
@@ -247,19 +266,29 @@ export default function Hero() {
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FF6B00]">
                 {slide.category}
               </p>
-              <p className="mt-1 text-sm font-bold text-[#1A1A1A]">{slide.floatingTitle}</p>
-              <p className="mt-0.5 text-xs text-gray-500">{slide.floatingText}</p>
+              <p className="mt-1 text-sm font-bold text-[#1A1A1A]">
+                {slide.floatingTitle}
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {slide.floatingText}
+              </p>
             </div>
 
             {/* Floating bottom card */}
             <div className="absolute bottom-16 right-0 z-30 rounded-2xl bg-[#1A1A1A] px-5 py-4 shadow-2xl">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FF6B00]">New Jersey</p>
-              <p className="mt-1 text-sm font-bold text-white">Print & Branding</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FF6B00]">
+                New Jersey
+              </p>
+              <p className="mt-1 text-sm font-bold text-white">
+                Print & Branding
+              </p>
             </div>
 
             {/* Slide number */}
             <div className="absolute bottom-2 left-0 z-30 flex items-center gap-3">
-              <span className="text-4xl font-black text-[#FF6B00]">0{active + 1}</span>
+              <span className="text-4xl font-black text-[#FF6B00]">
+                0{active + 1}
+              </span>
               <span className="h-px w-14 bg-[#1A1A1A]/25" />
               <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#1A1A1A]/50">
                 0{slides.length}
@@ -315,39 +344,77 @@ export default function Hero() {
           key={active}
           className="h-full bg-[#FF6B00]"
           style={{
-            animation: isPaused ? "none" : `progress ${SLIDE_DURATION}ms linear`,
+            animation: isPaused
+              ? "none"
+              : `progress ${SLIDE_DURATION}ms linear`,
           }}
         />
       </div>
 
       <style jsx>{`
         @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(18px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
         @keyframes imageInNext {
-          from { opacity: 0; transform: translateX(35px) scale(0.96); }
-          to { opacity: 1; transform: translateX(0) scale(1); }
+          from {
+            opacity: 0;
+            transform: translateX(35px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
         }
         @keyframes imageInPrev {
-          from { opacity: 0; transform: translateX(-35px) scale(0.96); }
-          to { opacity: 1; transform: translateX(0) scale(1); }
+          from {
+            opacity: 0;
+            transform: translateX(-35px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
         }
         @keyframes floatIn {
-          from { opacity: 0; transform: translateY(15px) scale(0.96); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from {
+            opacity: 0;
+            transform: translateY(15px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
         @keyframes progress {
-          from { width: 0%; }
-          to { width: 100%; }
+          from {
+            width: 0%;
+          }
+          to {
+            width: 100%;
+          }
         }
         @keyframes spin {
-          from { transform: translateY(-50%) rotate(0deg); }
-          to { transform: translateY(-50%) rotate(360deg); }
+          from {
+            transform: translateY(-50%) rotate(0deg);
+          }
+          to {
+            transform: translateY(-50%) rotate(360deg);
+          }
         }
         @keyframes spinReverse {
-          from { transform: translateY(-50%) rotate(360deg); }
-          to { transform: translateY(-50%) rotate(0deg); }
+          from {
+            transform: translateY(-50%) rotate(360deg);
+          }
+          to {
+            transform: translateY(-50%) rotate(0deg);
+          }
         }
       `}</style>
     </section>

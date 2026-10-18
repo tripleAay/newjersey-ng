@@ -28,7 +28,16 @@ export async function loadDepartment(department: Department) {
     .order("id")
     .limit(200);
   if (error) {
-    console.error("[Store catalogue]", error);
+    console.error(
+      "[Store catalogue] " +
+        JSON.stringify({
+          department,
+          code: error.code || null,
+          message: error.message || "Unknown database error",
+          details: error.details || null,
+          hint: error.hint || null,
+        }),
+    );
     throw new Error("Unable to load products. Check the storefront migration.");
   }
   return ((data ?? []) as unknown as StoreRow[])

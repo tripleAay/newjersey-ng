@@ -1,124 +1,105 @@
-import Image from "next/image";
+import { Quote } from "lucide-react";
 
 const testimonials = [
   {
-    name: "Rotimi Olawale",
-    role: "Executive Director, YouthHub Africa",
-    image: "/images/testimonials/rotimi.jpg",
-    text: "We needed branded apparel and tote bags for our event on short notice. The quality exceeded expectations and delivery was right on time.",
+    name: "Dr. Kayode Oladapo",
+    service: "Branded T-shirts",
+    initials: "KO",
+    text: "The shirts looked neat, and the branding came out clearly. I appreciated the attention given to the finishing.",
   },
   {
-    name: "Temilola Adepetun",
-    role: "CEO, SKLD",
-    image: "/images/testimonials/temi.jpg",
-    text: "Excellent print quality, excellent service and excellent communication. The team delivered beyond what we expected.",
+    name: "Eng. Michayah Oluwaseyi",
+    service: "Print & branding",
+    initials: "MO",
+    text: "I appreciated being able to discuss the details before production. The process was straightforward and easy to follow.",
   },
   {
-    name: "Uche Uzoebo",
-    role: "Head, Distribution & Stakeholder Engagement, SANEF",
-    image: "/images/testimonials/uche.jpg",
-    text: "Professional, reliable and quality-driven. NewJersey.ng understands what brands need and consistently delivers.",
+    name: "Amina Bello",
+    service: "Business stationery",
+    initials: "AB",
+    text: "The cards and letterheads gave our business a more consistent look. Simple, clean work that suited what we needed.",
+  },
+  {
+    name: "Chinedu Okafor",
+    service: "Event merchandise",
+    initials: "CO",
+    text: "We wanted something our team would enjoy wearing after the event. The finished pieces felt considered and well put together.",
   },
 ];
 
 export default function TestimonialsSection() {
   return (
-    <section className="bg-[#2E1E0F] px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
+    <section
+      aria-labelledby="testimonials-title"
+      className="bg-[#2E1E0F] px-5 py-12 text-white sm:px-8 sm:py-16 lg:px-10"
+    >
       <div className="mx-auto max-w-6xl">
-        {/* HEADER */}
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="mb-3 flex items-center justify-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B00]" />
+        <div className="max-w-xl">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#FF6B00]">
+            Client words
+          </p>
 
-            <span className="text-[9px] font-black uppercase tracking-[0.24em] text-white/45">
-              Client Words
-            </span>
-
-            <span className="h-1.5 w-1.5 rounded-full bg-[#FF6B00]" />
-          </div>
-
-          <h2 className="text-3xl font-black leading-[0.95] tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
-            They printed with us.
-            <span className="block text-[#FF6B00] mt-2">
-              They came back.
+          <h2
+            id="testimonials-title"
+            className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl"
+          >
+            Their words.
+            <span className="block text-[#FF6B00]">
+              Our attention to detail.
             </span>
           </h2>
+
+          <p className="mt-4 text-xs leading-6 text-white/60">
+            Preview: sample testimonials awaiting customer
+            confirmation.
+          </p>
         </div>
 
-        {/* TESTIMONIALS */}
-        <div className="mt-14 grid gap-4 md:grid-cols-3">
-          {testimonials.map((item, index) => (
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {testimonials.map((item) => (
             <article
               key={item.name}
-              className={`
-                group relative flex min-h-[270px] flex-col justify-between
-                overflow-hidden rounded-[24px]
-                border border-black/5
-                bg-white
-                p-6
-                shadow-[0_12px_40px_rgba(0,0,0,0.04)]
-                transition duration-300
-                hover:-translate-y-1
-                hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)]
-                ${index === 1 ? "md:-translate-y-3 md:hover:-translate-y-4" : ""}
-              `}
+              className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#F8F5EF] p-5 text-[#181818] sm:p-6"
             >
-              {/* Orange accent */}
-              <div className="absolute left-0 top-0 h-1 w-14 bg-[#FF6B00]" />
+              <div className="flex items-center justify-between gap-3">
+                <Quote
+                  size={23}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className="shrink-0 text-[#B94700]"
+                />
 
-              {/* Quote mark */}
-              <div className="absolute right-5 top-2 text-7xl font-black leading-none text-[#FF6B00]/[0.07]">
-                “
-              </div>
-
-              {/* Quote */}
-              <div className="relative z-10">
-                <div className="mb-4 flex gap-1 text-[#FF6B00]">
-                  <span>★</span>
-                  <span>★</span>
-                  <span>★</span>
-                  <span>★</span>
-                  <span>★</span>
-                </div>
-
-                <p className="text-[14px] font-medium leading-6 tracking-[-0.01em] text-black/75">
-                  “{item.text}”
+                <p className="text-right text-[10px] font-medium leading-5 text-[#625D55]">
+                  {item.service}
                 </p>
               </div>
 
-              {/* Client */}
-              <div className="relative z-10 mt-7 flex items-center gap-3 border-t border-black/5 pt-5">
-                <Image
-                  src={item.image}
-                  alt={item.name}
-                  width={44}
-                  height={44}
-                  className="h-11 w-11 rounded-full object-cover grayscale transition duration-300 group-hover:grayscale-0"
-                />
+              <blockquote className="mb-7 mt-5 flex-1">
+                <p className="text-sm leading-7 text-[#494540]">
+                  “{item.text}”
+                </p>
+              </blockquote>
+
+              <div className="flex items-center gap-3 border-t border-black/10 pt-5">
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FF6B00]/10 text-xs font-semibold text-[#9A4000]"
+                >
+                  {item.initials}
+                </span>
 
                 <div className="min-w-0">
-                  <h3 className="truncate text-[12px] font-black text-black">
+                  <h3 className="text-xs font-semibold leading-5">
                     {item.name}
                   </h3>
 
-                  <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-black/45">
-                    {item.role}
+                  <p className="mt-0.5 text-[10px] leading-5 text-[#746E65]">
+                    Sample testimonial
                   </p>
                 </div>
               </div>
             </article>
           ))}
-        </div>
-
-        {/* BOTTOM TRUST SIGNAL */}
-        <div className="mt-7 flex items-center justify-center gap-3">
-          <div className="h-px w-10 bg-black/10" />
-
-          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-black/35">
-            Built on good work
-          </span>
-
-          <div className="h-px w-10 bg-black/10" />
         </div>
       </div>
     </section>

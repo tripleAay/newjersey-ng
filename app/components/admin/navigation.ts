@@ -1,4 +1,5 @@
 import {
+  Mail,
   Boxes,
   ClipboardList,
   FileImage,
@@ -109,6 +110,13 @@ export const adminNavigation = [
     name: "Payment settings",
     href: "/admin/settings/payments",
     icon: Landmark,
+    group: "Settings",
+    roles: ["owner", "admin"],
+  },
+  {
+    name: "Newsletter",
+    href: "/admin/newsletter",
+    icon: Mail,
     group: "Settings",
     roles: ["owner", "admin"],
   },

@@ -20,10 +20,10 @@ export default function StoreSection({
     <section
       id={id}
       aria-labelledby={id + "-heading"}
-      className="scroll-mt-40 py-7 sm:py-10"
+      className="min-w-0 scroll-mt-40 py-7 sm:py-10"
     >
-      <div className="mb-5 flex items-end justify-between gap-4">
-        <div>
+      <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end sm:gap-4">
+        <div className="min-w-0">
           <p className="text-[9px] font-semibold uppercase tracking-[.2em] text-[#8A8379]">
             {eyebrow}
           </p>

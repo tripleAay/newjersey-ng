@@ -27,7 +27,7 @@ export default async function ShopPage() {
   ]);
   return (
     <StoreShell>
-      <main className="mx-auto max-w-[1344px] px-4 pb-12 sm:px-8 lg:px-12">
+      <main className="mx-auto w-full min-w-0 max-w-[1344px] px-4 pb-12 sm:px-8 lg:px-12">
         <ShopHero />
         <StoreSection
           id="apparel"
@@ -132,7 +132,7 @@ function ShopHero() {
       aria-labelledby="shop-title"
       className="my-5 overflow-hidden rounded-2xl border border-black/[.06] bg-[#F0ECE5] sm:my-8"
     >
-      <div className="grid gap-7 p-5 sm:gap-9 sm:p-8 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-12 lg:px-9 lg:py-10">
+      <div className="grid gap-7 p-5 sm:gap-9 sm:p-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:items-center lg:gap-12 lg:px-9 lg:py-10">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-[#FF6B00]">
             The NewJersey shop
@@ -178,7 +178,7 @@ function ShopHero() {
               <Link
                 key={href}
                 href={href}
-                className={`group flex min-h-[76px] flex-col justify-center border-b border-black/10 py-3 sm:min-h-[92px] ${focus}`}
+                className={`group flex min-w-0 min-h-[76px] flex-col justify-center border-b border-black/10 py-3 sm:min-h-[92px] ${focus}`}
               >
                 <span className="flex items-center gap-2.5">
                   <Icon

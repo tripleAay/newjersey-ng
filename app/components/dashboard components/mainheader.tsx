@@ -235,7 +235,7 @@ export default function MainHeader() {
 
       setUser(null);
       setOpenPanel(null);
-      window.location.replace("/shop");
+      window.location.replace("/login");
     } catch {
       setAuthError("Unable to sign out. Please try again.");
     } finally {

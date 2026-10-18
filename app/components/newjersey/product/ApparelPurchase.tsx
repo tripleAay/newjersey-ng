@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useShopIdentity } from "@/app/components/newjersey/experience/useShopIdentity";
 import { useState } from "react";
 import { useCart } from "@/app/contexts/cartContext";
 import type {
@@ -12,6 +13,7 @@ export default function ApparelPurchase({
   product: NewJerseyProduct;
 }) {
   const { addItem, hydrated } = useCart();
+  const identity = useShopIdentity();
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState("1");
   const [added, setAdded] = useState(false);
@@ -131,6 +133,11 @@ export default function ApparelPurchase({
       >
         {added ? "Add another" : "Add to cart"}
       </button>
+      {added && identity === null && <aside className="mt-4 rounded-xl bg-[#FFF3E8] p-4 text-xs leading-6">
+        <p className="font-semibold">Your item is in your cart.</p>
+        <p>Create an account to place your order and follow its progress. Your cart stays in this browser while you browse.</p>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1"><Link href="/register?next=%2Fshop%2Fcart" className="inline-flex min-h-11 items-center font-semibold underline">Create account</Link><Link href="/login?next=%2Fshop%2Fcart" className="inline-flex min-h-11 items-center underline">Sign in</Link><Link href="/shop/cart" className="inline-flex min-h-11 items-center underline">View cart</Link></div>
+      </aside>}
       {added && (
         <p role="status" className="mt-4 text-sm">
           Added to your cart.{" "}

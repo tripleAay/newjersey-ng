@@ -1,147 +1,46 @@
 "use client";
-
-import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-
+import { useEffect, useId, useRef, useState } from "react";
+import { Search, Phone, MessageCircle, ShoppingCart, UserRound, X, Menu } from "lucide-react";
+import { useCart } from "@/app/contexts/cartContext";
+import { useShopIdentity } from "@/app/components/newjersey/experience/useShopIdentity";
+const links = [{label:"All products",href:"/shop"},{label:"Apparel",href:"/shop/apparel"},{label:"Hire a designer",href:"/hire-a-designer"},{label:"Training",href:"/training"},{label:"About",href:"/about"}];
+const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00] focus-visible:ring-offset-2";
 export default function Header() {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const searchUrl = `/products?search=${encodeURIComponent(searchTerm)}`;
-
-  return (
-    <header className="w-full bg-[#EBEBD3] border-b border-black/10">
-      <div className="h-[72px] flex items-center justify-between px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-[26px] font-black tracking-tight text-black">
-            New<span className="text-[#ff6b00]">Jersey</span>
-            <span className="text-[15px] font-bold text-black">.ng</span>
-          </span>
-        </Link>
-
-        <nav className="hidden lg:flex items-center gap-9 text-[15px] font-semibold text-black/75">
-          {[
-            { label: "All Products", href: "/products" },
-            { label: "Apparel", href: "/apparel" },
-            { label: "Hire a Designer", href: "/hire-a-designer" },
-            { label: "Training", href: "/training" },
-            { label: "About", href: "/about" },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="relative transition-colors duration-300 hover:text-[#ff6b00] after:absolute after:left-0 after:-bottom-2 after:h-[2px] after:w-0 after:bg-[#ff6b00] after:transition-all after:duration-300 hover:after:w-full"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="flex items-center h-full">
-          <Link
-            href="/login"
-            className="hidden xl:flex items-center justify-center h-11 min-w-[120px] rounded-full border-2 border-black px-6 text-[14px] font-semibold text-black transition-all hover:bg-[#ff6b00] hover:border-[#ff6b00] hover:text-white"
-          >
-            Login
-          </Link>
-
-          <div className="relative flex items-center gap-1 ml-4">
-            <button
-              type="button"
-              onClick={() => setSearchOpen((prev) => !prev)}
-              className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-100 transition"
-            >
-              <Image src="/images/search.png" alt="Search" width={20} height={20} />
-            </button>
-
-            {searchOpen && (
-              <div className="absolute right-0 top-14 z-50 w-[320px] rounded-2xl border border-black/10 bg-white p-4 shadow-[0_24px_60px_rgba(0,0,0,0.14)]">
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ff6b00]">
-                  Search Products
-                </p>
-
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search apparel, mugs, cards..."
-                  className="h-11 w-full rounded-xl border border-black/10 px-4 text-sm outline-none focus:border-[#ff6b00]"
-                  autoFocus
-                />
-
-                {searchTerm.trim() && (
-                  <Link
-                    href={searchUrl}
-                    className="mt-3 flex items-center justify-between rounded-xl bg-[#f7f3ee] px-4 py-3 text-sm font-semibold text-black transition hover:bg-[#ff6b00] hover:text-white"
-                  >
-                    <span>Open All Products</span>
-                    <span>→</span>
-                  </Link>
-                )}
-              </div>
-            )}
-
-            <button className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-100 transition">
-              <Image
-                src="/images/phone-call (1).png"
-                alt="Phone"
-                width={20}
-                height={20}
-              />
-            </button>
-
-            <a
-              href="https://wa.me/2348089570493"
-              target="_blank"
-              className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-zinc-100 transition"
-            >
-              <Image src="/images/whatsapp.png" alt="WhatsApp" width={28} height={28} />
-            </a>
-          </div>
-
-          <Link
-            href="/cart"
-            className="relative ml-4 flex h-[72px] w-[72px] items-center justify-center bg-[#E7EFC5] transition hover:bg-[#ff6b00]"
-          >
-            <Image src="/images/shopping-cart.png" alt="Cart" width={22} height={22} />
-            <span className="absolute top-3 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-[#ffdd00] text-[9px] font-black text-black">
-              0
-            </span>
-          </Link>
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setAccountOpen((prev) => !prev)}
-              className="flex h-[72px] items-center gap-2 px-6 border-l border-black/10 hover:bg-zinc-50 transition"
-            >
-              <Image src="/images/user.png" alt="Account" width={22} height={22} />
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M6 9L12 15L18 9"
-                  stroke="black"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-
-            {accountOpen && (
-              <div className="absolute right-0 top-[78px] z-50 w-[210px] rounded-2xl border border-black/10 bg-white p-3 shadow-[0_24px_60px_rgba(0,0,0,0.14)]">
-                <Link
-                  href="/login"
-                  className="block rounded-xl px-4 py-3 text-sm font-bold text-black transition hover:bg-[#ff6b00] hover:text-white"
-                >
-                  Login
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
+  const { itemCount, hydrated } = useCart();
+  const identity = useShopIdentity();
+  const [panel,setPanel] = useState<"search"|"account"|"menu"|null>(null);
+  const root = useRef<HTMLElement>(null);
+  const trigger = useRef<HTMLButtonElement|null>(null);
+  const id = useId();
+  useEffect(()=>{
+    if (!panel) return;
+    function outside(e:PointerEvent){if(e.target instanceof Node && !root.current?.contains(e.target)) setPanel(null);}
+    function escape(e:KeyboardEvent){if(e.key === "Escape"){setPanel(null);trigger.current?.focus();}}
+    document.addEventListener("pointerdown",outside); document.addEventListener("keydown",escape);
+    return ()=>{document.removeEventListener("pointerdown",outside);document.removeEventListener("keydown",escape);};
+  },[panel]);
+  function toggle(name:typeof panel,button:HTMLButtonElement){trigger.current=button;setPanel(current=>current===name?null:name);}
+  const iconClass = `inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-black/5 ${focus}`;
+  return <header ref={root} className="relative w-full border-b border-black/10 bg-[#EBEBD3] text-[#181818]">
+    <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between gap-2 px-4 sm:px-8">
+      <Link href="/" aria-label="NewJersey.ng home" className={`shrink-0 rounded-sm text-[23px] font-black tracking-tight ${focus}`}>New<span className="text-[#FF6B00]">Jersey</span><span className="text-sm">.ng</span></Link>
+      <nav aria-label="Main navigation" className="hidden items-center gap-6 lg:flex">{links.map(link=><Link key={link.href} href={link.href} className={`inline-flex min-h-11 items-center rounded-sm text-sm font-semibold hover:text-[#9A4000] ${focus}`}>{link.label}</Link>)}</nav>
+      <div className="flex items-center gap-1">
+        <button type="button" aria-label="Search products" aria-expanded={panel==="search"} aria-controls={`${id}-search`} onClick={e=>toggle("search",e.currentTarget)} className={iconClass}><Search size={19}/></button>
+        <a href="tel:+2348089570493" aria-label="Call NewJersey" className={`hidden sm:inline-flex ${iconClass}`}><Phone size={18}/></a>
+        <a href="https://wa.me/2348089570493" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp support (opens in a new tab)" className={`hidden sm:inline-flex ${iconClass}`}><MessageCircle size={20}/></a>
+        <Link href="/shop/cart" aria-label={`Cart${hydrated?`, ${itemCount} items`:""}`} className={`relative ${iconClass}`}><ShoppingCart size={20}/>{hydrated && itemCount>0 && <span className="absolute -right-0.5 top-0 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#FF6B00] px-1 text-[10px] font-bold">{itemCount>99?"99+":itemCount}</span>}</Link>
+        <button type="button" aria-label="Your account" aria-expanded={panel==="account"} aria-controls={`${id}-account`} onClick={e=>toggle("account",e.currentTarget)} className={iconClass}><UserRound size={20}/></button>
+        <button type="button" aria-label="Main menu" aria-expanded={panel==="menu"} aria-controls={`${id}-menu`} onClick={e=>toggle("menu",e.currentTarget)} className={`${iconClass} lg:hidden`}>{panel==="menu"?<X size={20}/>:<Menu size={20}/>}</button>
       </div>
-    </header>
-  );
+    </div>
+    {panel==="search" && <div id={`${id}-search`} className="absolute right-4 top-full z-[120] mt-2 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-black/10 bg-white p-4 shadow-xl">
+      <form action="/shop/search" method="get" onSubmit={()=>setPanel(null)}><label htmlFor={`${id}-q`} className="text-xs font-semibold">Find something for your next order</label><input id={`${id}-q`} name="q" type="search" required maxLength={120} autoFocus placeholder="Printing, apparel, jerseys…" className={`mt-3 min-h-12 w-full rounded-xl border border-black/15 px-3 text-base ${focus}`}/><button className={`mt-3 min-h-11 w-full rounded-xl bg-[#FF6B00] text-sm font-semibold ${focus}`}>Search products</button></form>
+    </div>}
+    {panel==="account" && <div id={`${id}-account`} className="absolute right-4 top-full z-[120] mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-black/10 bg-white p-4 shadow-xl">
+      {identity===undefined?<p role="status" className="text-sm">Loading account…</p>:identity?<><p className="mb-2 text-sm font-semibold">Your NewJersey</p>{[{label:"Your account",href:"/shop/account"},{label:"Your orders",href:"/shop/order"}].map(link=><Link key={link.href} href={link.href} onClick={()=>setPanel(null)} className={`flex min-h-11 items-center rounded-lg px-2 text-sm hover:bg-[#F0EFEB] ${focus}`}>{link.label}</Link>)}</>:<><p className="text-sm font-semibold">Make yourself at home.</p><p className="mt-2 text-xs leading-6 text-[#625D55]">Browse and build your cart first. Sign in when you’re ready to order.</p><Link href="/register?next=%2Fshop%2Fcart" onClick={()=>setPanel(null)} className={`mt-3 flex min-h-11 items-center justify-center rounded-xl bg-[#FF6B00] text-sm font-semibold ${focus}`}>Create account</Link><Link href="/login?next=%2Fshop%2Fcart" onClick={()=>setPanel(null)} className={`mt-2 flex min-h-11 items-center justify-center rounded-xl text-sm underline ${focus}`}>Already registered? Sign in</Link></>}
+    </div>}
+    {panel==="menu" && <nav id={`${id}-menu`} aria-label="Mobile main navigation" className="border-t border-black/10 px-4 py-3 lg:hidden">{links.map(link=><Link key={link.href} href={link.href} onClick={()=>setPanel(null)} className={`flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold ${focus}`}>{link.label}</Link>)}</nav>}
+  </header>;
 }

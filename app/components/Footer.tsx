@@ -16,16 +16,17 @@ const footerLinks = {
     { label: "Blog", href: "/blog" },
   ],
   services: [
-    { label: "Custom printing", href: "/products" },
-    { label: "Apparel printing", href: "/apparel" },
+    { label: "Custom printing", href: "/print" },
+    { label: "Apparel", href: "/apparel" },
     {
       label: "Business stationery",
-      href: "/products?category=business-stationery",
+      href: "/business-stationery",
     },
-    { label: "Event essentials", href: "/products?category=events" },
-    { label: "Hire a designer", href: "/hire-designer" },
+    { label: "Branding & signage", href: "/branding" },
+    { label: "Hire a designer", href: "/hire-a-designer" },
   ],
   support: [
+    { label: "Returns & refunds", href: "/returns" },
     { label: "Print guidelines", href: "/print-guidelines" },
     { label: "Shipping & delivery", href: "/shipping" },
     { label: "Payment options", href: "/payment-options" },
@@ -92,8 +93,8 @@ export default function Footer({ showQuoteCTA = true }: { showQuoteCTA?: boolean
             </div>
 
             <Link
-              href="/shop/quote"
-              className="group inline-flex w-fit shrink-0 items-center gap-3 rounded-full bg-[#FF6B00] px-6 py-3.5 text-sm font-black text-white transition duration-300 hover:bg-white hover:text-black"
+              href="/quote"
+              className="group inline-flex w-fit shrink-0 items-center gap-3 rounded-full bg-[#FF6B00] px-6 py-3.5 text-sm font-black text-[#181818] transition duration-300 hover:bg-white hover:text-black"
             >
               Request a quote
 

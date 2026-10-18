@@ -3,6 +3,7 @@ import {
   ClipboardList,
   FileImage,
   Landmark,
+  MessageCircle,
   LayoutDashboard,
   Settings,
   Shirt,
@@ -17,13 +18,27 @@ export const adminNavigation = [
     name: "Overview",
     href: "/admin",
     icon: LayoutDashboard,
-    group: "Workspace",
+    group: "Overview",
     roles: ["owner", "admin", "production"],
   },
   {
-    name: "Products",
+    name: "All products",
     href: "/admin/products",
     icon: ShoppingBag,
+    group: "Catalogue",
+    roles: ["owner", "admin"],
+  },
+  {
+    name: "Print & branding",
+    href: "/admin/catalogue",
+    icon: ShoppingBag,
+    group: "Catalogue",
+    roles: ["owner", "admin"],
+  },
+  {
+    name: "Catalogue enquiries",
+    href: "/admin/catalogue/enquiries",
+    icon: ClipboardList,
     group: "Catalogue",
     roles: ["owner", "admin"],
   },
@@ -42,38 +57,52 @@ export const adminNavigation = [
     roles: ["owner", "admin"],
   },
   {
+    name: "Design requests",
+    href: "/admin/design",
+    icon: FileImage,
+    group: "Creative",
+    roles: ["owner", "admin"],
+  },
+  {
+    name: "Support inbox",
+    href: "/admin/support",
+    icon: MessageCircle,
+    group: "Orders",
+    roles: ["owner", "admin"],
+  },
+  {
     name: "Orders",
     href: "/admin/orders",
     icon: ClipboardList,
-    group: "Operations",
+    group: "Orders",
     roles: ["owner", "admin", "production"],
   },
   {
-    name: "Artwork",
+    name: "Customer artwork",
     href: "/admin/artworks",
     icon: FileImage,
-    group: "Operations",
+    group: "Creative",
     roles: ["owner", "admin", "production"],
   },
   {
     name: "Payments",
     href: "/admin/payments",
     icon: Landmark,
-    group: "Operations",
+    group: "Orders",
     roles: ["owner", "admin"],
   },
   {
     name: "Production",
     href: "/admin/production",
     icon: Boxes,
-    group: "Operations",
+    group: "Orders",
     roles: ["owner", "admin", "production"],
   },
   {
     name: "Delivery",
     href: "/admin/delivery",
     icon: Truck,
-    group: "Operations",
+    group: "Orders",
     roles: ["owner", "admin", "production"],
   },
   {
@@ -84,7 +113,7 @@ export const adminNavigation = [
     roles: ["owner", "admin"],
   },
   {
-    name: "Store settings",
+    name: "General",
     href: "/admin/settings",
     icon: Settings,
     group: "Settings",
@@ -94,3 +123,22 @@ export const adminNavigation = [
 export function navigationFor(role: AdminRole) {
   return adminNavigation.filter((item) => item.roles.includes(role));
 }
+
+export const adminGroups = [
+  {
+    name: "Catalogue",
+    icon: ShoppingBag,
+    description: "Products and selling options",
+  },
+  {
+    name: "Orders",
+    icon: ClipboardList,
+    description: "Payments, production and delivery",
+  },
+  {
+    name: "Creative",
+    icon: FileImage,
+    description: "Design requests and customer files",
+  },
+  { name: "Settings", icon: Settings, description: "Store configuration" },
+] as const;

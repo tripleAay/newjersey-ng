@@ -1,0 +1,57 @@
+.Toastify__toast-container--bottom-left {
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 20px;
+  width: min(360px, calc(100vw - 40px));
+  z-index: 150;
+}
+.Toastify__toast.nj-toast {
+  border: 1px solid #e8e2d8;
+  border-left: 3px solid #ff6b00;
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(24, 24, 24, 0.09);
+  padding: 16px;
+  background: #fff;
+  font-family: inherit;
+  align-items: flex-start;
+}
+.nj-toast .Toastify__close-button {
+  min-width: 44px;
+  min-height: 44px;
+  color: #625d55;
+  opacity: 1;
+}
+.nj-toast-enter {
+  animation: nj-toast-in 0.18s ease-out both;
+}
+.nj-toast-exit {
+  animation: nj-toast-out 0.14s ease-in both;
+}
+@keyframes nj-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes nj-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nj-toast-enter,
+  .nj-toast-exit {
+    animation-duration: 1ms;
+  }
+}
+@media (max-width: 480px) {
+  .Toastify__toast-container--bottom-left {
+    left: 12px;
+    width: calc(100vw - 84px);
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}

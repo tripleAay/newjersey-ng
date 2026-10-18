@@ -7,9 +7,11 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 
+import { notifyShop } from "@/app/components/dashboard components/common/fynaroToast";
 import type { CartItem } from "@/app/types/commerce";
 
 type CartContextValue = {
@@ -264,6 +266,7 @@ function mergeItem(current: CartItem[], incoming: CartItem): CartItem[] {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const itemsRef = useRef<CartItem[]>([]);
 
   useEffect(() => {
     try {
@@ -279,6 +282,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return item ? mergeItem(current, item) : current;
           }, []);
 
+          itemsRef.current = restored;
           setItems(restored);
         }
       }
@@ -301,18 +305,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((item: CartItem) => {
     const normalized = normalizeItem(item);
-
-    if (!normalized) {
-      throw new Error("Cannot add an invalid cart item.");
-    }
-
-    setItems((current) => mergeItem(current, normalized));
+    if (!normalized) throw new Error("Cannot add an invalid cart item.");
+    const next = mergeItem(itemsRef.current, normalized);
+    if (next === itemsRef.current)
+      throw new Error("Your cart has reached its item or quantity limit.");
+    itemsRef.current = next;
+    setItems(next);
+    notifyShop("Added to your cart", normalized.name, {
+      toastId: `cart-${normalized.productId}`,
+      href: "/shop/cart",
+      action: "View cart",
+    });
   }, []);
 
   const removeItem = useCallback((cartItemId: string) => {
-    setItems((current) =>
-      current.filter((item) => item.cartItemId !== cartItemId),
+    const next = itemsRef.current.filter(
+      (item) => item.cartItemId !== cartItemId,
     );
+    itemsRef.current = next;
+    setItems(next);
   }, []);
 
   const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
@@ -320,36 +331,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
       !Number.isSafeInteger(quantity) ||
       quantity < 0 ||
       quantity > MAX_QUANTITY
-    ) {
+    )
       return;
-    }
-
-    setItems((current) => {
-      if (quantity === 0) {
-        return current.filter((item) => item.cartItemId !== cartItemId);
-      }
-
-      const next = current.map((item) => {
-        if (item.cartItemId !== cartItemId) {
-          return item;
-        }
-
-        const totalPrice = roundMoney(item.unitPrice * quantity);
-
-        if (!isMoney(totalPrice)) return item;
-
-        return {
-          ...item,
-          quantity,
-          totalPrice,
-        };
-      });
-
-      return validCart(next) ? next : current;
-    });
+    const next =
+      quantity === 0
+        ? itemsRef.current.filter((item) => item.cartItemId !== cartItemId)
+        : itemsRef.current.map((item) => {
+            if (item.cartItemId !== cartItemId) return item;
+            const totalPrice = roundMoney(item.unitPrice * quantity);
+            return isMoney(totalPrice)
+              ? { ...item, quantity, totalPrice }
+              : item;
+          });
+    if (!validCart(next)) return;
+    itemsRef.current = next;
+    setItems(next);
   }, []);
 
   const clearCart = useCallback(() => {
+    itemsRef.current = [];
     setItems([]);
   }, []);
 

@@ -1,66 +1,58 @@
-export const dynamic = "force-dynamic";
-
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-
-import DashboardHeader from "@/app/components/dashboard components/mainheader";
-import TopNav from "@/app/components/dashboard components/topnav";
-import Footer from "@/app/components/Footer";
-import ApparelTileGrid from "@/app/components/newjersey/ApparelTileGrid";
-
-export const metadata: Metadata = {
+import StoreShell from "@/app/components/newjersey/storefront/StoreShell";
+import DepartmentBanner from "@/app/components/newjersey/storefront/DepartmentBanner";
+import CollectionBrowser from "@/app/components/newjersey/storefront/CollectionBrowser";
+import { loadApparel } from "@/app/lib/newjersey/storefront/load";
+export const dynamic = "force-dynamic";
+export const metadata = {
   title: "Apparel | NewJersey.ng",
   description:
-    "Explore branded T-shirts, polos, hoodies and jerseys. Choose a product to view printing options and personalise your order.",
+    "Ready-designed clothing. Find your design, choose your size and colour, and add it to your cart.",
 };
-
-export default function ApparelPage() {
+export default async function CollectionPage() {
+  const products = await loadApparel();
+  const imageHost = new URL(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      "https://kqymeonftowhtgynerny.supabase.co",
+  ).hostname;
+  const heroProduct = products.find((product) => {
+    try {
+      const url = new URL(product.image);
+      return (
+        url.protocol === "https:" &&
+        url.hostname === imageHost &&
+        url.pathname.startsWith(
+          "/storage/v1/object/public/newjersey-product-images/",
+        )
+      );
+    } catch {
+      return false;
+    }
+  });
   return (
-    <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
-      <header className="sticky top-0 z-[100] w-full">
-        <div className="relative z-[110]">
-          <TopNav />
-        </div>
-
-        <div className="relative z-[100] bg-[#FCFBF8]/95 shadow-[0_2px_12px_rgba(0,0,0,0.04)] backdrop-blur-md">
-          <DashboardHeader />
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1344px] px-5 pb-16 pt-5 sm:px-8 lg:px-12">
+    <StoreShell>
+      <main className="mx-auto max-w-[1344px] px-4 pb-16 pt-5 sm:px-8 lg:px-12">
         <Link
           href="/shop"
-          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-medium text-[#625D55] hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+          className="inline-flex min-h-11 items-center gap-2 text-xs text-[#625D55]"
         >
-          <ArrowLeft size={15} aria-hidden="true" />
+          <ArrowLeft size={15} />
           Back to shop
         </Link>
-
-        <section aria-labelledby="apparel-title" className="pb-8 pt-6 sm:pb-10">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8379]">
-            NewJersey.ng / Apparel
-          </p>
-
-          <h1
-            id="apparel-title"
-            className="mt-3 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl"
-          >
-            Wear your identity.
-          </h1>
-
-          <p className="mt-3 max-w-lg text-sm leading-7 text-[#625D55]">
-            Ready-designed clothing for everyday wear. Select a product to
-            explore the details.
-          </p>
-        </section>
-
-        <section aria-label="Apparel products">
-          <ApparelTileGrid />
+        <DepartmentBanner
+          department="apparel"
+          image={heroProduct?.image}
+          imageName={heroProduct?.name}
+        />
+        <section
+          id="apparel-collection"
+          aria-label="Apparel collection"
+          className="scroll-mt-40"
+        >
+          <CollectionBrowser products={products} department="apparel" />
         </section>
       </main>
-
-      <Footer showQuoteCTA={false} />
-    </div>
+    </StoreShell>
   );
 }

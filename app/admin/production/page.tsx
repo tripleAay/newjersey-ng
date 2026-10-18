@@ -109,6 +109,7 @@ export default async function ProductionPage({ searchParams }: Props) {
       { count: "exact" },
     )
     .eq("status", status)
+    .eq("design_service", false)
     .order("created_at", { ascending: true })
     .order("id", { ascending: true })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);

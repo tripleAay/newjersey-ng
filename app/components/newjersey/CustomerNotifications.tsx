@@ -10,6 +10,8 @@ import {
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, Bell } from "lucide-react";
 
+import { useNotificationSound, NotificationSoundControl } from "@/app/components/newjersey/NotificationSound";
+
 type Notification = {
   id: string;
   order_id: string;
@@ -71,6 +73,8 @@ export default function CustomerNotifications({
   onClose,
 }: Props) {
   const router = useRouter();
+  const sound = useNotificationSound("customer");
+  const { observe } = sound;
   const panelId = useId();
 
   const [notifications, setNotifications] = useState<
@@ -125,6 +129,7 @@ export default function CustomerNotifications({
         return;
       }
 
+      observe(result.notifications);
       setNotifications(result.notifications);
       setUnreadCount(result.unreadCount);
       setError("");
@@ -145,7 +150,7 @@ export default function CustomerNotifications({
         setLoading(false);
       }
     }
-  }, []);
+  }, [observe]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -310,6 +315,8 @@ export default function CustomerNotifications({
               Refresh
             </button>
           </div>
+
+          <NotificationSoundControl sound={sound} />
 
           {error && (
             <p

@@ -34,12 +34,7 @@ const navigation = [
     icon: Package,
     active: false,
   },
-  {
-    label: "Wishlist",
-    href: "/shop/wish-list",
-    icon: Heart,
-    active: false,
-  },
+  
   {
     label: "Explore the store",
     href: "/shop",

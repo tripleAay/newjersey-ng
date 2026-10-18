@@ -1,408 +1,160 @@
 import Link from "next/link";
-import { ArrowRight, Search } from "lucide-react";
-
-import DashboardHeader from "@/app/components/dashboard components/mainheader";
-import TopNav from "@/app/components/dashboard components/topnav";
-import Footer from "@/app/components/Footer";
-
-import { products } from "@/app/data/newjersey/products";
+import StoreShell from "@/app/components/newjersey/storefront/StoreShell";
+import StoreSection from "@/app/components/newjersey/storefront/Section";
+import ProductGrid from "@/app/components/newjersey/storefront/ProductGrid";
+import JerseyShowcase from "@/app/shop/jerseys/JerseyShowcase";
 import {
-  APPAREL_FIELDS,
-  toApparelProduct,
-  type ApparelRow,
-} from "@/app/lib/newjersey/apparel/catalogue";
-import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
-
+  loadDepartment,
+  loadApparel,
+  loadJerseys,
+} from "@/app/lib/newjersey/storefront/load";
 export const dynamic = "force-dynamic";
-
-export const metadata = {
-  title: "Search | NewJersey.ng",
-  description: "Find printing, jerseys, apparel and branding services.",
-};
-
-type Props = {
-  searchParams: Promise<{
-    q?: string | string[];
-  }>;
-};
-
-type Result = {
-  id: string;
-  name: string;
-  description: string;
-  href: string;
-  category: string;
-  score: number;
-};
-
-const departments = [
-  {
-    name: "Custom printing",
-    href: "/shop/custom",
-    description: "Print your artwork or request design assistance.",
-    keywords:
-      "custom printing branded logo tshirt shirts polo hoodies artwork design assistance uniforms",
-  },
-  {
-    name: "Printing",
-    href: "/shop/print",
-    description: "Business cards, flyers, banners and printed materials.",
-    keywords:
-      "print printing business card cards flyer flyers poster posters banner banners sticker stickers brochure brochures envelope envelopes letterhead stationery packaging",
-  },
-  {
-    name: "Jerseys",
-    href: "/shop/jerseys",
-    description: "Choose your team, kit, size, printed name and number.",
-    keywords:
-      "jersey jerseys football soccer team kit kits home away third player name number personalisation personalization",
-  },
-  {
-    name: "Apparel",
-    href: "/shop/apparel",
-    description: "Printed clothing and branded apparel.",
-    keywords:
-      "apparel clothing clothes shirt shirts tshirt tshirts polo polos hoodie hoodies cap caps uniform uniforms",
-  },
-  {
-    name: "Branding",
-    href: "/shop/branding",
-    description: "Explore branding and design services.",
-    keywords: "branding brand identity logo logos design business corporate",
-  },
-];
-
-const synonyms: Record<string, string[]> = {
-  soccer: ["jersey", "football"],
-  football: ["jersey"],
-  kit: ["jersey"],
-  kits: ["jersey"],
-  tshirt: ["shirt"],
-  tshirts: ["shirt"],
-  tees: ["shirt"],
-  stationery: ["card", "letterhead", "envelope"],
-  leaflet: ["flyer"],
-  leaflets: ["flyer"],
-  logo: ["branding"],
-  logos: ["branding"],
-};
-
-function normalise(value: string) {
-  return value
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/t[\s-]+shirts?/g, "tshirt")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function searchTerms(query: string) {
-  const ignored = new Set([
-    "a",
-    "an",
-    "the",
-    "for",
-    "and",
-    "of",
-    "i",
-    "want",
-    "need",
-    "buy",
-    "me",
-    "please",
-  ]);
-
-  const words = normalise(query)
-    .split(" ")
-    .filter((word) => word && !ignored.has(word))
-    .slice(0, 6);
-
-  return Array.from(
-    new Set(words.flatMap((word) => [word, ...(synonyms[word] ?? [])])),
-  ).slice(0, 12);
-}
-
-function score(
-  name: string,
-  description: string,
-  terms: string[],
-  query: string,
-) {
-  const title = normalise(name);
-  const body = normalise(description);
-  const phrase = normalise(query);
-
-  let result = phrase && title.includes(phrase) ? 12 : 0;
-
-  for (const term of terms) {
-    if (title.includes(term)) result += 4;
-    else if (body.includes(term)) result += 1;
-  }
-
-  return result;
-}
-
-export default async function SearchPage({ searchParams }: Props) {
+const normalize = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
   const params = await searchParams;
-
-  const query =
-    typeof params.q === "string" ? params.q.trim().slice(0, 120) : "";
-
-  const terms = searchTerms(query);
-
-  const matchingDepartments = terms.length
-    ? departments.filter((department) =>
-        terms.some((term) =>
-          normalise(`${department.name} ${department.keywords}`).includes(term),
-        ),
-      )
-    : [];
-
-  const results: Result[] = [];
-
-  // Search the existing print catalogue used by /shop/print.
-  if (terms.length) {
-    for (const product of products) {
-      if (
-        product.published === false ||
-        !["print", "apparel"].includes(product.category)
-      ) {
-        continue;
-      }
-
-      const relevance = score(
-        product.name,
-        product.description ?? "",
-        terms,
-        query,
-      );
-
-      if (relevance <= 0) continue;
-
-      results.push({
-        id: `catalogue-${product.id}`,
-        name: product.name,
-        description: product.shortDescription || product.description || "",
-        href:
-          product.slug === "custom-jerseys"
-            ? "/shop/jerseys"
-            : `/shop/${product.category === "apparel" ? "custom" : "print"}/${encodeURIComponent(product.slug)}`,
-        category:
-          product.category === "apparel" ? "Custom printing" : "Printing",
-        score: relevance,
-      });
-    }
-  }
-
-  let catalogueUnavailable = false;
-
-  if (terms.length) {
-    try {
-      const supabase = getSupabaseAdmin();
-
-      // Separate parameterised filters avoid raw search expressions.
-      // Search names and descriptions for each keyword.
-      const lookups = await Promise.all(
-        terms.flatMap((term) =>
-          ["name", "description"].map(async (column) => {
-            const pattern = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
-
-            return supabase
-              .from("products")
-              .select(`${APPAREL_FIELDS},category`)
-              .eq("publication_status", "published")
-              .ilike(column, pattern)
-              .order("name")
-              .limit(24);
-          }),
-        ),
-      );
-
-      const seen = new Set<string>();
-
-      for (const lookup of lookups) {
-        if (lookup.error) {
-          catalogueUnavailable = true;
-          console.error("[Shop search]", lookup.error);
-          continue;
-        }
-
-        for (const product of lookup.data ?? []) {
-          const id = String(product.id);
-
-          if (seen.has(id)) continue;
-          seen.add(id);
-
-          if (
-            product.apparel_enabled &&
-            !toApparelProduct(product as unknown as ApparelRow)
-          )
-            continue;
-          if (!product.slug && !product.jersey_enabled) {
-            continue;
-          }
-
-          results.push({
-            id: `database-${id}`,
-            name: product.name,
-            description: product.description || "",
-            category: product.jersey_enabled
-              ? "Jerseys"
-              : product.category || "Product",
-            href: product.jersey_enabled
-              ? "/shop/jerseys"
-              : product.apparel_enabled
-                ? `/shop/apparel/${encodeURIComponent(product.slug)}`
-                : `/shop/products/${encodeURIComponent(product.slug)}`,
-            score: score(product.name, product.description || "", terms, query),
-          });
-        }
-      }
-    } catch (error) {
-      catalogueUnavailable = true;
-      console.error("[Shop search connection]", error);
-    }
-  }
-
-  const sortedResults = results
-    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
-    .slice(0, 48);
-
+  const q = (typeof params.q === "string" ? params.q : "").trim().slice(0, 120);
+  const [print, apparel, branding, jerseys] = await Promise.all([
+    loadDepartment("print"),
+    loadApparel(),
+    loadDepartment("branding"),
+    loadJerseys(),
+  ]);
+  const tokens = normalize(q).split(/\s+/).filter(Boolean).slice(0, 10);
+  const matches = (text: string) =>
+    tokens.every((t) => normalize(text).includes(t));
+  const p = print.filter((x) =>
+      matches(
+        x.name + " " + x.description + " printing print stationery packaging",
+      ),
+    ),
+    a = apparel.filter((x) =>
+      matches(x.name + " " + x.description + " apparel clothing clothes"),
+    ),
+    b = branding.filter((x) =>
+      matches(x.name + " " + x.description + " branding " + x.topic),
+    ),
+    j = jerseys.filter((x) =>
+      matches(
+        x.name +
+          " " +
+          x.team +
+          " " +
+          x.season +
+          " " +
+          x.kit +
+          " jersey jerseys football kit",
+      ),
+    );
+  const total = p.length + a.length + b.length + j.length;
   return (
-    <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
-      <header className="sticky top-0 z-[100] w-full">
-        <div className="relative z-[110]">
-          <TopNav />
-        </div>
-
-        <div className="relative z-[100] bg-[#FCFBF8]/95 shadow-sm backdrop-blur-md">
-          <DashboardHeader />
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1344px] px-5 py-10 sm:px-8 lg:px-12">
-        <Link
-          href="/shop"
-          className="inline-flex min-h-11 items-center text-sm text-[#625D55] underline underline-offset-4"
-        >
+    <StoreShell>
+      <main className="mx-auto max-w-[1344px] px-4 py-8 sm:px-8 lg:px-12">
+        <Link href="/shop" className="text-xs text-[#625D55]">
           Back to shop
         </Link>
-
-        <h1 className="mt-5 break-words text-3xl font-semibold tracking-tight">
-          {query ? `Results for “${query}”` : "What are you looking for?"}
+        <h1 className="mt-6 text-3xl font-semibold tracking-tight">
+          Find your next idea.
         </h1>
-
-        <p className="mt-3 max-w-xl text-sm leading-7 text-[#625D55]">
-          Find products and services across NewJersey.ng.
-        </p>
-
-        <form
-          action="/shop/search"
-          method="get"
-          role="search"
-          aria-label="Search the shop"
-          className="mt-6 flex max-w-2xl items-center gap-2 rounded-xl border border-black/15 bg-white p-2"
-        >
-          <Search
-            size={18}
-            aria-hidden="true"
-            className="ml-2 shrink-0 text-[#625D55]"
-          />
-
-          <input
-            key={query}
-            type="search"
-            name="q"
-            defaultValue={query}
-            required
-            maxLength={120}
-            aria-label="Products and services"
-            placeholder="Try business cards or football jerseys"
-            className="min-h-11 min-w-0 flex-1 rounded-lg px-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-          />
-
-          <button
-            type="submit"
-            className="min-h-11 rounded-lg bg-[#181818] px-4 text-sm font-semibold text-white"
-          >
+        <form action="/shop/search" className="my-6 flex max-w-2xl gap-2">
+          <label className="flex-1">
+            <span className="sr-only">Search products</span>
+            <input
+              name="q"
+              type="search"
+              maxLength={120}
+              defaultValue={q}
+              placeholder="Search print, apparel, jerseys and branding"
+              className="min-h-12 w-full rounded-xl border border-black/15 bg-white px-4 text-base"
+            />
+          </label>
+          <button className="rounded-xl bg-[#FF6B00] px-5 text-sm font-semibold text-[#181818]">
             Search
           </button>
         </form>
-
-        {catalogueUnavailable && (
-          <p role="status" className="mt-6 text-sm leading-6 text-[#625D55]">
-            Some catalogue results could not be loaded. You can still browse the
-            departments below or try again.
-          </p>
+        {!q ? (
+          <div className="flex flex-wrap gap-3">
+            {["print", "apparel", "jerseys", "branding"].map((s) => (
+              <Link
+                key={s}
+                href={"/shop/" + s}
+                className="rounded-full border border-black/10 px-5 py-3 text-sm capitalize"
+              >
+                {s}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <>
+            <p role="status" className="text-sm text-[#625D55]">
+              {total} results for “{q}”
+            </p>
+            {!!a.length && (
+              <StoreSection
+                id="search-apparel"
+                eyebrow="Apparel"
+                title="Ready-designed clothing"
+                description="Choose your size and colour."
+                href="/shop/apparel"
+              >
+                <ProductGrid
+                  products={a.slice(0, 12)}
+                  department="apparel"
+                  preview
+                />
+              </StoreSection>
+            )}
+            {!!j.length && (
+              <div className="py-8">
+                <JerseyShowcase products={j.slice(0, 8)} preview />
+              </div>
+            )}
+            {!!p.length && (
+              <StoreSection
+                id="search-print"
+                eyebrow="Print"
+                title="Print products"
+                description="Choose your specifications."
+                href="/shop/print"
+              >
+                <ProductGrid
+                  products={p.slice(0, 12)}
+                  department="print"
+                  preview
+                />
+              </StoreSection>
+            )}
+            {!!b.length && (
+              <StoreSection
+                id="search-branding"
+                eyebrow="Branding"
+                title="Branding for your business"
+                description="Find the right application."
+                href="/shop/branding"
+              >
+                <ProductGrid
+                  products={b.slice(0, 12)}
+                  department="branding"
+                  preview
+                />
+              </StoreSection>
+            )}
+            {!total && (
+              <p className="py-12 text-sm text-[#625D55]">
+                Try a product name such as business cards, T-shirt, vehicle or
+                your team’s name.
+              </p>
+            )}
+          </>
         )}
-
-        {(matchingDepartments.length > 0 || sortedResults.length === 0) && (
-          <section className="mt-9" aria-label="Shop departments">
-            <h2 className="text-sm font-semibold">
-              {matchingDepartments.length
-                ? "Relevant departments"
-                : "Browse departments"}
-            </h2>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {(matchingDepartments.length
-                ? matchingDepartments
-                : departments
-              ).map((department) => (
-                <Link
-                  key={department.href}
-                  href={department.href}
-                  className="inline-flex min-h-11 items-center gap-3 rounded-full border border-black/10 bg-white px-4 text-sm hover:border-black/30"
-                >
-                  {department.name}
-                  <ArrowRight size={14} aria-hidden="true" />
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {sortedResults.length > 0 ? (
-          <section className="mt-10" aria-label="Matching products">
-            <h2 className="text-sm font-semibold">Matching products</h2>
-
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedResults.map((result) => (
-                <Link
-                  key={result.id}
-                  href={result.href}
-                  className="group flex flex-col rounded-xl border border-black/10 bg-white p-5 transition-colors hover:border-black/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7A7368]">
-                    {result.category}
-                  </p>
-
-                  <h3 className="mt-3 text-lg font-semibold">{result.name}</h3>
-
-                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-[#625D55]">
-                    {result.description}
-                  </p>
-
-                  <span className="mt-auto inline-flex items-center gap-2 pt-5 text-xs font-semibold">
-                    {result.category === "Jerseys"
-                      ? "Choose your jersey"
-                      : "View product"}
-                    <ArrowRight size={14} aria-hidden="true" />
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        ) : query && !catalogueUnavailable ? (
-          <p className="mt-8 text-sm leading-7 text-[#625D55]">
-            No individual products matched this search. Explore a department
-            above or try a shorter phrase.
-          </p>
-        ) : null}
       </main>
-
-      <Footer />
-    </div>
+    </StoreShell>
   );
 }

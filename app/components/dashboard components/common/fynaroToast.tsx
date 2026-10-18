@@ -1,159 +1,95 @@
 "use client";
-
+import Link from "next/link";
+import { Check, Info, CircleAlert } from "lucide-react";
 import {
   ToastContainer,
   toast,
-  ToastOptions,
-  Slide,
+  cssTransition,
+  type ToastOptions,
 } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-type ProjectRequestPayload = {
-  projectName?: string;
-  ref?: string;
-};
-
-const baseOptions: ToastOptions = {
-  position: "bottom-right",
-  autoClose: 2600,
-  hideProgressBar: false,
-  closeOnClick: true,
-  pauseOnHover: true,
-  draggable: true,
-  theme: "dark",
-  transition: Slide, // ✨ smooth slide-in
-};
-
-/**
- * Mount this once (e.g. in layout.tsx) so toasts can render.
- */
+import "./newjerseyToast.css";
+const transition = cssTransition({
+  enter: "nj-toast-enter",
+  exit: "nj-toast-exit",
+  collapse: true,
+  collapseDuration: 140,
+});
 export function FynaroToastHost() {
-  return <ToastContainer newestOnTop pauseOnFocusLoss={false} />;
+  return (
+    <ToastContainer
+      position="bottom-left"
+      limit={2}
+      newestOnTop
+      autoClose={4200}
+      hideProgressBar
+      closeOnClick={false}
+      pauseOnHover
+      pauseOnFocusLoss
+      draggable={false}
+      theme="light"
+      transition={transition}
+      toastClassName="nj-toast"
+      aria-label="NewJersey updates"
+    />
+  );
 }
-
-/**
- * Hook to trigger branded toasts across the app.
- */
+export function notifyShop(
+  title: string,
+  body?: string,
+  options: ToastOptions & { href?: string; action?: string } = {},
+) {
+  const { href, action, ...rest } = options;
+  toast.clearWaitingQueue();
+  const Icon =
+    rest.type === "error" ? CircleAlert : rest.type === "info" ? Info : Check;
+  return toast(
+    <div className="flex items-start gap-3">
+      <Icon
+        size={18}
+        aria-hidden="true"
+        className="mt-0.5 shrink-0 text-[#B94700]"
+      />
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-[#181818]">{title}</p>
+        {body && (
+          <p className="mt-1 text-xs leading-5 text-[#625D55]">{body}</p>
+        )}
+        {href && (
+          <Link
+            href={href}
+            onClick={() => toast.dismiss(rest.toastId)}
+            className="mt-2 inline-flex min-h-8 items-center text-xs font-semibold text-[#181818] underline underline-offset-4"
+          >
+            {action ?? "View"}
+          </Link>
+        )}
+      </div>
+    </div>,
+    { ...rest, icon: false, role: rest.type === "error" ? "alert" : "status" },
+  );
+}
+// Keep existing imports working while removing the old Fynaro/gold styling.
 export function useFynaroToast() {
-  const notifyAddToCart = (productName: string) => {
-    toast(
-      <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-lg">
-          🛒
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-white">Added to cart</p>
-          <p className="text-[11px] text-neutral-300 truncate">
-            {productName}
-          </p>
-          <p className="mt-0.5 text-[10px] text-neutral-500">
-            You can adjust quantity from your Fynaro cart.
-          </p>
-        </div>
-      </div>,
-      baseOptions
-    );
-  };
-
-  const notifyProjectRequestCreated = ({
-    projectName,
-    ref,
-  }: ProjectRequestPayload = {}) => {
-    const title = projectName || "New project request";
-    const suffix = ref ? `Ref: ${ref}` : "We’ll update you on this dashboard.";
-
-    toast(
-      <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-lg">
-          ✅
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-white">{title}</p>
-          <p className="text-[11px] text-neutral-300 mt-0.5">{suffix}</p>
-          <p className="mt-0.5 text-[10px] text-neutral-500">
-            Timeline, pricing and updates will live in your Fynaro dashboard.
-          </p>
-        </div>
-      </div>,
-      baseOptions
-    );
-  };
-
-  const notifyWishlistToggle = (productName: string, added: boolean) => {
-    toast(
-      <div className="flex items-start gap-2">
-        {/* Icon bubble — dark luxe */}
-        <div
-          className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full text-lg ${
-            added
-              ? "bg-pink-500/20 text-pink-300"
-              : "bg-neutral-700/30 text-neutral-300"
-          }`}
-        >
-          {added ? "💖" : "💭"}
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-white">
-            {added ? "Added to wishlist" : "Removed from wishlist"}
-          </p>
-
-          <p className="text-[11px] text-neutral-300 truncate">
-            {productName}
-          </p>
-
-          <p className="mt-0.5 text-[10px] text-neutral-500">
-            {added
-              ? "Saved for later — check your Fynaro wishlist anytime."
-              : "Item removed from your wishlist."}
-          </p>
-        </div>
-      </div>,
-      baseOptions
-    );
-  };
-
-  /**
-   * 💎 Luxury gold toast – for special / premium actions
-   * e.g. upgrades, credits, milestone, VIP stuff.
-   */
-  const notifyGoldMoment = (title: string, body?: string) => {
-    toast(
-      <div className="relative flex items-start gap-3">
-        {/* Gold glow ring */}
-        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#c8a96a]/15 text-[#f5e9ce] text-lg shadow-[0_0_18px_rgba(200,169,106,0.45)]">
-          ✨
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-[#f9f1d0]">
-            {title}
-          </p>
-          {body && (
-            <p className="mt-0.5 text-[11px] text-neutral-300">
-              {body}
-            </p>
-          )}
-          <p className="mt-0.5 text-[10px] text-neutral-500">
-            Enjoy the upgrade — it’s live in your Fynaro workspace.
-          </p>
-        </div>
-      </div>,
-      {
-        ...baseOptions,
-        className:
-          "bg-[#050506] border border-[#c8a96a]/60 shadow-[0_14px_40px_rgba(0,0,0,0.9)]",
-      }
-    );
-  };
-
   return {
-    notifyAddToCart,
-    notifyProjectRequestCreated,
-    notifyWishlistToggle,
-    notifyGoldMoment,
+    notifyAddToCart: (name: string) =>
+      notifyShop("Added to your cart", name, {
+        toastId: `cart-${name}`,
+        href: "/shop/cart",
+        action: "View cart",
+      }),
+    notifyProjectRequestCreated: ({
+      projectName,
+      ref,
+    }: { projectName?: string; ref?: string } = {}) =>
+      notifyShop(
+        "Request submitted",
+        [projectName, ref].filter(Boolean).join(" · "),
+        { href: "/shop/order", action: "View orders" },
+      ),
+    notifyWishlistToggle: (name: string, added: boolean) =>
+      notifyShop(added ? "Saved" : "Removed", name, { type: "info" }),
+    notifyGoldMoment: (title: string, body?: string) => notifyShop(title, body),
     rawToast: toast,
   };
 }

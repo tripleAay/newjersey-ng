@@ -15,6 +15,7 @@ import {
   type JerseyRow,
 } from "@/app/lib/newjersey/jerseys/catalogue";
 
+import JerseyBanner from "@/app/components/newjersey/JerseyBanner";
 import JerseyShowcase from "./JerseyShowcase";
 
 export const dynamic = "force-dynamic";
@@ -49,19 +50,12 @@ export default async function JerseysPage() {
       hint: error.hint,
     });
 
-    throw new Error(
-      "Unable to load jerseys. Please try again."
-    );
+    throw new Error("Unable to load jerseys. Please try again.");
   }
 
-  const products = (
-    (data ?? []) as unknown as JerseyRow[]
-  )
+  const products = ((data ?? []) as unknown as JerseyRow[])
     .map(toJerseyProduct)
-    .filter(
-      (product): product is JerseyProduct =>
-        product !== null
-    );
+    .filter((product): product is JerseyProduct => product !== null);
 
   return (
     <div className="min-h-screen bg-[#FCFBF8] text-[#181818]">
@@ -78,50 +72,22 @@ export default async function JerseysPage() {
       <main className="mx-auto min-w-0 max-w-[1344px] px-5 pb-16 pt-5 sm:px-8 sm:pb-20 lg:px-12">
         <Link
           href="/shop"
-          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-medium text-[#625D55] transition-colors hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-4"
+          className="inline-flex min-h-11 items-center gap-2 rounded-sm text-xs font-medium text-[#625D55] transition-colors hover:text-[#181818] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00] focus-visible:ring-offset-4"
         >
           <ArrowLeft size={15} aria-hidden="true" />
           Back to shop
         </Link>
 
-        <section
-          aria-labelledby="jerseys-title"
-          className="pb-10 pt-7 sm:pb-12 sm:pt-10"
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8A8379]">
-            NewJersey.ng / Jerseys
-          </p>
-
-          <div className="mt-4 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-            <div className="max-w-2xl">
-              <h1
-                id="jerseys-title"
-                className="text-4xl font-semibold leading-[1.05] tracking-[-0.055em] sm:text-5xl lg:text-6xl"
-              >
-                Your team.
-                <br />
-                Your colours.
-              </h1>
-
-              <p className="mt-5 max-w-lg text-sm leading-7 text-[#625D55]">
-                Home, away or third kit. Find your team,
-                choose your size and make it yours with a
-                name and number.
-              </p>
-            </div>
-
-            {products.length > 0 && (
-              <p className="shrink-0 text-xs text-[#8A8379]">
-                {products.length}{" "}
-                {products.length === 1
-                  ? "jersey available"
-                  : "jerseys available"}
-              </p>
-            )}
-          </div>
-        </section>
-
-        <JerseyShowcase products={products} />
+        <JerseyBanner embedded />
+        <div id="jersey-kits" className="scroll-mt-40">
+          {products.length > 0 && (
+            <p className="mb-4 text-xs text-[#8A8379]">
+              {products.length}{" "}
+              {products.length === 1 ? "jersey available" : "jerseys available"}
+            </p>
+          )}
+          <JerseyShowcase products={products} />
+        </div>
 
         {products.length > 0 && (
           <aside
@@ -129,9 +95,8 @@ export default async function JerseysPage() {
             className="mt-10 border-t border-black/10 pt-5"
           >
             <p className="max-w-2xl text-xs leading-6 text-[#7A7368]">
-              Prices shown are for the jersey. Available
-              name and number charges are listed separately.
-              Review your size, kit, spelling and
+              Prices shown are for the jersey. Available name and number charges
+              are listed separately. Review your size, kit, spelling and
               capitalisation before submitting your order.
             </p>
           </aside>

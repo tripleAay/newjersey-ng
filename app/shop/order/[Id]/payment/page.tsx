@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DocumentDownloads from "@/app/components/newjersey/DocumentDownloads";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import {
@@ -372,6 +373,7 @@ export default async function PaymentPage({
         </p>
       )}
 
+      <DocumentDownloads orderId={order.id} />
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-12">
         <section className="min-w-0 rounded-[24px] border border-black/10 bg-white p-6 sm:p-8">
           {payment?.status === "verified" ? (

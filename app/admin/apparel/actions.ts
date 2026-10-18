@@ -86,6 +86,7 @@ export async function saveApparel(form: FormData): Promise<void> {
       image_url: images[0] ?? null,
       image_urls: images,
       apparel_enabled: form.get("enabled") === "on",
+      featured: form.get("featured") === "on",
       apparel_sizes: sizes,
       apparel_colours: colours,
     })

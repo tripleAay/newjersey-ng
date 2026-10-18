@@ -34,7 +34,7 @@ export default function CartPage() {
           <TopNav />
         </div>
 
-        <div className="relative z-[100] bg-[#6D1A36]/95 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-md">
+        <div className="relative z-[100] bg-[#FCFBF8]/95 shadow-[0_2px_12px_rgba(0,0,0,0.18)] backdrop-blur-md">
           <DashboardHeader />
         </div>
       </header>
@@ -42,7 +42,7 @@ export default function CartPage() {
       <main className="mx-auto w-[92%] max-w-[1440px] py-8 sm:py-12">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6D1A36]">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#FF6B00]">
               NewJersey.ng / Cart
             </p>
 
@@ -58,7 +58,7 @@ export default function CartPage() {
 
           <Link
             href="/shop"
-            className="text-sm font-semibold text-[#6D1A36] underline underline-offset-4"
+            className="text-sm font-semibold text-[#FF6B00] underline underline-offset-4"
           >
             Continue shopping
           </Link>
@@ -136,7 +136,7 @@ export default function CartPage() {
                         removeItem(item.cartItemId)
                       }
                       aria-label={`Remove ${item.name}`}
-                      className="shrink-0 rounded-lg p-2 text-[#777] transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D1A36]"
+                      className="shrink-0 rounded-lg p-2 text-[#777] transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00]"
                     >
                       <Trash2 size={17} aria-hidden="true" />
                     </button>
@@ -159,7 +159,7 @@ export default function CartPage() {
                             )
                           }
                           aria-label={`Decrease jobs for ${item.name}`}
-                          className="rounded-l-xl p-3 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D1A36] disabled:cursor-not-allowed disabled:opacity-30"
+                          className="rounded-l-xl p-3 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00] disabled:cursor-not-allowed disabled:opacity-30"
                         >
                           <Minus size={15} aria-hidden="true" />
                         </button>
@@ -177,7 +177,7 @@ export default function CartPage() {
                             )
                           }
                           aria-label={`Increase jobs for ${item.name}`}
-                          className="rounded-r-xl p-3 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6D1A36]"
+                          className="rounded-r-xl p-3 hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00]"
                         >
                           <Plus size={15} aria-hidden="true" />
                         </button>

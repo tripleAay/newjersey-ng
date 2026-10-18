@@ -176,6 +176,7 @@ export default async function ApparelAdmin({
                 />
                 Enable ready-designed apparel sales
               </label>
+              <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" name="featured" defaultChecked={row.featured} />Featured in the shop</label>
               <button className="min-h-12 rounded-full bg-[#181818] px-5 text-sm text-white">
                 Save apparel settings
               </button>

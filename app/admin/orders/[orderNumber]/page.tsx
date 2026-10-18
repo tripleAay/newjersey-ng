@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import DocumentDownloads from "@/app/components/newjersey/DocumentDownloads";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 
 import { requireAdmin } from "@/app/lib/newjersey/auth/admin";
@@ -125,6 +126,9 @@ export default async function AdminOrderDetailsPage({
   }
 
   const items = itemsResult.data ?? [];
+  if (items.some((item) => item.review_mode === "design-service")) {
+    redirect("/admin/design/" + order.id);
+  }
   const artworks = artworkResult.data ?? [];
   const history = historyResult.data ?? [];
 
@@ -211,6 +215,7 @@ export default async function AdminOrderDetailsPage({
           </p>
         )}
 
+      <DocumentDownloads orderId={order.id} />
         <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-6">
             <section className={sectionClass}>

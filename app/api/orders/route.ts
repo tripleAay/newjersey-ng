@@ -1,4 +1,9 @@
 import { randomUUID } from "node:crypto";
+import {
+  STORE_FIELDS,
+  toStoreProduct,
+  type StoreRow,
+} from "@/app/lib/newjersey/storefront/catalogue";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
@@ -180,9 +185,12 @@ function rebuildItem(
   const productId = requiredText(item.productId, "Product ID", 200);
 
   const retail = productId.startsWith("retail-");
-  const product = retail
-    ? retailProducts.get(productId)
-    : getProductById(productId);
+  const managed =
+    productId.startsWith("store-") || productId.startsWith("print-");
+  const product =
+    retail || managed
+      ? retailProducts.get(productId)
+      : getProductById(productId);
 
   if (!product || product.published === false) {
     throw new RequestError("An item in your order is no longer available.");
@@ -316,6 +324,15 @@ function rebuildItem(
   const unitPrice = roundMoney(basePrice + optionsTotal);
 
   const totalPrice = roundMoney(unitPrice * quantity);
+  if (
+    (retail || managed) &&
+    (!isMoney(item.unitPrice) || !sameMoney(item.unitPrice, unitPrice))
+  ) {
+    throw new RequestError(
+      `The price for ${product.name} changed. Reopen the product and add it again to review the current price.`,
+      409,
+    );
+  }
 
   if (!isMoney(optionsTotal) || !isMoney(unitPrice) || !isMoney(totalPrice)) {
     throw new RequestError("The order amount is too large.");
@@ -464,6 +481,56 @@ export async function POST(request: NextRequest) {
       for (const row of (rows ?? []) as unknown as ApparelRow[]) {
         const product = toApparelProduct(row);
         if (product) retailProducts.set(product.id, product);
+      }
+    }
+    const managedIds = [
+      ...new Set(
+        rawItems.flatMap((value) =>
+          isRecord(value) &&
+          typeof value.productId === "string" &&
+          value.productId.startsWith("store-")
+            ? [value.productId.slice(6)]
+            : [],
+        ),
+      ),
+    ];
+    const legacyPrintIds = [
+      ...new Set(
+        rawItems.flatMap((value) =>
+          isRecord(value) &&
+          typeof value.productId === "string" &&
+          value.productId.startsWith("print-")
+            ? [value.productId]
+            : [],
+        ),
+      ),
+    ];
+    if (managedIds.some((id) => !/^[1-9]\d{0,18}$/.test(id)))
+      throw new RequestError("Invalid catalogue product.");
+    const managedRows: StoreRow[] = [];
+    if (managedIds.length) {
+      const result = await getSupabaseAdmin()
+        .from("products")
+        .select(STORE_FIELDS)
+        .in("id", managedIds);
+      if (result.error)
+        throw new Error("Unable to check current catalogue pricing.");
+      managedRows.push(...((result.data ?? []) as unknown as StoreRow[]));
+    }
+    if (legacyPrintIds.length) {
+      const result = await getSupabaseAdmin()
+        .from("products")
+        .select(STORE_FIELDS)
+        .in("catalogue_legacy_id", legacyPrintIds);
+      if (result.error)
+        throw new Error("Unable to check current print pricing.");
+      managedRows.push(...((result.data ?? []) as unknown as StoreRow[]));
+    }
+    for (const row of managedRows) {
+      const product = toStoreProduct(row);
+      if (product) {
+        retailProducts.set(product.id, product);
+        if (product.legacyId) retailProducts.set(product.legacyId, product);
       }
     }
     const items = rawItems.map((item) => rebuildItem(item, retailProducts));

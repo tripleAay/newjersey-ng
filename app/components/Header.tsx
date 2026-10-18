@@ -25,7 +25,7 @@ export default function Header() {
           {[
             { label: "All Products", href: "/products" },
             { label: "Apparel", href: "/apparel" },
-            { label: "Hire a Designer", href: "/hire-designer" },
+            { label: "Hire a Designer", href: "/hire-a-designer" },
             { label: "Training", href: "/training" },
             { label: "About", href: "/about" },
           ].map((item) => (

@@ -20,6 +20,7 @@ import {
 
 import { useCart } from "@/app/contexts/cartContext";
 import { createClient } from "@/app/lib/newjersey/supabase/client";
+import { helpTopics } from "@/app/lib/newjersey/help/navigation";
 import CustomerNotifications from "@/app/components/newjersey/CustomerNotifications";
 
 type Panel = "account" | "help" | "notifications";
@@ -48,10 +49,10 @@ const guestLinks = [
 ];
 
 const controlClass =
-  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]";
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-2 transition-colors hover:bg-[#FF6B00]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00]";
 
 const linkClass =
-  "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors hover:bg-[#F5F4F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]";
+  "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors hover:bg-[#F5F4F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00]";
 
 function getDisplayName(user: User | null) {
   if (!user) return "";
@@ -203,7 +204,13 @@ export default function MainHeader() {
   }, [openPanel]);
 
   useEffect(() => {
-    setOpenPanel(null);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setOpenPanel(null);
+    });
+    return () => {
+      active = false;
+    };
   }, [pathname]);
 
   function togglePanel(panel: Panel) {
@@ -238,15 +245,15 @@ export default function MainHeader() {
   }
 
   return (
-    <div className="border-b border-black/10 bg-[#F4F1E9] text-[#181818]">
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-2 gap-y-3 px-4 py-3 sm:px-8 sm:py-4 lg:gap-x-6 lg:px-12">
+    <div className="border-b border-black/10 bg-[#FCFBF8] text-[#181818]">
+      <div className="mx-auto flex max-w-[1344px] flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2 sm:px-8 sm:py-2 lg:gap-x-5 lg:px-12">
         <Link
           href="/shop"
           aria-label="NewJersey.ng shop home"
-          className="shrink-0 rounded-sm text-xl font-bold tracking-[-0.06em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] sm:text-2xl"
+          className="shrink-0 rounded-sm text-xl font-bold tracking-[-0.045em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00] sm:text-xl"
         >
           newjersey
-          <span className="text-[#F58220]">.ng</span>
+          <span className="text-[#FF6B00]">.ng</span>
         </Link>
 
         <form
@@ -271,7 +278,7 @@ export default function MainHeader() {
             input.value = query;
             setOpenPanel(null);
           }}
-          className="order-last flex w-full min-w-0 items-center rounded-full border border-black/15 bg-white transition-shadow focus-within:border-[#F58220] focus-within:ring-1 focus-within:ring-[#F58220] lg:order-none lg:w-auto lg:flex-1"
+          className="order-last flex w-full min-w-0 items-center rounded-xl border border-[#FF6B00]/15 bg-white transition-shadow focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00] lg:order-none lg:w-auto lg:flex-1"
         >
           <Search
             size={18}
@@ -289,12 +296,12 @@ export default function MainHeader() {
             maxLength={120}
             enterKeyHint="search"
             autoComplete="off"
-            className="min-h-12 min-w-0 flex-1 rounded-full bg-transparent px-3 text-base text-[#181818] placeholder:text-[#7A7368] focus:outline-none"
+            className="min-h-11 min-w-0 flex-1 rounded-xl bg-transparent px-3 text-base text-[#181818] placeholder:text-[#7A7368] focus:outline-none"
           />
 
           <button
             type="submit"
-            className="mr-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full bg-[#181818] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
+            className="mr-1 inline-flex min-h-9 min-w-11 shrink-0 items-center justify-center rounded-lg bg-[#FF6B00]/[.07] px-3 text-xs font-semibold text-[#FF6B00] transition-colors duration-500 hover:bg-[#FF6B00]/[.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00] focus-visible:ring-offset-2"
           >
             Search
           </button>
@@ -328,7 +335,7 @@ export default function MainHeader() {
             {authReady && user ? (
               <span
                 aria-hidden="true"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#181818] text-xs font-semibold text-white"
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#FF6B00]/10 text-xs font-semibold text-[#FF6B00]"
               >
                 {initials}
               </span>
@@ -393,7 +400,7 @@ export default function MainHeader() {
               {count > 0 && (
                 <span
                   aria-hidden="true"
-                  className="absolute -right-2 -top-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#181818] px-1 text-[10px] font-semibold tabular-nums leading-4 text-white"
+                  className="absolute -right-2 -top-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#FF6B00] px-1 text-[10px] font-semibold tabular-nums leading-4 text-[#181818]"
                 >
                   {count > 99 ? "99+" : count}
                 </span>
@@ -499,6 +506,40 @@ export default function MainHeader() {
                 Check your order or speak with us.
               </p>
             </div>
+
+            <nav
+              aria-label="Help topics"
+              className="border-b border-black/10 pb-2 mb-2"
+            >
+              <Link
+                href="/shop/help"
+                onClick={() => setOpenPanel(null)}
+                className={`${linkClass} font-semibold`}
+              >
+                Help centre
+                <ArrowUpRight
+                  size={14}
+                  aria-hidden="true"
+                  className="ml-auto"
+                />
+              </Link>
+              {helpTopics
+                .filter((topic) =>
+                  ["place-order", "track-order", "payments"].includes(
+                    topic.slug,
+                  ),
+                )
+                .map((topic) => (
+                  <Link
+                    key={topic.slug}
+                    href={`/shop/help/${topic.slug}`}
+                    onClick={() => setOpenPanel(null)}
+                    className={linkClass}
+                  >
+                    {topic.title}
+                  </Link>
+                ))}
+            </nav>
 
             <Link
               href="/shop/order"

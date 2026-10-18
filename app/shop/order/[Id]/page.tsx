@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DocumentDownloads from "@/app/components/newjersey/DocumentDownloads";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import {
@@ -355,6 +356,9 @@ export default async function OrderDetailsPage({ params }: Props) {
   }
 
   const items = itemsResult.data ?? [];
+  if (items.some((item) => item.review_mode === "design-service")) {
+    redirect("/shop/design/" + order.id);
+  }
   const artworks = artworksResult.data ?? [];
 
   const pickup = order.delivery_method === "pickup";
@@ -430,6 +434,7 @@ export default async function OrderDetailsPage({ params }: Props) {
           </h1>
         </div>
 
+      <DocumentDownloads orderId={order.id} />
         <div className="grid items-start gap-x-12 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-x-20">
           <div className="min-w-0">
             <section className="border-t border-black/10 pb-9 pt-7 sm:pb-12 sm:pt-8">

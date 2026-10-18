@@ -1,389 +1,136 @@
 "use client";
-
-import Image from "next/image";
-import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUpRight,
-  Shirt,
-  X,
-} from "lucide-react";
 import { useRef, useState } from "react";
-
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 import type { JerseyProduct } from "@/app/lib/newjersey/jerseys/catalogue";
+import ProductImage from "@/app/components/newjersey/storefront/ProductImage";
+import QuickDialog from "@/app/components/newjersey/storefront/QuickDialog";
 import JerseyOrderForm from "./JerseyOrderForm";
-
-type Props = {
-  products: JerseyProduct[];
-};
-
-const money = new Intl.NumberFormat("en-NG", {
-  style: "currency",
-  currency: "NGN",
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 0,
-});
-
-function formatPrice(minor: number) {
-  return money.format(minor / 100);
-}
-
-const kitLabels: Record<string, string> = {
-  home: "Home",
-  away: "Away",
-  third: "Third",
-};
-
-function JerseyImage({
-  product,
-}: {
-  product: JerseyProduct;
-}) {
-  const [failed, setFailed] = useState(false);
-  const src = product.images[0];
-
-  if (!src || failed) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Shirt
-          size={64}
-          strokeWidth={1}
-          aria-hidden="true"
-          className="text-black/15"
-        />
-        <span className="sr-only">
-          Image unavailable for {product.name}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <Image
-      src={src}
-      alt={product.name}
-      fill
-      sizes="(max-width: 640px) 85vw, 350px"
-      onError={() => setFailed(true)}
-      className="object-contain p-7 transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transition-none sm:p-8"
-    />
-  );
-}
-
+const money = (v: number) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 2,
+  }).format(v / 100);
 export default function JerseyShowcase({
   products,
-}: Props) {
-  const stripRef = useRef<HTMLDivElement>(null);
-  const orderSectionRef = useRef<HTMLElement>(null);
-  const orderHeadingRef = useRef<HTMLHeadingElement>(null);
-
-  const [selectedId, setSelectedId] = useState<string | null>(
-    null
-  );
-
-  const selected = products.find(
-    (product) => product.id === selectedId
-  );
-
-  function scrollProducts(direction: -1 | 1) {
-    const strip = stripRef.current;
-    if (!strip) return;
-
-    const card = strip.querySelector<HTMLElement>(
-      "[data-jersey-card]"
-    );
-
-    const distance = card
-      ? card.getBoundingClientRect().width + 20
-      : strip.clientWidth;
-
-    strip.scrollBy({
-      left: distance * direction,
-      behavior: window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches
-        ? "auto"
+  preview = false,
+}: {
+  products: JerseyProduct[];
+  preview?: boolean;
+}) {
+  const [selected, setSelected] = useState<JerseyProduct | null>(null);
+  const strip = useRef<HTMLDivElement>(null);
+  const items = preview ? products.slice(0, 8) : products;
+  function scroll(direction: number) {
+    strip.current?.scrollBy({
+      left: direction * 220,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
         : "smooth",
     });
   }
-
-  function openProduct(product: JerseyProduct) {
-    if (
-      selected &&
-      selected.id !== product.id &&
-      !window.confirm(
-        "Switch jerseys? Your current form entries will be cleared."
-      )
-    ) {
-      return;
-    }
-
-    setSelectedId(product.id);
-
-    requestAnimationFrame(() => {
-      orderSectionRef.current?.scrollIntoView({
-        behavior: window.matchMedia(
-          "(prefers-reduced-motion: reduce)"
-        ).matches
-          ? "auto"
-          : "smooth",
-        block: "start",
-      });
-
-      orderHeadingRef.current?.focus({
-        preventScroll: true,
-      });
-    });
-  }
-
-  function closeProduct() {
-    if (
-      !window.confirm(
-        "Close personalisation? Your current form entries will be cleared."
-      )
-    ) {
-      return;
-    }
-
-    const previousId = selectedId;
-    setSelectedId(null);
-
-    requestAnimationFrame(() => {
-      document
-        .getElementById(`personalise-jersey-${previousId}`)
-        ?.focus();
-    });
-  }
-
-  if (products.length === 0) {
+  if (!products.length)
     return (
-      <div className="rounded-2xl border border-black/10 bg-white px-6 py-12 text-center">
-        <Shirt
-          size={36}
-          strokeWidth={1.3}
-          aria-hidden="true"
-          className="mx-auto text-[#8A8379]"
-        />
-
-        <h2 className="mt-5 text-lg font-semibold">
-          The next lineup is on its way.
-        </h2>
-
-        <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-[#625D55]">
-          Available jerseys will appear here once they are
-          published.
-        </p>
-      </div>
+      <p className="p-6 text-sm text-[#625D55]">
+        Jerseys will appear here when available.
+      </p>
     );
-  }
-
   return (
-    <div className="min-w-0">
-      <div className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8379]">
-            The lineup
-          </p>
-
-          <h2 className="mt-2 text-xl font-semibold tracking-tight">
-            Find your colours.
-          </h2>
-        </div>
-
-        {products.length > 1 && (
-          <div className="flex shrink-0 gap-2">
-            <button
-              type="button"
-              onClick={() => scrollProducts(-1)}
-              aria-label="Scroll to previous jerseys"
-              aria-controls="jersey-product-strip"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-[#625D55] transition-colors hover:border-black/30 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => scrollProducts(1)}
-              aria-label="Scroll to next jerseys"
-              aria-controls="jersey-product-strip"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-[#625D55] transition-colors hover:border-black/30 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-            >
-              <ArrowRight size={16} aria-hidden="true" />
-            </button>
+    <>
+      <div className="overflow-hidden rounded-2xl bg-[#32101D]">
+        <div className="flex flex-wrap items-end justify-between gap-4 bg-[#32101D] px-5 py-6 text-white sm:px-6">
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-[.25em] text-[#FFB581]">
+              The jersey room / NewJersey.ng
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Your team. Your name.
+            </h2>
+            <p className="mt-2 text-xs leading-6 text-white/65">
+              Home, away and third kits. Make yours personal.
+            </p>
           </div>
-        )}
-      </div>
-
-      <div
-        ref={stripRef}
-        id="jersey-product-strip"
-        role="region"
-        aria-label="Available jerseys"
-        tabIndex={0}
-        className="flex min-w-0 snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain rounded-2xl pb-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-      >
-        {products.map((product) => {
-          const kit =
-            kitLabels[product.kit] || product.kit;
-
-          const nameAvailable =
-            product.nameFeeMinor !== null;
-
-          const numberAvailable =
-            product.numberFeeMinor !== null;
-
-          return (
+          <div className="flex gap-2">
+            {[-1, 1].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => scroll(d)}
+                aria-label={d < 0 ? "Previous jerseys" : "Next jerseys"}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white"
+              >
+                {d < 0 ? <ArrowLeft size={17} /> : <ArrowRight size={17} />}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div
+          ref={strip}
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-5 pt-4 [scrollbar-width:thin] sm:px-5"
+        >
+          {items.map((p) => (
             <article
-              key={product.id}
-              data-jersey-card
-              className="group flex w-[85%] max-w-[350px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] border border-black/[0.08] bg-white sm:w-[350px]"
+              key={p.id}
+              className="group flex w-[176px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-[#FCFBF8] sm:w-[194px]"
             >
               <button
                 type="button"
-                onClick={() => openProduct(product)}
-                aria-label={`View and personalise ${product.name}`}
-                className="relative block aspect-[5/4] w-full overflow-hidden bg-[#F1F0EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#F58220]"
+                onClick={() => setSelected(p)}
+                aria-label={"Personalise " + p.name}
+                className="relative h-40 bg-[#F0EFEB] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#FF6B00]"
               >
-                <JerseyImage product={product} />
-
-                <span className="absolute left-4 top-4 rounded-full border border-black/[0.06] bg-white/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#625D55] backdrop-blur-sm">
-                  {kit} kit
+                <ProductImage src={p.images[0]} name={p.name} jersey />
+                <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[9px] font-semibold capitalize text-[#FF6B00]">
+                  {p.kit} kit
                 </span>
               </button>
-
-              <div className="flex flex-1 flex-col p-5 sm:p-6">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#8A7360]">
-                  {product.team} · {product.season}
-                </p>
-
-                <h3 className="mt-2 text-xl font-semibold leading-tight tracking-[-0.035em]">
-                  {product.name}
-                </h3>
-
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#746E65]">
-                  {product.description ||
-                    `${product.team}, ${product.season}. Choose your size and make it yours.`}
-                </p>
-
-                <p className="mt-4 text-xs leading-6 text-[#625D55]">
-                  <span className="font-medium text-[#181818]">
-                    Sizes
-                  </span>
-                  {" · "}
-                  {product.sizes.join(" / ")}
-                </p>
-
-                <div className="mt-auto pt-5">
-                  <div className="border-t border-black/[0.07] pt-4">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.13em] text-[#8A8379]">
-                      Jersey price
-                    </p>
-
-                    <p className="mt-1 text-2xl font-semibold tracking-[-0.04em]">
-                      {formatPrice(product.priceMinor)}
-                    </p>
-
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-5 text-[#746E65]">
-                      {nameAvailable && (
-                        <span>
-                          Name{" "}
-                          {product.nameFeeMinor === 0
-                            ? "included"
-                            : `+${formatPrice(
-                                product.nameFeeMinor!
-                              )}`}
-                        </span>
-                      )}
-
-                      {numberAvailable && (
-                        <span>
-                          Number{" "}
-                          {product.numberFeeMinor === 0
-                            ? "included"
-                            : `+${formatPrice(
-                                product.numberFeeMinor!
-                              )}`}
-                        </span>
-                      )}
-
-                      {!nameAvailable && !numberAvailable && (
-                        <span>
-                          Name and number printing unavailable
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    id={`personalise-jersey-${product.id}`}
-                    type="button"
-                    onClick={() => openProduct(product)}
-                    className="mt-5 inline-flex min-h-12 w-full items-center justify-between gap-3 rounded-full bg-[#181818] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#363636] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
-                  >
-                    Personalise jersey
-                    <ArrowUpRight
-                      size={17}
-                      aria-hidden="true"
-                    />
-                  </button>
-                </div>
+              <div className="flex flex-1 flex-col p-3">
+                <p className="text-[9px] text-[#8A8379]">{p.season} season</p>
+                <button
+                  onClick={() => setSelected(p)}
+                  type="button"
+                  className="mt-1 line-clamp-2 min-h-9 text-left text-xs font-semibold leading-[18px]"
+                >
+                  {p.team}
+                </button>
+                <p className="mt-2 text-sm font-bold">{money(p.priceMinor)}</p>
+                <button
+                  type="button"
+                  onClick={() => setSelected(p)}
+                  className="mt-3 inline-flex min-h-11 items-center justify-between gap-2 rounded-lg bg-[#FF6B00] px-3 text-[11px] font-semibold text-[#181818]"
+                >
+                  Personalise
+                  <ArrowUpRight size={14} />
+                </button>
               </div>
             </article>
-          );
-        })}
-      </div>
-
-      {products.length > 1 && (
-        <p className="mt-1 text-xs text-[#8A8379]">
-          Swipe or use the arrows to explore the lineup.
-        </p>
-      )}
-
-      {selected && (
-        <section
-          ref={orderSectionRef}
-          aria-labelledby="jersey-personalisation-title"
-          className="mt-12 scroll-mt-64 border-t border-black/10 pt-8"
-        >
-          <div className="mb-7 flex items-start justify-between gap-5">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A8379]">
-                Your selection
-              </p>
-
-              <h2
-                ref={orderHeadingRef}
-                id="jersey-personalisation-title"
-                tabIndex={-1}
-                className="mt-2 text-2xl font-semibold tracking-tight focus:outline-none"
-              >
-                {selected.name}
-              </h2>
-
-              <p className="mt-3 max-w-xl text-sm leading-7 text-[#625D55]">
-                Choose your size, then add a name and number
-                if you want them. Capitalisation matters:
-                names and numbers are printed exactly as entered.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={closeProduct}
-              aria-label="Close jersey personalisation"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-[#625D55] hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
+          ))}
+        </div>
+        {preview && (
+          <div className="flex justify-between gap-4 border-t border-white/10 px-5 py-3 text-[10px] leading-6 text-white/65">
+            <p>Name and number charges are shown before ordering.</p>
+            <Link
+              href="/shop/jerseys"
+              className="inline-flex shrink-0 items-center gap-2 font-semibold text-white"
             >
-              <X size={18} aria-hidden="true" />
-            </button>
+              All jerseys
+              <ArrowUpRight size={13} />
+            </Link>
           </div>
-
-          <JerseyOrderForm
-            key={selected.id}
-            products={[selected]}
-          />
-        </section>
-      )}
-    </div>
+        )}
+      </div>
+      <QuickDialog
+        open={!!selected}
+        title={selected?.name || "Personalise your jersey"}
+        onClose={() => setSelected(null)}
+      >
+        {selected && (
+          <div className="p-4 sm:p-6">
+            <JerseyOrderForm key={selected.id} products={[selected]} />
+          </div>
+        )}
+      </QuickDialog>
+    </>
   );
 }

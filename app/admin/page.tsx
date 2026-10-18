@@ -1,13 +1,6 @@
+import { requireAdmin } from "@/app/lib/newjersey/auth/admin";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Boxes,
-  Clock3,
-  FileImage,
-  PackageCheck,
-  ShoppingBag,
-  Truck,
-} from "lucide-react";
+import { ArrowRight, Boxes, FileImage, ShoppingBag, Truck } from "lucide-react";
 
 import { getSupabaseAdmin } from "@/app/lib/newjersey/supabase/admin";
 
@@ -82,34 +75,9 @@ function statusStyle(status: string | null) {
   }
 }
 
-const workflow = [
-  {
-    number: "01",
-    title: "Review",
-    text: "Check the order, specifications and customer artwork.",
-    icon: Clock3,
-  },
-  {
-    number: "02",
-    title: "Confirm",
-    text: "Agree on final pricing and confirm payment.",
-    icon: PackageCheck,
-  },
-  {
-    number: "03",
-    title: "Produce",
-    text: "Move the approved job into production.",
-    icon: Boxes,
-  },
-  {
-    number: "04",
-    title: "Deliver",
-    text: "Arrange pickup or dispatch and complete the order.",
-    icon: Truck,
-  },
-];
-
 export default async function AdminPage() {
+  const current = await requireAdmin();
+  const canManageStore = current.profile.role !== "production";
   const supabase = getSupabaseAdmin();
 
   const [
@@ -121,7 +89,8 @@ export default async function AdminPage() {
   ] = await Promise.all([
     supabase
       .from("orders")
-      .select(`
+      .select(
+        `
         id,
         order_number,
         customer_full_name,
@@ -131,13 +100,12 @@ export default async function AdminPage() {
         final_total,
         status,
         created_at
-      `)
+      `,
+      )
       .order("created_at", { ascending: false })
       .limit(8),
 
-    supabase
-      .from("orders")
-      .select("*", { count: "exact", head: true }),
+    supabase.from("orders").select("*", { count: "exact", head: true }),
 
     supabase
       .from("orders")
@@ -165,10 +133,7 @@ export default async function AdminPage() {
 
   for (const { name, result } of results) {
     if (result.error) {
-      console.error(
-        `[NewJersey Admin] Failed to load ${name}:`,
-        result.error,
-      );
+      console.error(`[NewJersey Admin] Failed to load ${name}:`, result.error);
     }
   }
 
@@ -179,14 +144,14 @@ export default async function AdminPage() {
     {
       title: "Total orders",
       value: totalResult.error ? "—" : (totalResult.count ?? 0),
-      description: "All production requests",
+      description: "Across the store",
       href: "/admin/orders",
       icon: ShoppingBag,
     },
     {
       title: "Awaiting artwork",
       value: artworkResult.error ? "—" : (artworkResult.count ?? 0),
-      description: "Customer files required",
+      description: "Orders awaiting artwork",
       href: "/admin/artworks",
       icon: FileImage,
     },
@@ -207,243 +172,198 @@ export default async function AdminPage() {
   ];
 
   return (
-    <main className="min-w-0 p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto w-full max-w-[1440px] space-y-6">
-        {/* Page heading */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight text-[#181818] sm:text-3xl">
-              Store overview
-            </h1>
-
-            <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600">
-              Keep track of orders, customer artwork, production and delivery.
+    <main className="mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-[#8A6D57]">
+            NewJersey.ng / Workspace
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold tracking-[-.04em] sm:text-3xl">
+            Store overview.
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-[#706B63]">
+            A clear view of the work moving through your store.
+          </p>
+        </div>
+        <Link
+          href="/admin/orders"
+          className="inline-flex min-h-11 items-center gap-4 rounded-lg bg-[#FF6B00] px-4 text-xs font-semibold"
+        >
+          Manage orders
+          <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      </div>
+      {hasError && (
+        <p
+          role="alert"
+          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          Some information could not be loaded. Counts marked — are unavailable;
+          refresh before relying on them.
+        </p>
+      )}
+      <section
+        aria-label="Order summary"
+        className="mt-7 grid grid-cols-2 gap-3 xl:grid-cols-4"
+      >
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Link
+              key={stat.title}
+              href={stat.href}
+              className="rounded-xl border border-black/[.08] bg-white p-4 transition-colors hover:border-[#FF6B00]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00] sm:p-5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-xs text-[#706B63]">{stat.title}</span>
+                <Icon
+                  size={17}
+                  aria-hidden="true"
+                  className="shrink-0 text-[#8A8379]"
+                />
+              </div>
+              <p className="mt-4 text-3xl font-semibold tracking-tight tabular-nums">
+                {stat.value}
+              </p>
+              <p className="mt-2 text-[11px] leading-5 text-[#8A8379]">
+                {stat.description}
+              </p>
+            </Link>
+          );
+        })}
+      </section>
+      <section
+        aria-labelledby="recent-orders"
+        className="mt-7 overflow-hidden rounded-xl border border-black/[.08] bg-white"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-black/[.07] px-5 py-5">
+          <div>
+            <h2 id="recent-orders" className="text-sm font-semibold">
+              Recent orders
+            </h2>
+            <p className="mt-1 text-xs text-[#8A8379]">
+              Your eight latest orders, across departments.
             </p>
           </div>
-
           <Link
             href="/admin/orders"
-            className="inline-flex min-h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-lg bg-[#181818] px-4 text-sm font-medium text-white transition-colors hover:bg-[#333333] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220] focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold"
           >
-            Manage orders
-            <ArrowRight size={16} aria-hidden="true" />
+            View all
+            <ArrowRight size={14} aria-hidden="true" />
           </Link>
         </div>
-
-        {hasError && (
-          <div
-            role="alert"
-            className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900"
-          >
-            Some dashboard information could not be loaded. Refresh the page
-            to try again.
+        {recentResult.error ? (
+          <p className="p-6 text-sm text-[#706B63]">
+            Recent orders could not be loaded.
+          </p>
+        ) : !orders.length ? (
+          <div className="px-5 py-12">
+            <h3 className="font-semibold">Your next order starts here.</h3>
+            <p className="mt-2 text-sm text-[#706B63]">
+              New orders will appear here when customers submit them.
+            </p>
+          </div>
+        ) : (
+          <div>
+            {orders.map((order) => (
+              <Link
+                key={order.id}
+                href={`/admin/orders/${encodeURIComponent(order.order_number)}`}
+                className="grid gap-3 border-b border-black/[.06] px-5 py-4 last:border-0 hover:bg-[#FCFBF8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#FF6B00] sm:grid-cols-[minmax(0,1fr)_140px_135px] sm:items-center"
+              >
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium tracking-wide text-[#8A8379]">
+                    {order.order_number} · {formatDate(order.created_at)}
+                  </p>
+                  <h3 className="mt-1 truncate text-sm font-semibold">
+                    {order.project_name || "Customer order"}
+                  </h3>
+                  <p className="mt-1 truncate text-xs text-[#706B63]">
+                    {order.customer_full_name || "Customer"}
+                  </p>
+                </div>
+                <span
+                  className={`w-fit rounded-md px-2.5 py-1.5 text-[10px] font-medium ${statusStyle(order.status)}`}
+                >
+                  {statusLabel(order.status)}
+                </span>
+                <div className="sm:text-right">
+                  <p className="text-sm font-semibold tabular-nums">
+                    {money(order.final_total ?? order.subtotal)}
+                  </p>
+                  <p className="mt-1 text-[10px] text-[#8A8379]">
+                    {order.final_total == null
+                      ? "Estimated total"
+                      : "Confirmed total"}
+                  </p>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
-
-        {/* Summary cards */}
-        <section
-          aria-label="Order summary"
-          className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        >
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-
-            return (
-              <Link
-                key={stat.title}
-                href={stat.href}
-                className="group min-w-0 rounded-xl border border-black/[0.08] bg-white p-5 transition-colors hover:border-[#F58220]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F58220]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-medium text-neutral-600">
-                    {stat.title}
-                  </p>
-
-                  <Icon
-                    size={19}
-                    strokeWidth={1.8}
-                    aria-hidden="true"
-                    className="shrink-0 text-neutral-400 transition-colors group-hover:text-[#F58220]"
-                  />
-                </div>
-
-                <p className="mt-4 text-3xl font-semibold tracking-tight tabular-nums text-[#181818]">
-                  {stat.value}
-                </p>
-
-                <p className="mt-2 text-xs leading-5 text-neutral-500">
-                  {stat.description}
-                </p>
-              </Link>
-            );
-          })}
-        </section>
-
-        {/* Orders and workflow */}
-        <div className="grid min-w-0 items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_300px]">
-          <section
-            aria-labelledby="recent-orders-heading"
-            className="min-w-0 overflow-hidden rounded-xl border border-black/[0.08] bg-white"
-          >
-            <div className="flex items-center justify-between gap-4 border-b border-black/[0.08] px-5 py-5 sm:px-6">
-              <div>
-                <h2
-                  id="recent-orders-heading"
-                  className="text-base font-semibold text-[#181818]"
-                >
-                  Recent orders
-                </h2>
-
-                <p className="mt-1 text-sm text-neutral-500">
-                  Your latest production requests.
-                </p>
-              </div>
-
-              <Link
-                href="/admin/orders"
-                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 text-sm font-medium text-[#181818] transition-colors hover:text-[#B8540A]"
-              >
-                View all
-                <ArrowRight size={15} aria-hidden="true" />
-              </Link>
-            </div>
-
-            {recentResult.error ? (
-              <div className="flex min-h-[280px] flex-col items-center justify-center px-6 py-10 text-center">
-                <h3 className="text-base font-semibold">
-                  Orders could not be loaded
-                </h3>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-neutral-500">
-                  Refresh the page to try again.
-                </p>
-              </div>
-            ) : orders.length === 0 ? (
-              <div className="flex min-h-[280px] flex-col items-center justify-center px-6 py-10 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500">
-                  <PackageCheck size={22} aria-hidden="true" />
-                </div>
-
-                <h3 className="mt-4 text-base font-semibold">
-                  No orders yet
-                </h3>
-
-                <p className="mt-2 max-w-sm text-sm leading-6 text-neutral-500">
-                  Customer production requests will appear here when they
-                  are submitted.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-black/[0.06]">
-                {orders.map((order) => (
-                  <Link
-                    key={order.id}
-                    href={`/admin/orders/${encodeURIComponent(
-                      order.order_number,
-                    )}`}
-                    className="group block px-5 py-5 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#F58220] sm:px-6"
-                  >
-                    <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="break-all text-sm font-semibold text-[#181818]">
-                            {order.order_number}
-                          </p>
-
-                          <span
-                            className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${statusStyle(
-                              order.status,
-                            )}`}
-                          >
-                            {statusLabel(order.status)}
-                          </span>
-                        </div>
-
-                        <p className="mt-2 break-words text-sm text-neutral-700">
-                          {order.project_name || "Untitled project"}
-                        </p>
-
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs leading-5 text-neutral-500">
-                          <span className="break-words">
-                            {order.customer_full_name || "Customer"}
-                          </span>
-                          <span>{formatDate(order.created_at)}</span>
-                          <span>
-                            {order.item_count ?? 0}{" "}
-                            {order.item_count === 1 ? "item" : "items"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 items-center justify-between gap-4 sm:pt-1">
-                        <p className="text-sm font-semibold tabular-nums text-[#181818]">
-                          {money(order.final_total ?? order.subtotal)}
-                        </p>
-
-                        <ArrowRight
-                          size={17}
-                          aria-hidden="true"
-                          className="shrink-0 text-neutral-400 transition-colors group-hover:text-[#B8540A]"
-                        />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Workflow reference */}
-          <aside
-            aria-labelledby="production-workflow-heading"
-            className="min-w-0 rounded-xl border border-black/[0.08] bg-white p-5 sm:p-6"
-          >
-            <h2
-              id="production-workflow-heading"
-              className="text-base font-semibold text-[#181818]"
+      </section>
+      <section aria-label="Workspace shortcuts" className="mt-7">
+        <h2 className="text-xs font-semibold text-[#706B63]">
+          Go to your next task
+        </h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {(canManageStore
+            ? [
+                {
+                  title: "Catalogue",
+                  text: "Products, apparel, jerseys and print.",
+                  href: "/admin/products",
+                },
+                {
+                  title: "Creative work",
+                  text: "Design requests and customer artwork.",
+                  href: "/admin/design",
+                },
+                {
+                  title: "Fulfilment",
+                  text: "Move confirmed jobs into production.",
+                  href: "/admin/production",
+                },
+              ]
+            : [
+                {
+                  title: "Order details",
+                  text: "Review the jobs you are preparing.",
+                  href: "/admin/orders",
+                },
+                {
+                  title: "Customer artwork",
+                  text: "Check the approved production files.",
+                  href: "/admin/artworks",
+                },
+                {
+                  title: "Production",
+                  text: "Manage confirmed and active jobs.",
+                  href: "/admin/production",
+                },
+              ]
+          ).map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center justify-between gap-3 rounded-xl border border-black/[.08] bg-white px-5 py-4 hover:border-[#FF6B00]/50"
             >
-              Production workflow
-            </h2>
-
-            <p className="mt-1 text-sm leading-6 text-neutral-500">
-              From approved request to delivery.
-            </p>
-
-            <ol className="mt-6 grid gap-6 sm:grid-cols-2 2xl:grid-cols-1">
-              {workflow.map((step) => {
-                const Icon = step.icon;
-
-                return (
-                  <li key={step.number} className="flex min-w-0 gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#FFF2E8] text-[#B8540A]">
-                      <Icon
-                        size={18}
-                        strokeWidth={1.8}
-                        aria-hidden="true"
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-neutral-400">
-                          {step.number}
-                        </span>
-
-                        <h3 className="text-sm font-semibold text-[#181818]">
-                          {step.title}
-                        </h3>
-                      </div>
-
-                      <p className="mt-1 text-sm leading-6 text-neutral-500">
-                        {step.text}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </aside>
+              <div>
+                <h3 className="text-xs font-semibold">{item.title}</h3>
+                <p className="mt-1 text-[11px] leading-5 text-[#8A8379]">
+                  {item.text}
+                </p>
+              </div>
+              <ArrowRight
+                size={15}
+                aria-hidden="true"
+                className="shrink-0 text-[#8A8379]"
+              />
+            </Link>
+          ))}
         </div>
-      </div>
+      </section>
     </main>
   );
 }

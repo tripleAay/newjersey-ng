@@ -16,7 +16,7 @@ export async function GET() {
     if (!current) {
       return NextResponse.json(
         { message: "Admin access required." },
-        { status: 401, headers }
+        { status: 401, headers },
       );
     }
 
@@ -42,7 +42,7 @@ export async function GET() {
           category,
           count: count ?? 0,
         };
-      })
+      }),
     );
 
     const destinations: Record<string, string> = {
@@ -57,13 +57,27 @@ export async function GET() {
       badges[destinations[result.category]] = result.count;
     }
 
+    if (current.profile.role !== "production") {
+      const enquiries = await supabase
+        .from("catalogue_enquiries")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "new");
+      if (!enquiries.error)
+        badges["/admin/catalogue/enquiries"] = enquiries.count ?? 0;
+      else console.error("[Catalogue enquiry badge]", enquiries.error);
+    }
+    if (current.profile.role !== "production") {
+      const support = await supabase.rpc("support_unread_count");
+      if (!support.error) badges["/admin/support"] = Number(support.data ?? 0);
+      else console.error("[Support inbox badge]", support.error);
+    }
     return NextResponse.json({ badges }, { headers });
   } catch (error) {
     console.error("[Admin navigation badges]", error);
 
     return NextResponse.json(
       { message: "Unable to load notification counts." },
-      { status: 500, headers }
+      { status: 500, headers },
     );
   }
 }

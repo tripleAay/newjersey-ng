@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 
+import { useNotificationSound, NotificationSoundControl } from "@/app/components/newjersey/NotificationSound";
+
 type Notification = {
   id: string;
   category: "order" | "artwork" | "payment";
@@ -72,6 +74,8 @@ function isNotification(
 
 export default function AdminNotifications() {
   const router = useRouter();
+  const sound = useNotificationSound("admin");
+  const { observe } = sound;
   const pathname = usePathname();
   const panelId = useId();
 
@@ -120,6 +124,7 @@ export default function AdminNotifications() {
         return;
       }
 
+      observe(result.notifications);
       setItems(result.notifications);
       setUnread(result.unreadCount);
       setError("");
@@ -132,7 +137,7 @@ export default function AdminNotifications() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [observe]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -342,6 +347,8 @@ export default function AdminNotifications() {
               Mark all read
             </button>
           </div>
+
+          <NotificationSoundControl sound={sound} />
 
           {error && (
             <p

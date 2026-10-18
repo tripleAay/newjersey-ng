@@ -96,6 +96,7 @@ export default async function DeliveryPage({
       { count: "exact" }
     )
     .eq("status", status)
+    .eq("design_service", false)
     .order("updated_at", { ascending: false })
     .order("id", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);

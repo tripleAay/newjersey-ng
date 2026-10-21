@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,9 +16,56 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://newjersey.ng";
+
 export const metadata: Metadata = {
-  title: "NewJersey.ng | Print & Branding",
-  description: "Professional printing and branding services.",
+  metadataBase: new URL(siteUrl),
+
+  title: {
+    default: "NewJersey.ng | Custom Printing, Jerseys & Branding",
+    template: "%s | NewJersey.ng",
+  },
+
+  description:
+    "Order custom jerseys, branded apparel, business cards, flyers, packaging and merchandise from NewJersey.ng. Printing and branding with nationwide delivery in Nigeria.",
+
+  applicationName: "NewJersey.ng",
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+
+  openGraph: {
+    type: "website",
+    locale: "en_NG",
+    siteName: "NewJersey.ng",
+    title: "NewJersey.ng | Custom Printing, Jerseys & Branding",
+    description:
+      "Custom jerseys, branded apparel, print materials and merchandise. Order from NewJersey.ng with nationwide delivery in Nigeria.",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "NewJersey.ng | Custom Printing, Jerseys & Branding",
+    description:
+      "Custom jerseys, branded apparel, print materials and merchandise. Nationwide delivery in Nigeria.",
+  },
+
+  category: "Shopping",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#FF6B00",
 };
 
 export default function RootLayout({
@@ -28,7 +75,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="en-NG"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-screen flex-col">

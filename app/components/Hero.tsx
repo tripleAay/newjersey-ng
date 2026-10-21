@@ -1,18 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-
-/**
- * PALETTE LOGIC
- * bg      #D4C685  — warm gold/khaki backdrop
- * accent  #FF6B00  — signature orange: headings highlight, CTAs, active states, glows
- * ink     #1A1A1A  — near-black for primary text (white fails contrast on light gold)
- * surface #FFFFFF  — cards / glass panels
- * All interactive elements (pills, arrows, dots, progress, button) now route through
- * the same orange accent so the section reads as one intentional system, not a
- * repaint of a component built for a dark background.
- */
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type TouchEvent,
+} from "react";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import HeroSearchResults from "./HeroSearchResults";
 
 const slides = [
   {
@@ -50,95 +47,251 @@ const slides = [
   },
 ];
 
+const suggestions = ["Apparel", "Jerseys", "Business Cards", "Mugs", "Caps"];
+
 const SLIDE_DURATION = 5500;
+
+const focusStyle =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A1A1A] focus-visible:ring-offset-2 focus-visible:ring-offset-[#D4C685]";
 
 export default function Hero() {
   const [active, setActive] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
+
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [pageHidden, setPageHidden] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const heroRef = useRef<HTMLElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef<number | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const restoreSearchFocus = useRef(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const slide = slides[active];
 
-  const goTo = (index: number, dir: "next" | "prev") => {
-    setDirection(dir);
-    setActive((index + slides.length) % slides.length);
-  };
+  const isPaused =
+    hovered || focused || pageHidden || reducedMotion || !!searchQuery;
 
-  const next = () => goTo(active + 1, "next");
-  const prev = () => goTo(active - 1, "prev");
+  function goTo(index: number, nextDirection: "next" | "prev") {
+    setDirection(nextDirection);
+    setActive((index + slides.length) % slides.length);
+    setParallax({ x: 0, y: 0 });
+  }
+
+  function next() {
+    setDirection("next");
+    setActive((previous) => (previous + 1) % slides.length);
+    setParallax({ x: 0, y: 0 });
+  }
+
+  function prev() {
+    setDirection("prev");
+    setActive(
+      (previous) => (previous - 1 + slides.length) % slides.length,
+    );
+    setParallax({ x: 0, y: 0 });
+  }
+
+  function searchProducts(value: string) {
+    const query = value.trim().slice(0, 120);
+
+    if (!query) {
+      searchRef.current?.focus();
+      return;
+    }
+
+    setSearchInput(query);
+    setSearchQuery(query);
+    setHovered(false);
+    setFocused(false);
+    setParallax({ x: 0, y: 0 });
+  }
+
+  function closeSearch() {
+    restoreSearchFocus.current = true;
+    setSearchQuery("");
+    setSearchInput("");
+    setHovered(false);
+    setFocused(false);
+  }
+
+  useEffect(() => {
+    if (searchQuery || !restoreSearchFocus.current) return;
+
+    restoreSearchFocus.current = false;
+    searchRef.current?.focus({ preventScroll: true });
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function updateMotion() {
+      setReducedMotion(media.matches);
+    }
+
+    function updateVisibility() {
+      setPageHidden(document.hidden);
+    }
+
+    updateMotion();
+    updateVisibility();
+
+    media.addEventListener("change", updateMotion);
+    document.addEventListener("visibilitychange", updateVisibility);
+
+    return () => {
+      media.removeEventListener("change", updateMotion);
+      document.removeEventListener("visibilitychange", updateVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     if (isPaused) return;
-    const timer = setInterval(() => {
+
+    const timer = window.setTimeout(() => {
       setDirection("next");
-      setActive((p) => (p + 1) % slides.length);
+      setActive((previous) => (previous + 1) % slides.length);
     }, SLIDE_DURATION);
-    return () => clearInterval(timer);
-  }, [isPaused]);
+
+    return () => window.clearTimeout(timer);
+  }, [active, isPaused]);
 
   useEffect(() => {
-    const onVisibility = () => setIsPaused(document.hidden);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") next();
-      if (e.key === "ArrowLeft") prev();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [active]);
-
-  useEffect(() => {
-    slides.forEach((s) => {
-      const img = new window.Image();
-      img.src = s.image;
+    slides.forEach((item) => {
+      const image = new window.Image();
+      image.src = item.image;
     });
   }, []);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!visualRef.current) return;
+  function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
+    if (reducedMotion || !visualRef.current) return;
+
     const rect = visualRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 14;
-    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 14;
-    setParallax({ x, y });
-  };
 
-  const resetParallax = () => setParallax({ x: 0, y: 0 });
+    setParallax({
+      x: ((event.clientX - rect.left) / rect.width - 0.5) * 14,
+      y: ((event.clientY - rect.top) / rect.height - 0.5) * 14,
+    });
+  }
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    if (delta > 50) prev();
-    else if (delta < -50) next();
-    touchStartX.current = null;
-  };
+  function onTouchStart(event: TouchEvent<HTMLElement>) {
+    const target = event.target;
+
+    if (
+      target instanceof HTMLElement &&
+      target.closest("input, button, a, textarea, select")
+    ) {
+      touchStart.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+
+    if (touch) {
+      touchStart.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+    }
+  }
+
+  function onTouchEnd(event: TouchEvent<HTMLElement>) {
+    const start = touchStart.current;
+    const touch = event.changedTouches[0];
+
+    touchStart.current = null;
+
+    if (!start || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    if (Math.abs(deltaX) <= 50 || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return;
+    }
+
+    if (deltaX > 0) prev();
+    else next();
+  }
+
+  if (searchQuery) {
+    return (
+      <HeroSearchResults
+        query={searchQuery}
+        onSearch={searchProducts}
+        onClose={closeSearch}
+      />
+    );
+  }
 
   return (
     <section
-      className="relative min-h-[680px] overflow-hidden bg-[#D4C685] text-[#1A1A1A]"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      ref={heroRef}
+      aria-label="NewJersey.ng featured products and search"
+      className="hero relative min-h-[680px] overflow-hidden bg-[#D4C685] text-[#1A1A1A]"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => {
+        setHovered(false);
+        setParallax({ x: 0, y: 0 });
+      }}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(event) => {
+        const nextTarget = event.relatedTarget;
+
+        if (
+          !(nextTarget instanceof Node) ||
+          !event.currentTarget.contains(nextTarget)
+        ) {
+          setFocused(false);
+        }
+      }}
+      onKeyDown={(event) => {
+        const target = event.target;
+
+        if (
+          target instanceof HTMLElement &&
+          (target.closest("input, textarea, select") ||
+            target.isContentEditable)
+        ) {
+          return;
+        }
+
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          next();
+        }
+
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          prev();
+        }
+      }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={() => {
+        touchStart.current = null;
+      }}
     >
-      {/* Background atmosphere — orange-tinted glows tie the accent into the field */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Background */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
         <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#FF6B00]/10 blur-3xl" />
+
         <div className="absolute -bottom-40 right-0 h-[600px] w-[600px] rounded-full bg-black/10 blur-3xl" />
+
         <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
       </div>
 
-      {/* Subtle grid */}
       <div
+        aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-[0.06]"
         style={{
           backgroundImage:
@@ -147,25 +300,25 @@ export default function Hero() {
         }}
       />
 
-      <div className="relative mx-auto flex min-h-[680px] max-w-7xl items-center px-6 py-16 lg:px-10">
+      <div className="relative mx-auto flex min-h-[680px] max-w-7xl items-center px-6 pb-24 pt-14 sm:pt-16 lg:px-10 lg:py-20">
         <div className="grid w-full grid-cols-1 items-center gap-14 lg:grid-cols-[1fr_0.9fr]">
-          {/* LEFT */}
-          <div className="relative z-20 max-w-2xl">
-            <div
-              key={`eyebrow-${active}`}
-              className="animate-[fadeUp_.6s_ease-out]"
-            >
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#FF6B00]/30 bg-white/60 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#FF6B00] backdrop-blur-md">
-                <span className="h-2 w-2 rounded-full bg-[#FF6B00] shadow-[0_0_12px_rgba(255,107,0,.6)]" />
+          {/* Copy and search */}
+          <div className="relative z-20 min-w-0 max-w-2xl">
+            <div key={`eyebrow-${active}`} className="hero-enter">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#FF6B00]/30 bg-white/60 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#984000] backdrop-blur-md">
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 rounded-full bg-[#FF6B00]"
+                />
                 {slide.eyebrow}
               </span>
             </div>
 
             <div
               key={`heading-${active}`}
-              className="mt-7 animate-[fadeUp_.7s_ease-out]"
+              className="hero-enter mt-7"
             >
-              <h1 className="text-5xl font-black leading-[0.92] tracking-[-0.04em] text-[#1A1A1A] sm:text-6xl lg:text-7xl">
+              <h1 className="text-5xl font-black leading-[0.95] tracking-[-0.04em] text-[#1A1A1A] sm:text-6xl lg:text-7xl">
                 {slide.title}
                 <span className="mt-2 block text-[#FF6B00]">
                   {slide.highlight}
@@ -175,98 +328,136 @@ export default function Hero() {
 
             <p
               key={`description-${active}`}
-              className="mt-7 max-w-xl animate-[fadeUp_.8s_ease-out] text-base leading-7 text-[#1A1A1A]/70 sm:text-lg"
+              className="hero-enter mt-7 max-w-xl text-base leading-7 text-[#1A1A1A]/75 sm:text-lg"
             >
               {slide.description}
             </p>
 
-            <div
-              key={`search-${active}`}
-              className="mt-9 max-w-2xl animate-[fadeUp_.9s_ease-out]"
-            >
-              <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-[#1A1A1A]">
+            {/* Stable input: does not remount when slides change */}
+            <div className="mt-9 max-w-2xl">
+              <label
+                htmlFor="hero-product-query"
+                className="mb-3 block text-xs font-black uppercase tracking-[0.18em]"
+              >
                 What would you like to print today?
-              </p>
+              </label>
 
-              <div className="flex h-16 items-center rounded-2xl bg-white p-2 shadow-[0_25px_70px_rgba(0,0,0,0.15)]">
+              <form
+                role="search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  searchProducts(searchInput);
+                }}
+                className="flex h-16 items-center rounded-2xl bg-white p-2 shadow-[0_25px_70px_rgba(0,0,0,0.15)]"
+              >
                 <input
-                  type="text"
+                  ref={searchRef}
+                  id="hero-product-query"
+                  name="q"
+                  type="search"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
                   placeholder="Search business cards, jerseys, mugs..."
-                  className="h-full min-w-0 flex-1 bg-transparent px-4 text-[15px] text-gray-800 outline-none placeholder:text-gray-400"
+                  required
+                  maxLength={120}
+                  enterKeyHint="search"
+                  className="h-full min-w-0 flex-1 rounded-xl bg-transparent px-3 text-base text-gray-800 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-[#FF6B00] sm:px-4"
                 />
+
                 <button
-                  type="button"
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#FF6B00] text-xl font-bold text-white transition-all duration-300 hover:scale-105 hover:bg-[#1A1A1A]"
+                  type="submit"
+                  aria-label="Search products"
+                  className={`ml-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#FF6B00] text-[#1A1A1A] transition-colors hover:bg-[#E85F00] ${focusStyle}`}
                 >
-                  ⌕
+                  <Search size={22} aria-hidden="true" />
                 </button>
-              </div>
+              </form>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["Apparel", "Jerseys", "Business Cards", "Mugs", "Caps"].map(
-                (item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className="rounded-full border border-[#1A1A1A]/10 bg-white/70 px-4 py-2 text-xs font-bold text-[#1A1A1A] backdrop-blur-sm transition hover:-translate-y-1 hover:border-[#FF6B00] hover:bg-[#FF6B00] hover:text-white"
-                  >
-                    {item}
-                  </button>
-                ),
-              )}
+            <div
+              aria-label="Popular searches"
+              className="mt-6 flex flex-wrap gap-2"
+            >
+              {suggestions.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => searchProducts(item)}
+                  className={`min-h-10 rounded-full border border-[#1A1A1A]/10 bg-white/70 px-4 py-2 text-xs font-bold text-[#1A1A1A] backdrop-blur-sm transition-colors hover:border-[#FF6B00] hover:bg-[#FF6B00] ${focusStyle}`}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* RIGHT VISUAL */}
+          {/* Desktop visual */}
           <div
             ref={visualRef}
             onMouseMove={handleMouseMove}
-            onMouseLeave={resetParallax}
-            className="relative hidden h-[520px] lg:block"
+            onMouseLeave={() => setParallax({ x: 0, y: 0 })}
+            className="relative hidden h-[520px] min-w-0 lg:block"
           >
             <div
-              className="absolute right-0 top-1/2 h-[430px] w-[430px] -translate-y-1/2 rounded-full bg-[#FF6B00]/25 blur-[100px] transition-transform duration-300 ease-out"
+              aria-hidden="true"
+              className="absolute right-0 top-1/2 h-[430px] w-[430px] rounded-full bg-[#FF6B00]/25 blur-[100px] transition-transform duration-300 ease-out"
               style={{
                 transform: `translate(${parallax.x * 0.4}px, calc(-50% + ${parallax.y * 0.4}px))`,
               }}
             />
 
-            <div className="absolute right-8 top-1/2 h-[430px] w-[430px] -translate-y-1/2 rounded-full border border-[#1A1A1A]/10 animate-[spin_40s_linear_infinite]" />
-            <div className="absolute right-20 top-1/2 h-[350px] w-[350px] -translate-y-1/2 rounded-full border border-dashed border-[#1A1A1A]/10 animate-[spinReverse_55s_linear_infinite]" />
-
-            <div className="absolute right-0 top-1/2 h-[410px] w-[410px] -translate-y-1/2 rounded-[50px] border border-white/60 bg-white/25 shadow-2xl backdrop-blur-md" />
-
-            {/* Image with parallax + direction-aware slide */}
             <div
-              key={`image-${active}`}
-              className={`absolute inset-0 z-10 transition-transform duration-300 ease-out ${
-                direction === "next"
-                  ? "animate-[imageInNext_.7s_ease-out]"
-                  : "animate-[imageInPrev_.7s_ease-out]"
-              }`}
+              aria-hidden="true"
+              className="absolute right-8 top-1/2 h-[430px] w-[430px] -translate-y-1/2"
+            >
+              <div className="hero-orbit h-full w-full rounded-full border border-[#1A1A1A]/10" />
+            </div>
+
+            <div
+              aria-hidden="true"
+              className="absolute right-20 top-1/2 h-[350px] w-[350px] -translate-y-1/2"
+            >
+              <div className="hero-orbit-reverse h-full w-full rounded-full border border-dashed border-[#1A1A1A]/10" />
+            </div>
+
+            <div
+              aria-hidden="true"
+              className="absolute right-0 top-1/2 h-[410px] w-[410px] -translate-y-1/2 rounded-[50px] border border-white/60 bg-white/25 shadow-2xl backdrop-blur-md"
+            />
+
+            <div
+              className="absolute inset-0 z-10 transition-transform duration-300 ease-out motion-reduce:transition-none"
               style={{
                 transform: `translate(${parallax.x}px, ${parallax.y}px)`,
               }}
             >
-              <Image
-                src={slide.image}
-                alt={slide.title}
-                fill
-                priority={active === 0}
-                className="object-contain object-right drop-shadow-[0_45px_70px_rgba(0,0,0,0.3)]"
-              />
+              <div
+                key={`image-${active}`}
+                className={`relative h-full w-full ${
+                  direction === "next"
+                    ? "hero-image-next"
+                    : "hero-image-prev"
+                }`}
+              >
+                <Image
+                  src={slide.image}
+                  alt={`${slide.title} ${slide.highlight}`}
+                  fill
+                  priority={active === 0}
+                  sizes="(min-width: 1024px) 48vw, 1px"
+                  className="object-contain object-right drop-shadow-[0_45px_70px_rgba(0,0,0,0.3)]"
+                />
+              </div>
             </div>
 
-            {/* Floating top card */}
             <div
               key={`floating-${active}`}
-              className="absolute left-0 top-20 z-30 animate-[floatIn_.7s_ease-out] rounded-2xl border border-black/[0.06] bg-white px-5 py-4 shadow-[0_25px_60px_rgba(0,0,0,.15)]"
+              className="hero-enter absolute left-0 top-20 z-30 rounded-2xl border border-black/[0.06] bg-white px-5 py-4 shadow-[0_25px_60px_rgba(0,0,0,.15)]"
             >
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FF6B00]">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#984000]">
                 {slide.category}
               </p>
-              <p className="mt-1 text-sm font-bold text-[#1A1A1A]">
+              <p className="mt-1 text-sm font-bold">
                 {slide.floatingTitle}
               </p>
               <p className="mt-0.5 text-xs text-gray-500">
@@ -274,7 +465,6 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Floating bottom card */}
             <div className="absolute bottom-16 right-0 z-30 rounded-2xl bg-[#1A1A1A] px-5 py-4 shadow-2xl">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FF6B00]">
                 New Jersey
@@ -284,75 +474,109 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Slide number */}
-            <div className="absolute bottom-2 left-0 z-30 flex items-center gap-3">
+            <div
+              aria-hidden="true"
+              className="absolute bottom-2 left-0 z-30 flex items-center gap-3"
+            >
               <span className="text-4xl font-black text-[#FF6B00]">
-                0{active + 1}
+                {String(active + 1).padStart(2, "0")}
               </span>
               <span className="h-px w-14 bg-[#1A1A1A]/25" />
-              <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#1A1A1A]/50">
-                0{slides.length}
+              <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#1A1A1A]/60">
+                {String(slides.length).padStart(2, "0")}
               </span>
             </div>
 
-            {/* Prev / Next arrows */}
             <div className="absolute -bottom-2 right-0 z-30 flex gap-2">
               <button
                 type="button"
                 onClick={prev}
                 aria-label="Previous slide"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#1A1A1A]/15 bg-white/70 text-[#1A1A1A] backdrop-blur-sm transition hover:border-[#FF6B00] hover:bg-[#FF6B00] hover:text-white"
+                className={`flex h-11 w-11 items-center justify-center rounded-full border border-[#1A1A1A]/15 bg-white/70 transition-colors hover:border-[#FF6B00] hover:bg-[#FF6B00] ${focusStyle}`}
               >
-                ←
+                <ArrowLeft size={18} aria-hidden="true" />
               </button>
+
               <button
                 type="button"
                 onClick={next}
                 aria-label="Next slide"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#1A1A1A]/15 bg-white/70 text-[#1A1A1A] backdrop-blur-sm transition hover:border-[#FF6B00] hover:bg-[#FF6B00] hover:text-white"
+                className={`flex h-11 w-11 items-center justify-center rounded-full border border-[#1A1A1A]/15 bg-white/70 transition-colors hover:border-[#FF6B00] hover:bg-[#FF6B00] ${focusStyle}`}
               >
-                →
+                <ArrowRight size={18} aria-hidden="true" />
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom controls */}
-      <div className="absolute bottom-7 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3">
-        {slides.map((_, index) => (
+      {/* Slide controls */}
+      <div
+        aria-label="Choose featured slide"
+        className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2"
+      >
+        {slides.map((item, index) => (
           <button
-            key={index}
+            key={item.image}
             type="button"
-            aria-label={`Go to slide ${index + 1}`}
-            onClick={() => goTo(index, index > active ? "next" : "prev")}
-            className="group relative h-1.5 overflow-hidden rounded-full bg-[#1A1A1A]/15 transition-all duration-300"
-            style={{ width: active === index ? 70 : 28 }}
+            aria-label={`Show slide ${index + 1}: ${item.eyebrow}`}
+            aria-current={active === index ? "true" : undefined}
+            onClick={() =>
+              goTo(index, index > active ? "next" : "prev")
+            }
+            className={`flex h-11 items-center justify-center rounded-full px-1 ${focusStyle}`}
           >
             <span
-              className={`absolute inset-y-0 left-0 rounded-full bg-[#FF6B00] transition-all ${
-                active === index ? "w-full" : "w-0 group-hover:w-full"
+              aria-hidden="true"
+              className={`block h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
+                active === index
+                  ? "w-16 bg-[#FF6B00]"
+                  : "w-6 bg-[#1A1A1A]/20"
               }`}
             />
           </button>
         ))}
       </div>
 
-      {/* Progress line */}
-      <div className="absolute bottom-0 left-0 h-1 w-full bg-[#1A1A1A]/10">
+      {/* Restarts with the timer after a pause */}
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 left-0 h-1 w-full bg-[#1A1A1A]/10"
+      >
         <div
-          key={active}
-          className="h-full bg-[#FF6B00]"
+          key={`${active}-${isPaused}`}
+          className="hero-progress h-full bg-[#FF6B00]"
           style={{
+            width: isPaused ? "0%" : undefined,
             animation: isPaused
               ? "none"
-              : `progress ${SLIDE_DURATION}ms linear`,
+              : `heroProgress ${SLIDE_DURATION}ms linear forwards`,
           }}
         />
       </div>
 
       <style jsx>{`
-        @keyframes fadeUp {
+        .hero-enter {
+          animation: heroFadeUp 0.65s ease-out both;
+        }
+
+        .hero-image-next {
+          animation: heroImageNext 0.7s ease-out both;
+        }
+
+        .hero-image-prev {
+          animation: heroImagePrev 0.7s ease-out both;
+        }
+
+        .hero-orbit {
+          animation: heroSpin 40s linear infinite;
+        }
+
+        .hero-orbit-reverse {
+          animation: heroSpin 55s linear infinite reverse;
+        }
+
+        @keyframes heroFadeUp {
           from {
             opacity: 0;
             transform: translateY(18px);
@@ -362,7 +586,8 @@ export default function Hero() {
             transform: translateY(0);
           }
         }
-        @keyframes imageInNext {
+
+        @keyframes heroImageNext {
           from {
             opacity: 0;
             transform: translateX(35px) scale(0.96);
@@ -372,7 +597,8 @@ export default function Hero() {
             transform: translateX(0) scale(1);
           }
         }
-        @keyframes imageInPrev {
+
+        @keyframes heroImagePrev {
           from {
             opacity: 0;
             transform: translateX(-35px) scale(0.96);
@@ -382,17 +608,8 @@ export default function Hero() {
             transform: translateX(0) scale(1);
           }
         }
-        @keyframes floatIn {
-          from {
-            opacity: 0;
-            transform: translateY(15px) scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        @keyframes progress {
+
+        @keyframes heroProgress {
           from {
             width: 0%;
           }
@@ -400,20 +617,24 @@ export default function Hero() {
             width: 100%;
           }
         }
-        @keyframes spin {
+
+        @keyframes heroSpin {
           from {
-            transform: translateY(-50%) rotate(0deg);
+            transform: rotate(0deg);
           }
           to {
-            transform: translateY(-50%) rotate(360deg);
+            transform: rotate(360deg);
           }
         }
-        @keyframes spinReverse {
-          from {
-            transform: translateY(-50%) rotate(360deg);
-          }
-          to {
-            transform: translateY(-50%) rotate(0deg);
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-enter,
+          .hero-image-next,
+          .hero-image-prev,
+          .hero-orbit,
+          .hero-orbit-reverse,
+          .hero-progress {
+            animation: none !important;
           }
         }
       `}</style>

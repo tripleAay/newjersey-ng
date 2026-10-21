@@ -93,9 +93,7 @@ export default function TestimonialsSection() {
                     {item.name}
                   </h3>
 
-                  <p className="mt-0.5 text-[10px] leading-5 text-[#746E65]">
-                    Sample testimonial
-                  </p>
+                 
                 </div>
               </div>
             </article>

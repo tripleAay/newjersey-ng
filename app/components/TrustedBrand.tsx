@@ -17,14 +17,14 @@ const brandLogos = [
     url: "https://fynarotech.com",
   },
   {
-    name: "Bosch",
-    image: "/images/brands/bosch.png",
-    url: "https://bosch.com",
+    name: "Belle Ame",
+    image: "/images/logo green-02-01.jpg",
+    url: "",
   },
   {
-    name: "EDC",
-    image: "/images/brands/edc.png",
-    url: "https://edc.edu.ng",
+    name: "Good Endowment Collections",
+    image: "/images/9ebc6718-9731-406e-963a-070e3b81d652 (1).jpg",
+    url: "https://gendowment.com",
   },
   {
     name: "Alpha Pharma",

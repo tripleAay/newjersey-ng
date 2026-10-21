@@ -53,7 +53,7 @@ export default function TopBar() {
   };
 
   return (
-    <div className="relative h-9 overflow-hidden bg-black text-white">
+    <div className="relative h-7 overflow-hidden bg-black text-white">
       {/* Left fade */}
       <div className="pointer-events-none absolute left-0 top-0 z-20 h-full w-10 bg-gradient-to-r from-black via-black/80 to-transparent sm:w-16" />
 

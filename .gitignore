@@ -39,3 +39,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# NewJersey local exports and repair backups
+/import-fix-backups/
+/legacy-page-backups/
+/quote-link-backups/
+/route-backups/
+/newjersey-*.zip
+/Header-before-fix.txt
+/header-debug.txt
+/jersey-admin-orders.txt
+/jersey-source.txt
+/order-detail-source.txt
+/proxy.ts.before-artwork-test.bak

@@ -21,13 +21,13 @@ const siteUrl = "https://newjersey.ng";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
 
-  title: {
-    default: "NewJersey.ng | Custom Printing, Jerseys & Branding",
-    template: "%s | NewJersey.ng",
-  },
+ title: {
+  default: "NewJersey.ng | Printing & Branding in Nigeria",
+  template: "%s | NewJersey.ng",
+},
 
-  description:
-    "Order custom jerseys, branded apparel, business cards, flyers, packaging and merchandise from NewJersey.ng. Printing and branding with nationwide delivery in Nigeria.",
+description:
+  "Your print shop for business cards, flyers, packaging, signage, branded apparel and custom merchandise. Order from NewJersey.ng with nationwide delivery.",
 
   applicationName: "NewJersey.ng",
 

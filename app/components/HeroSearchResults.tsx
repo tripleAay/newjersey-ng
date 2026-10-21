@@ -301,7 +301,7 @@ export default function HeroSearchResults({
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {results.map((product) => (
               <Link
-                key={product.href}
+                key={product.id}
                 href={product.href}
                 className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-black/[0.07] bg-white transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
               >

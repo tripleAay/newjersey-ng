@@ -28,7 +28,9 @@ export default async function ShopPage() {
   return (
     <StoreShell>
       <main className="mx-auto w-full min-w-0 max-w-[1344px] px-4 pb-12 sm:px-8 lg:px-12">
-        <ShopHero />
+        <div className="mt-16">
+          <ShopHero />
+        </div>
         <StoreSection
           id="apparel"
           eyebrow="The clothing edit"
